@@ -1,0 +1,24 @@
+{
+  "recipeLoaded": true,
+  "ingredients": [
+    { "amount": "500g", "item": "pasta (spaghetti or rigatoni)" },
+    { "amount": "2 cans", "item": "crushed tomatoes" },
+    { "amount": "3 cloves", "item": "garlic, minced" },
+    { "amount": "4 tbsp", "item": "olive oil" },
+    { "amount": "1 handful", "item": "fresh basil leaves" },
+    { "amount": "to taste", "item": "salt and pepper" }
+  ],
+  "instructions": [
+    "Bring a large pot of salted water to a boil.",
+    "Heat olive oil in a wide pan over medium heat. Add garlic and cook for 2 minutes until fragrant.",
+    "Add crushed tomatoes, season with salt and pepper, and simmer for 15 minutes.",
+    "Cook pasta according to package directions until al dente. Reserve 1 cup pasta water.",
+    "Drain pasta and toss with the sauce, adding pasta water as needed.",
+    "Finish with fresh basil and a drizzle of olive oil."
+  ],
+  "prep_ahead": [
+    "Make the tomato sauce up to 3 days ahead — it improves with time.",
+    "Garlic can be minced the day before and stored in a small jar with oil."
+  ],
+  "sides": []
+}

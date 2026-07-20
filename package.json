@@ -1,0 +1,69 @@
+{
+  "name": "fornello",
+  "version": "1.0.0",
+  "private": true,
+  "main": "electron.js",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "app": "npm run build && electron .",
+    "dist": "npm run build && electron-builder --mac --dir",
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:report": "playwright show-report"
+  },
+  "build": {
+    "appId": "com.fornello.app",
+    "productName": "Fornello",
+    "asar": false,
+    "mac": {
+      "category": "public.app-category.food-and-drink",
+      "icon": "public/icon.icns"
+    },
+    "files": [
+      "**/*",
+      "!**/*.ts",
+      "!**/*.tsx",
+      "!.next/cache",
+      "!scripts"
+    ],
+    "npmRebuild": false,
+    "fileAssociations": [
+      {
+        "ext": "fornello",
+        "name": "Fornello Recipe",
+        "description": "Fornello Recipe File",
+        "mimeType": "application/x-fornello",
+        "icon": "public/icon.icns"
+      }
+    ]
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.90.0",
+    "@supabase/ssr": "^0.10.2",
+    "@supabase/supabase-js": "^2.104.0",
+    "@types/nodemailer": "^8.0.0",
+    "@types/pdfmake": "^0.3.2",
+    "next": "16.2.4",
+    "nodemailer": "^8.0.5",
+    "pdfmake": "^0.3.7",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "resend": "^6.12.2"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "@tailwindcss/postcss": "^4",
+    "@types/dotenv": "^6.1.1",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "dotenv": "^17.4.2",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.4",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

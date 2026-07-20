@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: 'AbramoSerif';
+  src: url('/AbramoSerif.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'AwesomeWays';
+  src: url('/Awesome_Ways.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --cream:    #F7F4EE;
+  --white:    #F8F5EF;
+  --white-2:  #FBF8F2;
+  --green:    #556257;
+  --green-lt: #EEF2EE;
+  --green-dk: #3B443A;
+  --sage:     #8FA78E;
+  --orange:   #BC6040;
+  --orange-lt:#FAF0EB;
+  --border:   #E7E0D6;
+  --border-2: #CFC8BC;
+  --text:     #2F3A32;
+  --text-2:   #5E6A61;
+  --text-3:   #7A847B;
+}
+
+html {
+  background-color: #F7F4EE;
+  background-image:
+    radial-gradient(rgba(143, 167, 142, 0.08) 0.45px, transparent 0.45px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.08));
+  background-size: 10px 10px, 100% 100%;
+  background-position: 0 0, 0 0;
+}
+
+body {
+  min-height: 100vh;
+  background: transparent;
+  color: var(--text);
+  font-family: Georgia, ui-serif, serif;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+  border: 3px solid var(--border);
+  border-top-color: var(--green);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes slide-up {
+  from { transform: translateY(16px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+.animate-slide-up { animation: slide-up 0.25s ease forwards; }
+
+/* Mobile touch targets */
+@media (max-width: 768px) {
+  button, a { min-height: 40px; }
+  .instruction-step { padding-left: 2rem; }
+}
+
+ol.instruction-list { counter-reset: steps; }
+.instruction-step {
+  counter-increment: steps;
+  position: relative;
+  padding-left: 2.5rem;
+}
+.instruction-step::before {
+  content: counter(steps);
+  position: absolute;
+  left: 0; top: 0.1rem;
+  width: 1.75rem; height: 1.75rem;
+  background: var(--green-lt);
+  color: var(--green);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 0.8rem;
+}

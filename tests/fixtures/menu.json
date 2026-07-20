@@ -1,0 +1,90 @@
+{
+  "id": 9999,
+  "language": "English",
+  "meals": [
+    {
+      "day": "Monday",
+      "name": "Pasta al Pomodoro",
+      "description": "A simple, vibrant tomato pasta — weeknight staple.",
+      "cuisine": "Italian",
+      "serves": 4,
+      "total_time": "30 min",
+      "prep_time": "10 min",
+      "cook_time": "20 min",
+      "difficulty": "Easy",
+      "tags": ["pasta"],
+      "isLeftover": false,
+      "recipeLoaded": false,
+      "photo_url": "",
+      "imageKeyword": "tomato pasta"
+    },
+    {
+      "day": "Tuesday",
+      "name": "Roast Chicken Thighs",
+      "description": "Crispy-skinned chicken thighs with garlic and herbs.",
+      "cuisine": "European",
+      "serves": 4,
+      "total_time": "45 min",
+      "prep_time": "10 min",
+      "cook_time": "35 min",
+      "difficulty": "Easy",
+      "tags": ["chicken"],
+      "isLeftover": false,
+      "recipeLoaded": false,
+      "photo_url": "",
+      "imageKeyword": "roast chicken"
+    },
+    {
+      "day": "Wednesday",
+      "name": "Tuesday Leftover",
+      "description": "Leftover roast chicken.",
+      "cuisine": "",
+      "serves": 4,
+      "total_time": "",
+      "prep_time": "",
+      "cook_time": "",
+      "difficulty": "Easy",
+      "tags": [],
+      "isLeftover": true,
+      "recipeLoaded": true,
+      "photo_url": ""
+    },
+    {
+      "day": "Thursday",
+      "name": "Lentil Soup",
+      "description": "Hearty red lentil soup with cumin and lemon.",
+      "cuisine": "Middle Eastern",
+      "serves": 4,
+      "total_time": "40 min",
+      "prep_time": "10 min",
+      "cook_time": "30 min",
+      "difficulty": "Easy",
+      "tags": ["soup or stew", "vegetarian"],
+      "isLeftover": false,
+      "recipeLoaded": false,
+      "photo_url": "",
+      "imageKeyword": "lentil soup"
+    },
+    {
+      "day": "Friday",
+      "name": "Salmon with Roasted Vegetables",
+      "description": "Oven-baked salmon with seasonal vegetables.",
+      "cuisine": "Seafood",
+      "serves": 4,
+      "total_time": "35 min",
+      "prep_time": "10 min",
+      "cook_time": "25 min",
+      "difficulty": "Medium",
+      "tags": ["seafood"],
+      "isLeftover": false,
+      "recipeLoaded": false,
+      "photo_url": "",
+      "imageKeyword": "salmon"
+    }
+  ],
+  "grocery_list": {
+    "Produce": ["2 cans crushed tomatoes", "1 head garlic", "1 lemon", "2 cups red lentils"],
+    "Protein": ["4 chicken thighs", "4 salmon fillets"],
+    "Pantry": ["500g pasta", "olive oil", "cumin", "vegetable stock"]
+  }
+}
