@@ -158,14 +158,21 @@ function DishRecipeModal({ dish, recipe, loading, onClose }: {
   );
 }
 
-function ResultCard({ result, meta, occasionContext, onBack, onPrint, onDishClick }: {
+function ResultCard({ result, meta, occasionContext, onBack, onEdit, onPrint, onDishClick, onToggleSelect, onSwap, onFinalize, finalizing, swappingIndex }: {
   result: SpecialOccasionResult;
   meta: { guests: string; servingTime: string; eventDate: string };
   occasionContext: { occasion: string; guests: number; cuisineTheme?: string };
   onBack: () => void;
+  onEdit: () => void;
   onPrint: () => void;
   onDishClick: (dish: string, course: string) => void;
+  onToggleSelect: (index: number) => void;
+  onSwap: (index: number) => void;
+  onFinalize: () => void;
+  finalizing: boolean;
+  swappingIndex: number | null;
 }) {
+  const selectedCount = (result.menu ?? []).filter(m => m.selected !== false).length;
   return (
     <div className="max-w-3xl">
       <div className="no-print flex items-center justify-between mb-6">
@@ -173,11 +180,18 @@ function ResultCard({ result, meta, occasionContext, onBack, onPrint, onDishClic
           style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#8B6A42', fontSize: '13px', fontFamily: 'Georgia, serif', letterSpacing: '0.05em' }}>
           ← All occasions
         </button>
-        <button onClick={onPrint}
-          className="rounded-full px-4 py-2 text-xs uppercase tracking-[0.18em] transition-opacity hover:opacity-70"
-          style={{ border: '1px solid #C4A265', color: '#8B6A42', background: 'transparent', fontFamily: 'Georgia, serif', cursor: 'pointer' }}>
-          Print
-        </button>
+        <div className="flex items-center gap-3">
+          <button onClick={onEdit}
+            className="rounded-full px-4 py-2 text-xs uppercase tracking-[0.18em] transition-opacity hover:opacity-70"
+            style={{ border: '1px solid #C4A265', color: '#8B6A42', background: 'transparent', fontFamily: 'Georgia, serif', cursor: 'pointer' }}>
+            Adjust details
+          </button>
+          <button onClick={onPrint}
+            className="rounded-full px-4 py-2 text-xs uppercase tracking-[0.18em] transition-opacity hover:opacity-70"
+            style={{ border: '1px solid #C4A265', color: '#8B6A42', background: 'transparent', fontFamily: 'Georgia, serif', cursor: 'pointer' }}>
+            Print
+          </button>
+        </div>
       </div>
 
       <div className="rounded-[22px]"
@@ -193,32 +207,104 @@ function ResultCard({ result, meta, occasionContext, onBack, onPrint, onDishClic
 
           <Divider label="The Menu" />
           <p className="no-print" style={{ textAlign: 'center', fontSize: '11px', color: '#B09070', fontStyle: 'italic', marginBottom: '16px', marginTop: '-8px' }}>
-            Tap any dish to see the full recipe
+            Tap a dish for its recipe · use the checkbox to include it · ⇄ to swap it
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px', marginBottom: '8px' }}>
-            {(result.menu ?? []).map((item, i) => (
+            {(result.menu ?? []).map((item, i) => {
+              const included = item.selected !== false;
+              return (
               <div key={i}
-                   className="no-print-cursor transition-all hover:shadow-md hover:-translate-y-0.5"
-                   onClick={() => onDishClick(item.dish, item.course)}
-                   style={{ padding: '16px 18px', borderRadius: '14px', background: '#FBF5E6', border: '1px solid #E8D5B0', cursor: 'pointer' }}>
-                <p style={{ fontSize: '9px', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#C4A265', marginBottom: '4px' }}>{item.course}</p>
-                <p style={{ fontSize: '17px', color: '#2B1810', fontFamily: 'AbramoSerif, Georgia, serif', marginBottom: '6px', lineHeight: 1.2 }}>{item.dish}</p>
-                <p style={{ fontSize: '13px', color: '#5C3D1E', fontStyle: 'italic', lineHeight: 1.55, marginBottom: '8px' }}>{item.description}</p>
-                <p style={{ fontSize: '11px', color: '#8B6A42' }}>
-                  {[item.prepTime && `Prep ${item.prepTime}`, item.cookTime && `Cook ${item.cookTime}`].filter(Boolean).join('  ·  ')}
-                </p>
-                {item.makeAheadNote && (
-                  <p style={{ fontSize: '11px', color: '#8B6A42', marginTop: '6px', paddingTop: '6px', borderTop: '1px dotted #D4B896', fontStyle: 'italic' }}>
-                    ✓ {item.makeAheadNote}
+                   className={`transition-all ${included ? 'hover:shadow-md hover:-translate-y-0.5' : 'no-print'}`}
+                   style={{ padding: '16px 18px', borderRadius: '14px', background: '#FBF5E6', border: included ? '1px solid #E8D5B0' : '1px dashed #D4B896', position: 'relative', opacity: included ? 1 : 0.5 }}>
+                <label className="no-print" onClick={e => e.stopPropagation()}
+                  style={{ position: 'absolute', top: '12px', right: '12px', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', fontSize: '9px', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8B6A42' }}>
+                  <input type="checkbox" checked={included} onChange={() => onToggleSelect(i)} style={{ accentColor: '#8B6A42', cursor: 'pointer' }} />
+                  {included ? 'In menu' : 'Skipped'}
+                </label>
+                <div onClick={() => included && onDishClick(item.dish, item.course)} style={{ cursor: included ? 'pointer' : 'default' }}>
+                  <p style={{ fontSize: '9px', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#C4A265', marginBottom: '4px', paddingRight: '64px' }}>{item.course}</p>
+                  <p style={{ fontSize: '17px', color: '#2B1810', fontFamily: 'AbramoSerif, Georgia, serif', marginBottom: '6px', lineHeight: 1.2 }}>{item.dish}</p>
+                  <p style={{ fontSize: '13px', color: '#5C3D1E', fontStyle: 'italic', lineHeight: 1.55, marginBottom: '8px' }}>{item.description}</p>
+                  <p style={{ fontSize: '11px', color: '#8B6A42' }}>
+                    {[item.prepTime && `Prep ${item.prepTime}`, item.cookTime && `Cook ${item.cookTime}`].filter(Boolean).join('  ·  ')}
                   </p>
-                )}
+                  {item.makeAheadNote && (
+                    <p style={{ fontSize: '11px', color: '#8B6A42', marginTop: '6px', paddingTop: '6px', borderTop: '1px dotted #D4B896', fontStyle: 'italic' }}>
+                      ✓ {item.makeAheadNote}
+                    </p>
+                  )}
+                </div>
+                <button className="no-print" onClick={e => { e.stopPropagation(); onSwap(i); }} disabled={swappingIndex === i}
+                  style={{ marginTop: '10px', background: 'transparent', border: '1px solid #D4B896', borderRadius: '999px', padding: '4px 12px', fontSize: '10px', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8B6A42', cursor: 'pointer', fontFamily: 'Georgia, serif' }}>
+                  {swappingIndex === i ? 'Swapping…' : '⇄ Swap dish'}
+                </button>
               </div>
-            ))}
+              );
+            })}
+          </div>
+
+          {/* Finalize */}
+          <div className="no-print" style={{ marginTop: '18px', textAlign: 'center' }}>
+            {result.finalized && (
+              <p style={{ fontSize: '12px', color: '#8B6A42', fontStyle: 'italic', marginBottom: '10px' }}>
+                ✓ Menu finalized — the recipes and prep plan are below. Change a dish and finalize again to update them.
+              </p>
+            )}
+            <button onClick={onFinalize} disabled={finalizing || selectedCount === 0}
+              style={{ background: '#8B6A42', color: '#fff', border: 'none', borderRadius: '999px', padding: '13px 30px', fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', cursor: (finalizing || selectedCount === 0) ? 'default' : 'pointer', fontFamily: 'Georgia, serif', opacity: (finalizing || selectedCount === 0) ? 0.5 : 1 }}>
+              {finalizing ? 'Building your recipes & prep plan…' : result.finalized ? 'Re-finalize menu' : `Finalize menu & build prep plan (${selectedCount})`}
+            </button>
           </div>
           {result.servingNotes && (
             <p style={{ textAlign: 'center', fontStyle: 'italic', color: '#6B5040', fontSize: '13px', lineHeight: 1.7, margin: '16px 0 0' }}>
               &ldquo;{result.servingNotes}&rdquo;
             </p>
+          )}
+
+          {result.finalized && (result.menu ?? []).some(m => m.selected !== false && m.fullRecipe) && (
+            <>
+              <Divider label="The Recipes" />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+                {(result.menu ?? []).map((m, i) => (m.selected !== false && m.fullRecipe) ? (
+                  <div key={i} style={{ borderTop: i === 0 ? 'none' : '1px solid #E8D5B0', paddingTop: i === 0 ? 0 : '18px' }}>
+                    <p style={{ fontSize: '9px', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#C4A265', marginBottom: '2px' }}>{m.course}</p>
+                    <h3 style={{ fontFamily: 'AbramoSerif, Georgia, serif', fontSize: '21px', color: '#2B1810', lineHeight: 1.2, marginBottom: '4px' }}>{m.fullRecipe!.name}</h3>
+                    <p style={{ fontSize: '12px', color: '#8B6A42', letterSpacing: '0.04em', marginBottom: '14px' }}>
+                      {[m.fullRecipe!.totalTime, m.fullRecipe!.serves && `Serves ${m.fullRecipe!.serves}`, m.fullRecipe!.difficulty].filter(Boolean).join('  ·  ')}
+                    </p>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: '24px' }}>
+                      <div>
+                        <h4 style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.28em', color: '#8B6A42', marginBottom: '8px' }}>Ingredients</h4>
+                        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                          {(m.fullRecipe!.ingredients ?? []).map((ing, j) => (
+                            <li key={j} style={{ display: 'flex', gap: '8px', padding: '3px 0', borderBottom: '1px dotted #E8D5B0', fontSize: '12px', color: '#3D2714' }}>
+                              <span style={{ color: '#8B6A42', minWidth: '58px', fontWeight: 700, flexShrink: 0 }}>{ing.amount}</span>
+                              <span>{ing.item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div>
+                        <h4 style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.28em', color: '#8B6A42', marginBottom: '8px' }}>Directions</h4>
+                        <ol style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                          {(m.fullRecipe!.instructions ?? []).map((step, j) => (
+                            <li key={j} style={{ display: 'flex', gap: '8px', marginBottom: '6px', fontSize: '12px', color: '#3D2714', lineHeight: 1.5 }}>
+                              <span style={{ color: '#C4A265', fontWeight: 700, minWidth: '16px', flexShrink: 0 }}>{j + 1}.</span>
+                              <span>{step}</span>
+                            </li>
+                          ))}
+                        </ol>
+                      </div>
+                    </div>
+                    {m.fullRecipe!.makeAheadNote && (
+                      <p style={{ fontSize: '11px', color: '#8B6A42', fontStyle: 'italic', marginTop: '10px', padding: '8px 12px', background: '#FBF5E6', border: '1px solid #E8D5B0', borderRadius: '8px' }}>
+                        ✓ Make ahead: {m.fullRecipe!.makeAheadNote}
+                      </p>
+                    )}
+                  </div>
+                ) : null)}
+              </div>
+            </>
           )}
 
           <Divider label="Preparation Timeline" />
@@ -276,8 +362,12 @@ export default function SpecialOccasionPage() {
   const [eventDate, setEventDate]           = useState('');
   const [prepStartDate, setPrepStartDate]   = useState('');
   const [daySchedules, setDaySchedules]     = useState<DaySchedule[]>([]);
+  const [eventType, setEventType]           = useState<'served-dinner' | 'hors-doeuvres'>('served-dinner');
   const [generating, setGenerating]         = useState(false);
   const [error, setError]                   = useState('');
+  const [finalizing, setFinalizing]         = useState(false);
+  const [swappingIndex, setSwappingIndex]   = useState<number | null>(null);
+  const [editingId, setEditingId]           = useState<number | null>(null); // occasion being regenerated in place
 
   // Dish recipe modal
   const [selectedDish, setSelectedDish]     = useState<{ dish: string; course: string } | null>(null);
@@ -341,7 +431,7 @@ export default function SpecialOccasionPage() {
       const res = await fetch('/api/special-occasion', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ occasion, guests: Number(guests) || 0, servingTime, cuisineTheme, dietaryNotes, mustHaveDishes, eventDate, prepStartDate, daySchedules }),
+        body: JSON.stringify({ occasion, guests: Number(guests) || 0, servingTime, cuisineTheme, dietaryNotes, mustHaveDishes, eventDate, prepStartDate, daySchedules, eventType, editId: editingId }),
       });
       if (!res.ok) throw new Error('Failed');
       // Drain stream — generation + DB save happen server-side
@@ -355,12 +445,113 @@ export default function SpecialOccasionPage() {
       if (!updated.ok) throw new Error('Could not load saved event');
       const saved: SavedEvent[] = await updated.json();
       setEvents(saved);
-      if (saved.length > 0) { setActiveEvent(saved[0]); setView('result'); }
+      // When regenerating in place, keep showing that same occasion; otherwise the newest.
+      const target = editingId ? saved.find(e => e.id === editingId) : saved[0];
+      if (target) { setActiveEvent(target); setView('result'); }
+      setEditingId(null);
     } catch {
       setError('Something went wrong — please try again.');
     } finally {
       setGenerating(false);
     }
+  };
+
+  // Persist the current result (selection toggles / swapped dishes).
+  const persistResult = (id: number, result: SpecialOccasionResult) => {
+    fetch(`/api/special-occasion/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ result }),
+    }).catch(() => {});
+  };
+
+  const toggleSelect = (index: number) => {
+    setActiveEvent(prev => {
+      if (!prev) return prev;
+      const menu = prev.result.menu.map((m, i) => i === index ? { ...m, selected: m.selected === false } : m);
+      const result = { ...prev.result, menu };
+      persistResult(prev.id, result);
+      return { ...prev, result };
+    });
+  };
+
+  const swapDish = async (index: number) => {
+    if (!activeEvent) return;
+    setSwappingIndex(index);
+    setError('');
+    try {
+      const item = activeEvent.result.menu[index];
+      const res = await fetch('/api/special-occasion/swap', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          occasion: activeEvent.occasion,
+          eventType: activeEvent.result.eventType,
+          course: item.course,
+          guests: activeEvent.guests || 4,
+          cuisineTheme: activeEvent.result.planning?.cuisineTheme || '',
+          dietaryNotes: activeEvent.result.planning?.dietaryNotes || '',
+          avoid: activeEvent.result.menu.map(m => m.dish),
+        }),
+      });
+      if (!res.ok) throw new Error();
+      const newItem = await res.json();
+      setActiveEvent(prev => {
+        if (!prev) return prev;
+        const menu = prev.result.menu.map((m, i) => i === index ? { ...newItem, selected: m.selected !== false } : m);
+        const result = { ...prev.result, menu };
+        persistResult(prev.id, result);
+        return { ...prev, result };
+      });
+    } catch {
+      setError('Could not swap that dish — please try again.');
+    } finally {
+      setSwappingIndex(null);
+    }
+  };
+
+  const finalize = async () => {
+    if (!activeEvent) return;
+    setFinalizing(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/special-occasion/${activeEvent.id}/finalize`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      setActiveEvent(prev => prev ? { ...prev, result: data } : prev);
+      fetchEvents();
+    } catch (e: any) {
+      setError(e.message || 'Could not finalize — please try again.');
+    } finally {
+      setFinalizing(false);
+    }
+  };
+
+  // Return to the form pre-filled with this occasion's inputs, so the user can
+  // add/change details and regenerate.
+  const editDetails = () => {
+    if (!activeEvent) return;
+    const p = activeEvent.result.planning || {};
+    setOccasion(activeEvent.occasion || '');
+    setGuests(activeEvent.guests?.toString() || '');
+    setServingTime(activeEvent.serving_time || p.servingTime || '');
+    setCuisineTheme(p.cuisineTheme || '');
+    setDietaryNotes(p.dietaryNotes || '');
+    setMustHaveDishes(p.mustHaveDishes || '');
+    setEventDate(activeEvent.event_date || p.eventDate || '');
+    setPrepStartDate(p.prepStartDate || '');
+    setEventType(activeEvent.result.eventType || 'served-dinner');
+    if (p.daySchedules?.length) setDaySchedules(p.daySchedules); // keep saved per-day minutes
+    setEditingId(activeEvent.id); // regenerate overwrites this occasion instead of adding a new one
+    setError('');
+    setView('form');
+  };
+
+  // Start a fresh occasion (blank form, no in-place editing).
+  const startNewOccasion = () => {
+    setEditingId(null);
+    setOccasion(''); setGuests(''); setServingTime(''); setCuisineTheme('');
+    setDietaryNotes(''); setMustHaveDishes(''); setEventDate(''); setPrepStartDate('');
+    setEventType('served-dinner'); setDaySchedules([]); setError('');
+    setView('form');
   };
 
   const inputStyle: React.CSSProperties = {
@@ -394,7 +585,7 @@ export default function SpecialOccasionPage() {
           </p>
         </div>
         {view !== 'form' && (
-          <button onClick={() => { setView('form'); setError(''); }}
+          <button onClick={startNewOccasion}
             className="no-print rounded-full px-5 py-2.5 text-xs uppercase tracking-[0.18em] transition-opacity hover:opacity-70 shrink-0"
             style={{ background: '#8B6A42', color: '#fff', border: 'none', cursor: 'pointer', fontFamily: 'Georgia, serif' }}>
             + New occasion
@@ -414,7 +605,7 @@ export default function SpecialOccasionPage() {
                 <p style={{ fontSize: '32px', marginBottom: '12px' }}>🥂</p>
                 <p style={{ fontFamily: 'AbramoSerif, serif', fontSize: '20px', color: 'var(--text)', marginBottom: '8px' }}>No occasions planned yet</p>
                 <p style={{ fontSize: '14px', fontStyle: 'italic', color: 'var(--text-2)', marginBottom: '24px' }}>Plan your first special occasion and it will be saved here.</p>
-                <button onClick={() => setView('form')}
+                <button onClick={startNewOccasion}
                   className="rounded-full px-6 py-2.5 text-xs uppercase tracking-[0.18em] transition-opacity hover:opacity-70"
                   style={{ background: '#8B6A42', color: '#fff', border: 'none', cursor: 'pointer', fontFamily: 'Georgia, serif' }}>
                   Plan an occasion
@@ -467,6 +658,14 @@ export default function SpecialOccasionPage() {
                 placeholder="e.g. Christmas Eve dinner for 10, Italian style — festive and traditional"
                 value={occasion} onChange={e => setOccasion(e.target.value)}
                 style={{ ...inputStyle, resize: 'vertical' }} />
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={labelStyle}>Type of event</label>
+              <select value={eventType} onChange={e => setEventType(e.target.value as 'served-dinner' | 'hors-doeuvres')} style={inputStyle}>
+                <option value="served-dinner">Served dinner — plated courses</option>
+                <option value="hors-doeuvres">Hors d&apos;oeuvres — passed small bites</option>
+              </select>
             </div>
 
             <div className="grid grid-cols-2 gap-4" style={{ marginBottom: '20px' }}>
@@ -548,7 +747,7 @@ export default function SpecialOccasionPage() {
             {error && <p style={{ color: '#c0392b', fontSize: '13px', marginBottom: '12px' }}>{error}</p>}
 
             <div className="flex gap-3">
-              <button onClick={() => setView('list')}
+              <button onClick={() => { setEditingId(null); setView('list'); }}
                 className="rounded-full px-5 py-3 text-xs uppercase tracking-[0.18em] transition-opacity hover:opacity-70"
                 style={{ border: '1px solid #C4A265', color: '#8B6A42', background: 'transparent', fontFamily: 'Georgia, serif', cursor: 'pointer' }}>
                 Cancel
@@ -556,20 +755,20 @@ export default function SpecialOccasionPage() {
               <button onClick={generate} disabled={generating || !occasion.trim()}
                 className="flex-1 py-3 rounded-full uppercase tracking-[0.2em] transition-opacity hover:opacity-80 disabled:opacity-40"
                 style={{ background: '#8B6A42', color: '#fff', fontSize: '12px', fontFamily: 'Georgia, serif', border: 'none', cursor: 'pointer' }}>
-                {generating ? 'Planning your menu…' : 'Plan my menu'}
+                {generating ? 'Planning your menu…' : editingId ? 'Update my menu' : 'Plan my menu'}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Generating overlay */}
-      {generating && (
+      {/* Generating / finalizing overlay */}
+      {(generating || finalizing) && (
         <div className="fixed inset-0 z-40 flex flex-col items-center justify-center gap-4"
              style={{ background: 'rgba(254,250,240,0.85)', backdropFilter: 'blur(4px)' }}>
           <div className="spinner w-8 h-8" />
           <p style={{ fontFamily: 'AbramoSerif, serif', fontSize: '17px', color: 'var(--text-2)', fontStyle: 'italic' }}>
-            Setting the table…
+            {finalizing ? 'Writing your recipes and prep plan…' : 'Setting the table…'}
           </p>
         </div>
       )}
@@ -577,13 +776,20 @@ export default function SpecialOccasionPage() {
       {/* Result view */}
       {view === 'result' && activeEvent && (
         <div id="occasion-result">
+          {error && <p className="no-print" style={{ color: '#c0392b', fontSize: '13px', marginBottom: '12px', textAlign: 'center' }}>{error}</p>}
           <ResultCard
             result={activeEvent.result}
             meta={{ guests: activeEvent.guests?.toString() || '', servingTime: activeEvent.serving_time || '', eventDate: activeEvent.event_date || '' }}
             occasionContext={{ occasion: activeEvent.occasion, guests: activeEvent.guests || 4 }}
             onBack={() => { fetchEvents(); setView('list'); }}
-            onPrint={() => window.print()}
+            onEdit={editDetails}
+            onPrint={() => window.open(`/print/occasion/${activeEvent.id}`, '_blank')}
             onDishClick={handleDishClick}
+            onToggleSelect={toggleSelect}
+            onSwap={swapDish}
+            onFinalize={finalize}
+            finalizing={finalizing}
+            swappingIndex={swappingIndex}
           />
         </div>
       )}

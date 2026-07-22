@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUser, getAnthropicKey } from '@/lib/auth';
-import { getSettings, getSpecialOccasions, saveSpecialOccasion } from '@/lib/db';
+import { getSettings, getSpecialOccasions, saveSpecialOccasion, replaceSpecialOccasion } from '@/lib/db';
 import { buildSpecialOccasionPrompt, DaySchedule } from '@/lib/claude';
 import Anthropic from '@anthropic-ai/sdk';
 
@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   if (error) return error;
 
   const { occasion, guests, servingTime, cuisineTheme, dietaryNotes, mustHaveDishes,
-          eventDate, prepStartDate, daySchedules } = await req.json();
+          eventDate, prepStartDate, daySchedules, eventType, editId } = await req.json();
 
   if (!occasion?.trim()) {
     return new Response(JSON.stringify({ error: 'Occasion is required' }), { status: 400 });
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     occasion, guests || 0, servingTime || '',
     cuisineTheme || '', dietaryNotes || '', mustHaveDishes || '',
     (daySchedules as DaySchedule[]) || [],
-    { restrictions: settings.restrictions || [], preferences: settings.preferences || [], language: (settings as any).language }
+    { restrictions: settings.restrictions || [], preferences: settings.preferences || [], language: (settings as any).language, eventType }
   );
 
   const client = new Anthropic({ apiKey });
@@ -56,8 +56,20 @@ export async function POST(req: NextRequest) {
       // Save to DB after streaming completes
       const jsonMatch = fullText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        const result = JSON.parse(jsonMatch[0]);
-        await saveSpecialOccasion(user!.id, occasion, guests || 0, servingTime || '', eventDate || '', result);
+        const result = JSON.parse(jsonMatch[0].replace(/,\s*([}\]])/g, '$1'));
+        // Every proposed dish starts selected; persist the planning inputs so the
+        // finalize step can rebuild the timeline for the chosen dishes.
+        result.menu = Array.isArray(result.menu) ? result.menu.map((m: any) => ({ ...m, selected: true })) : [];
+        result.eventType = eventType || 'served-dinner';
+        result.planning = { prepStartDate: prepStartDate || '', daySchedules: daySchedules || [], cuisineTheme: cuisineTheme || '', dietaryNotes: dietaryNotes || '', mustHaveDishes: mustHaveDishes || '', eventDate: eventDate || '', servingTime: servingTime || '' };
+        // Overwrite the existing occasion when regenerating after "Adjust details";
+        // fall back to a fresh insert if the id isn't found / not owned.
+        const replaced = editId
+          ? await replaceSpecialOccasion(user!.id, Number(editId), occasion, guests || 0, servingTime || '', eventDate || '', result)
+          : false;
+        if (!replaced) {
+          await saveSpecialOccasion(user!.id, occasion, guests || 0, servingTime || '', eventDate || '', result);
+        }
       }
     } finally {
       await writer.close();

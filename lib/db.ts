@@ -619,6 +619,31 @@ export async function deleteSpecialOccasion(userId: string, id: number) {
   await adminClient.from('special_occasions').delete().eq('id', id).eq('user_id', userId);
 }
 
+export async function getSpecialOccasion(userId: string, id: number) {
+  const { data } = await adminClient
+    .from('special_occasions').select('*').eq('id', id).eq('user_id', userId).maybeSingle();
+  return data;
+}
+
+export async function updateSpecialOccasion(userId: string, id: number, result: object) {
+  const { error } = await adminClient
+    .from('special_occasions').update({ result }).eq('id', id).eq('user_id', userId);
+  if (error) throw new Error(error.message);
+}
+
+// Overwrite an existing occasion in place (used when the user adjusts details
+// and regenerates, so they don't accumulate many versions).
+export async function replaceSpecialOccasion(
+  userId: string, id: number,
+  occasion: string, guests: number, servingTime: string, eventDate: string, result: object,
+): Promise<boolean> {
+  const { data, error } = await adminClient.from('special_occasions')
+    .update({ occasion, guests: guests || null, serving_time: servingTime || null, event_date: eventDate || null, result })
+    .eq('id', id).eq('user_id', userId).select('id');
+  if (error) throw new Error(error.message);
+  return (data?.length ?? 0) > 0;
+}
+
 // ── User Feedback ─────────────────────────────────────────────────────────
 
 export async function saveUserFeedback(

@@ -1256,22 +1256,51 @@ Rules:
   return JSON.parse(jsonMatch[0]);
 }
 
+export interface OccasionDishRecipe {
+  name: string;
+  description: string;
+  serves: number;
+  prepTime: string;
+  cookTime: string;
+  totalTime: string;
+  difficulty: string;
+  ingredients: { amount: string; item: string }[];
+  instructions: string[];
+  makeAheadNote?: string;
+}
+
+export interface SpecialOccasionMenuItem {
+  course: string;
+  dish: string;
+  description: string;
+  prepTime: string;
+  cookTime: string;
+  makeAheadNote?: string;
+  selected?: boolean;              // included in the final menu (defaults true)
+  fullRecipe?: OccasionDishRecipe; // populated on finalize
+}
+
 export interface SpecialOccasionResult {
   occasionTitle: string;
-  menu: {
-    course: string;
-    dish: string;
-    description: string;
-    prepTime: string;
-    cookTime: string;
-    makeAheadNote?: string;
-  }[];
+  eventType?: 'served-dinner' | 'hors-doeuvres';
+  menu: SpecialOccasionMenuItem[];
   timeline: {
     when: string;
     tasks: string[];
   }[];
   hostingTips: string[];
   servingNotes: string;
+  finalized?: boolean;
+  // Planning inputs persisted at generation so finalize can rebuild the timeline
+  planning?: {
+    prepStartDate?: string;
+    daySchedules?: DaySchedule[];
+    cuisineTheme?: string;
+    dietaryNotes?: string;
+    mustHaveDishes?: string;
+    eventDate?: string;
+    servingTime?: string;
+  };
 }
 
 export interface DaySchedule {
@@ -1296,7 +1325,7 @@ export function buildSpecialOccasionPrompt(
   dietaryNotes: string,
   mustHaveDishes: string,
   daySchedules: DaySchedule[],
-  settings: { restrictions: string[]; preferences: string[]; language?: string }
+  settings: { restrictions: string[]; preferences: string[]; language?: string; eventType?: string }
 ): string {
   let dateContext = '';
   if (daySchedules.length > 0) {
@@ -1327,7 +1356,9 @@ ${langInstruction(settings.language)}
 Occasion: ${occasion}
 ${contextLines}${dateContext}
 
-Create a menu with 4–6 courses appropriate to the occasion. Then build a preparation timeline that is realistic and respects the daily time available.
+${settings.eventType === 'hors-doeuvres'
+  ? `Create a spread of 6–10 hors d'oeuvres — passed small bites, canapés, and finger foods appropriate to the occasion (NOT formal plated courses). For each item, use the "course" field as a small-bite category such as "Cold bite", "Warm bite", "Passed", "Station", or "Sweet bite".`
+  : `Create a menu with 4–6 plated courses appropriate to the occasion.`} Then build a preparation timeline that is realistic and respects the daily time available.
 
 ${timelineInstructions}
 
@@ -1540,4 +1571,123 @@ Respond with ONLY a JSON object of this exact shape (no prose, no markdown fence
   draft.nonna_wisdom = Array.isArray(draft.nonna_wisdom) ? draft.nonna_wisdom : [];
   draft.unclear_notes = Array.isArray(draft.unclear_notes) ? draft.unclear_notes : [];
   return draft;
+}
+
+// ── Special Occasion: finalize helpers ─────────────────────────────────────
+
+// Full recipe for a single occasion dish (used when finalizing the menu).
+export async function generateOccasionDishRecipe(
+  apiKey: string,
+  params: { dish: string; course: string; occasion: string; guests: number; cuisineTheme?: string; restrictions?: string[]; language?: string },
+): Promise<OccasionDishRecipe> {
+  const client = new Anthropic({ apiKey: apiKey || process.env.ANTHROPIC_API_KEY! });
+  const serves = params.guests || 4;
+  const context = [
+    params.occasion && `Occasion: ${params.occasion}`,
+    params.cuisineTheme && `Cuisine: ${params.cuisineTheme}`,
+    `Course: ${params.course}`,
+    `Serves: ${serves}`,
+    params.restrictions?.length && `Dietary restrictions: ${params.restrictions.join(', ')}`,
+  ].filter(Boolean).join('\n');
+
+  const prompt = `You are an expert chef. Write the complete recipe for this dish:${langInstruction(params.language)}
+
+Dish: ${params.dish}
+${context}
+
+Return ONLY valid JSON:
+{
+  "name": "${params.dish}",
+  "description": "one evocative sentence",
+  "serves": ${serves},
+  "prepTime": "X min",
+  "cookTime": "X min",
+  "totalTime": "X min",
+  "difficulty": "Easy" | "Medium" | "Hard",
+  "ingredients": [ { "amount": "200 g", "item": "ingredient name" } ],
+  "instructions": [ "Clear step-by-step instruction" ],
+  "makeAheadNote": "What can be done ahead of time (1–2 sentences)"
+}
+
+Rules:
+- Ingredients must have precise amounts, scaled for ${serves} people
+- 5–8 clear instruction steps
+- Difficulty must be exactly "Easy", "Medium", or "Hard"`;
+
+  const message = await client.messages.create({ model: 'claude-haiku-4-5', max_tokens: 1500, messages: [{ role: 'user', content: prompt }] });
+  const text = message.content[0].type === 'text' ? message.content[0].text : '';
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('Failed to generate recipe');
+  return JSON.parse(jsonMatch[0].replace(/,\s*([}\]])/g, '$1')) as OccasionDishRecipe;
+}
+
+// Suggest ONE replacement dish for a course, avoiding the dishes already chosen.
+export async function generateOccasionSwapDish(
+  apiKey: string,
+  params: { occasion: string; eventType?: string; course: string; avoid: string[]; cuisineTheme?: string; dietaryNotes?: string; guests: number; restrictions?: string[]; language?: string },
+): Promise<SpecialOccasionMenuItem> {
+  const client = new Anthropic({ apiKey: apiKey || process.env.ANTHROPIC_API_KEY! });
+  const style = params.eventType === 'hors-doeuvres' ? "hors d'oeuvres / passed small bites" : 'served plated dinner';
+  const context = [
+    params.cuisineTheme && `Cuisine/theme: ${params.cuisineTheme}`,
+    params.guests && `Guests: ${params.guests}`,
+    params.dietaryNotes && `Dietary notes: ${params.dietaryNotes}`,
+    params.restrictions?.length && `Dietary restrictions: ${params.restrictions.join(', ')}`,
+    `Event style: ${style}`,
+  ].filter(Boolean).join('\n');
+
+  const prompt = `You are an expert chef planning a ${style}.${langInstruction(params.language)}
+
+Occasion: ${params.occasion}
+${context}
+
+Suggest ONE different "${params.course}" that fits the occasion. It MUST be genuinely different from these already on the menu (do not repeat or lightly rename them): ${params.avoid.join('; ') || '(none)'}.
+
+Return ONLY valid JSON:
+{ "course": "${params.course}", "dish": "Dish name", "description": "1–2 sentence description", "prepTime": "20 min", "cookTime": "10 min", "makeAheadNote": "optional: what can be done ahead" }`;
+
+  const message = await client.messages.create({ model: 'claude-haiku-4-5', max_tokens: 500, messages: [{ role: 'user', content: prompt }] });
+  const text = message.content[0].type === 'text' ? message.content[0].text : '';
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('Failed to swap dish');
+  return JSON.parse(jsonMatch[0].replace(/,\s*([}\]])/g, '$1')) as SpecialOccasionMenuItem;
+}
+
+// Rebuild the prep timeline for the FINAL (selected) dishes, respecting the
+// per-day time budgets the user set.
+export async function generateOccasionTimeline(
+  apiKey: string,
+  params: { occasionTitle: string; eventType?: string; dishes: { course: string; dish: string; prepTime?: string; cookTime?: string; makeAheadNote?: string }[]; daySchedules: DaySchedule[]; eventDate?: string; servingTime?: string; language?: string },
+): Promise<{ when: string; tasks: string[] }[]> {
+  const client = new Anthropic({ apiKey: apiKey || process.env.ANTHROPIC_API_KEY! });
+  let dateContext = '';
+  if (params.daySchedules?.length) {
+    const lines = params.daySchedules.map(d => {
+      const rel = d.daysUntilEvent === 0 ? 'event day' : d.daysUntilEvent === 1 ? '1 day before' : `${d.daysUntilEvent} days before`;
+      return `- ${d.label} (${rel}): ${d.minutes === 0 ? 'NO TIME — skip this day' : fmtMinutes(d.minutes) + ' available'}`;
+    });
+    dateContext = `\nAvailable time per day:\n${lines.join('\n')}`;
+  }
+  const dishList = params.dishes.map(d => `- ${d.course}: ${d.dish}${d.makeAheadNote ? ` (can make ahead: ${d.makeAheadNote})` : ''}`).join('\n');
+  const timelineInstructions = params.daySchedules?.length
+    ? `Build a day-by-day timeline using the EXACT dates above. Label each bucket with the full date. Fit each day's tasks within its available time. On the event day, split into buckets (Morning, 2 hours before, 30 minutes before, At the table).`
+    : `Group tasks into logical buckets ("2 days before", "1 day before", "Morning of", "2 hours before", "At the table").`;
+
+  const prompt = `You are an expert event chef. Build ONLY a preparation timeline for this ${params.eventType === 'hors-doeuvres' ? "hors d'oeuvres spread" : 'plated dinner'}: "${params.occasionTitle}".${langInstruction(params.language)}
+
+Dishes to prepare:
+${dishList}
+${params.servingTime ? `Serving time: ${params.servingTime}` : ''}${dateContext}
+
+${timelineInstructions}
+Cover every dish, referencing dishes by name in the tasks. Front-load make-ahead work onto earlier days.
+
+Return ONLY valid JSON: { "timeline": [ { "when": "label", "tasks": ["specific task"] } ] }`;
+
+  const message = await client.messages.create({ model: 'claude-haiku-4-5', max_tokens: 2000, messages: [{ role: 'user', content: prompt }] });
+  const text = message.content[0].type === 'text' ? message.content[0].text : '';
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('Failed to build timeline');
+  const parsed = JSON.parse(jsonMatch[0].replace(/,\s*([}\]])/g, '$1'));
+  return Array.isArray(parsed.timeline) ? parsed.timeline : [];
 }
