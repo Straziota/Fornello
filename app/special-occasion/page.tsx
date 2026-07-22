@@ -33,7 +33,14 @@ function buildDaySchedules(eventDate: string, prepStartDate: string, defaultMinu
   if (!eventDate || !prepStartDate) return [];
   const start = new Date(prepStartDate + 'T12:00:00');
   const end   = new Date(eventDate   + 'T12:00:00');
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return [];
   if (start > end) return [];
+  // Guard against absurd spans (e.g. a half-typed year like 0002 while entering a
+  // date) — without this the day-by-day loop below runs hundreds of thousands of
+  // times on a single keystroke and freezes the browser. No real prep window is
+  // longer than a year.
+  const span = Math.round((end.getTime() - start.getTime()) / 86400000);
+  if (span > 366) return [];
   const days: DaySchedule[] = [];
   const cur = new Date(start);
   while (cur <= end) {
