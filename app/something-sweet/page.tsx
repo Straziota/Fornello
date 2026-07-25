@@ -45,6 +45,7 @@ export default function SomethingSweetPage() {
 
   const [saving, setSaving] = useState<string | null>(null);
   const [saved, setSaved]   = useState<Set<string>>(new Set());
+  const [seen, setSeen]     = useState<string[]>([]);
   const [toast, setToast]   = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
   const generate = async () => {
@@ -55,10 +56,13 @@ export default function SomethingSweetPage() {
       const res = await fetch('/api/something-sweet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category, difficulty }),
+        // Cap the exclusion list so the prompt can't grow unbounded across many clicks.
+        body: JSON.stringify({ category, difficulty, exclude: seen.slice(-40) }),
       });
       if (!res.ok) throw new Error('Generation failed');
-      setCards(await res.json());
+      const next: SweetCard[] = await res.json();
+      setCards(next);
+      setSeen(prev => [...prev, ...next.map(c => c.name)]);
     } catch {
       setError('Something went wrong. Please try again.');
     } finally {

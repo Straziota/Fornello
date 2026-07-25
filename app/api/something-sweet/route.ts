@@ -14,10 +14,26 @@ export async function POST(req: NextRequest) {
   const { user, error } = await requireUser();
   if (error) return error;
 
-  const { category, difficulty, dietary } = await req.json();
+  const { category, difficulty, dietary, exclude } = await req.json();
   const apiKey = getAnthropicKey();
   const settings = await getSettings(user!.id);
   const language = (settings as any).language;
+
+  const excludeText = Array.isArray(exclude) && exclude.length
+    ? `\nDo NOT suggest any of these already-shown recipes (pick completely different ones): ${exclude.join(', ')}.`
+    : '';
+
+  // Variety seed — breaks the model out of its default "greatest hits" so repeat
+  // generations diverge even when the filters are unchanged.
+  const LENSES = [
+    'lean into rustic, homestyle bakes', 'showcase elegant patisserie',
+    'favour bright, fruit-forward treats', 'explore rich, decadent chocolate work',
+    'draw on regional Italian traditions', 'highlight nostalgic childhood classics',
+    'feature seasonal and market-fresh flavours', 'surprise with unexpected flavour pairings',
+    'celebrate nutty, caramelised, and toffee notes', 'go for light, airy, delicate textures',
+  ];
+  const lens = LENSES[Math.floor(Math.random() * LENSES.length)];
+  const varietySeed = `\nFor this batch, ${lens}. (variety token: ${Math.floor(Math.random() * 1e9)})`;
 
   const categoryFilter = category && category !== 'All'
     ? `Focus exclusively on the category: ${category}.`
@@ -37,7 +53,7 @@ ${categoryFilter}
 ${difficultyFilter}
 ${dietaryText}
 
-Make the selection varied — different flavours, techniques, and levels of indulgence.
+Make the selection varied — different flavours, techniques, and levels of indulgence.${varietySeed}${excludeText}
 
 Return ONLY valid JSON — no markdown:
 [
@@ -64,6 +80,7 @@ Rules:
   const message = await client.messages.create({
     model: 'claude-haiku-4-5',
     max_tokens: 2000,
+    temperature: 1,
     messages: [{ role: 'user', content: prompt }],
   });
 

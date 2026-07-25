@@ -7,12 +7,12 @@ export async function POST(req: NextRequest) {
   const { user, error } = await requireUser();
   if (error) return error;
   try {
-    const { ingredients } = await req.json();
+    const { ingredients, exclude } = await req.json();
     if (!Array.isArray(ingredients) || !ingredients.length) {
       return NextResponse.json({ error: 'No ingredients provided.' }, { status: 400 });
     }
     const settings = await getSettings(user!.id);
-    const options = await generateOnTheFlyOptions(getAnthropicKey(), ingredients, settings.restrictions, (settings as any).language);
+    const options = await generateOnTheFlyOptions(getAnthropicKey(), ingredients, settings.restrictions, (settings as any).language, Array.isArray(exclude) ? exclude.slice(-40) : []);
     return NextResponse.json({ options });
   } catch (e: any) {
     return NextResponse.json({ error: e.message || 'Unknown error' }, { status: 500 });

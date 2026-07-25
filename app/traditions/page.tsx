@@ -94,6 +94,7 @@ export default function TraditionsPage() {
 
   const [saving, setSaving] = useState<string | null>(null);
   const [saved, setSaved]   = useState<Set<string>>(new Set());
+  const [seen, setSeen]     = useState<string[]>([]);
   const [toast, setToast]   = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
   // Fetch suggestions whenever the active culture changes
@@ -154,13 +155,19 @@ export default function TraditionsPage() {
     setError(null);
     setCards([]);
     try {
+      // Only exclude dishes seen for the SAME culture+occasion; a changed search
+      // starts fresh so we don't carry irrelevant exclusions across cuisines.
+      const sameQuery = culture.trim() === lastCulture && tradition.trim() === lastTradition;
+      const exclude = sameQuery ? seen.slice(-40) : [];
       const res = await fetch('/api/traditions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ culture: culture.trim(), occasion: tradition.trim() }),
+        body: JSON.stringify({ culture: culture.trim(), occasion: tradition.trim(), exclude }),
       });
       if (!res.ok) throw new Error();
-      setCards(await res.json());
+      const next: TraditionCard[] = await res.json();
+      setCards(next);
+      setSeen(sameQuery ? [...seen, ...next.map(c => c.name)] : next.map(c => c.name));
       setLastCulture(culture.trim());
       setLastTradition(tradition.trim());
     } catch {

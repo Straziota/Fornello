@@ -19,11 +19,14 @@ export async function POST(req: NextRequest) {
 Return ONLY a JSON array of short strings (2–5 words each), no markdown:
 ["Tradition 1", "Tradition 2", ...]
 
-Examples of good entries: "Sunday Family Lunch", "Christmas Eve Feast", "Ramadan Iftar", "Harvest Festival", "New Year's Celebration", "Wedding Banquet"`;
+Examples of good entries: "Sunday Family Lunch", "Christmas Eve Feast", "Ramadan Iftar", "Harvest Festival", "New Year's Celebration", "Wedding Banquet"
+
+(variety token: ${Math.floor(Math.random() * 1e9)} — vary your picks across less obvious traditions too)`;
 
   const message = await client.messages.create({
     model: 'claude-haiku-4-5',
     max_tokens: 300,
+    temperature: 1,
     messages: [{ role: 'user', content: prompt }],
   });
 

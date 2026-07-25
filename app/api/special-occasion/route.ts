@@ -45,6 +45,7 @@ export async function POST(req: NextRequest) {
       const anthropicStream = await client.messages.stream({
         model: 'claude-haiku-4-5',
         max_tokens: 4096,
+        temperature: 1,
         messages: [{ role: 'user', content: prompt }],
       });
       for await (const chunk of anthropicStream) {

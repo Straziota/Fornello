@@ -49,6 +49,10 @@ export default function OnTheFlyPage() {
   const [options, setOptions]   = useState<OnTheFlyOption[]>([]);
   const [recipe, setRecipe]     = useState<OnTheFlyRecipe | null>(null);
   const [error, setError]       = useState<string | null>(null);
+  // Ideas already shown for the current ingredient set — so "Get new ideas"
+  // yields fresh suggestions instead of repeating. Reset when ingredients change.
+  const [seen, setSeen]         = useState<string[]>([]);
+  const [seenFor, setSeenFor]   = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Ingredient checks
@@ -98,14 +102,21 @@ export default function OnTheFlyPage() {
     setAddedGlobal(false);
     setEditing(false);
     try {
+      // Carry forward exclusions only while the ingredient set is unchanged.
+      const sig = [...tags].sort().join('|');
+      const sameIngredients = sig === seenFor;
+      const exclude = sameIngredients ? seen.slice(-40) : [];
       const res = await fetch('/api/on-the-fly/options', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ingredients: tags }),
+        body: JSON.stringify({ ingredients: tags, exclude }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Generation failed');
-      setOptions(data.options || []);
+      const opts: OnTheFlyOption[] = data.options || [];
+      setOptions(opts);
+      setSeen(sameIngredients ? [...seen, ...opts.map(o => o.name)] : opts.map(o => o.name));
+      setSeenFor(sig);
     } catch (e: any) {
       setError(e.message);
     } finally {

@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
   const { user, error } = await requireUser();
   if (error) return error;
 
-  const { culture, occasion } = await req.json();
+  const { culture, occasion, exclude } = await req.json();
   if (!culture?.trim()) return NextResponse.json({ error: 'Culture required' }, { status: 400 });
 
   const apiKey = getAnthropicKey();
@@ -25,6 +25,25 @@ export async function POST(req: NextRequest) {
     ? `Focus on recipes traditionally made for: ${occasion}.`
     : 'Cover a range of everyday and celebratory dishes.';
 
+  const excludeText = Array.isArray(exclude) && exclude.length
+    ? `\nDo NOT suggest any of these already-shown dishes (pick completely different ones): ${exclude.join(', ')}.`
+    : '';
+
+  // Variety seed — breaks the model out of its default "greatest hits" so repeat
+  // generations surface different corners of the cuisine.
+  const LENSES = [
+    'favour rustic home cooking rarely seen in restaurants',
+    'showcase celebratory and feast-day specialities',
+    'draw on regional and lesser-known local dishes',
+    'highlight street food and everyday market fare',
+    'feature heirloom family recipes passed down generations',
+    'explore seasonal and harvest-time traditions',
+    'lean into comforting braises, stews, and slow-cooked dishes',
+    'surface breads, pastries, and baked specialities',
+  ];
+  const lens = LENSES[Math.floor(Math.random() * LENSES.length)];
+  const varietySeed = `\nFor this batch, ${lens}. (variety token: ${Math.floor(Math.random() * 1e9)})`;
+
   const dietaryText = settings.restrictions?.length
     ? `Dietary restrictions (strictly observe): ${settings.restrictions.join(', ')}.` : '';
 
@@ -33,7 +52,7 @@ ${langInstruction(language)}
 ${occasionContext}
 ${dietaryText}
 
-Include a variety of dishes — starters, mains, sides, or sweets as appropriate to the cuisine.
+Include a variety of dishes — starters, mains, sides, or sweets as appropriate to the cuisine.${varietySeed}${excludeText}
 
 Return ONLY valid JSON — no markdown:
 [
@@ -62,6 +81,7 @@ Rules:
   const message = await client.messages.create({
     model: 'claude-haiku-4-5',
     max_tokens: 2500,
+    temperature: 1,
     messages: [{ role: 'user', content: prompt }],
   });
 

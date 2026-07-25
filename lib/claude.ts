@@ -965,16 +965,30 @@ export async function generateOnTheFlyOptions(
   ingredients: string[],
   restrictions: string[] = [],
   language?: string,
+  exclude: string[] = [],
 ): Promise<OnTheFlyOption[]> {
   const client = new Anthropic({ apiKey });
 
   const restrictText = restrictions.length
     ? `Strict dietary restrictions — never include: ${restrictions.join(', ')}.` : '';
 
+  const excludeText = exclude.length
+    ? `\nDo NOT suggest any of these already-shown ideas (pick completely different ones): ${exclude.join(', ')}.` : '';
+
+  // Variety seed — nudges repeat "Get new ideas" clicks toward different cuisines.
+  const LENSES = [
+    'lean toward quick weeknight dinners', 'explore bold, spice-forward dishes',
+    'favour fresh, light, and vegetable-forward plates', 'go for hearty, comforting one-pan meals',
+    'draw on Mediterranean flavours', 'draw on East and Southeast Asian flavours',
+    'draw on Latin American flavours', 'reimagine familiar dishes with a twist',
+  ];
+  const lens = LENSES[Math.floor(Math.random() * LENSES.length)];
+  const varietySeed = `\nFor this batch, ${lens}. (variety token: ${Math.floor(Math.random() * 1e9)})`;
+
   const prompt = `You are a creative home chef. A family has these ingredients available:
 ${ingredients.map(i => `- ${i}`).join('\n')}
 ${langInstruction(language)}
-Suggest 6 DIFFERENT dinner ideas using whichever of these ingredients naturally belong together. The 6 ideas must span different cuisines and styles — don't make 6 variations of pasta. Each idea should use 2 or more of the listed ingredients.
+Suggest 6 DIFFERENT dinner ideas using whichever of these ingredients naturally belong together. The 6 ideas must span different cuisines and styles — don't make 6 variations of pasta. Each idea should use 2 or more of the listed ingredients.${varietySeed}${excludeText}
 ${restrictText}
 
 Return ONLY a valid JSON array — no markdown, no extra text:
@@ -999,6 +1013,7 @@ Rules:
   const message = await client.messages.create({
     model: 'claude-haiku-4-5',
     max_tokens: 2000,
+    temperature: 1,
     messages: [{ role: 'user', content: prompt }],
   });
 
@@ -1642,11 +1657,12 @@ Occasion: ${params.occasion}
 ${context}
 
 Suggest ONE different "${params.course}" that fits the occasion. It MUST be genuinely different from these already on the menu (do not repeat or lightly rename them): ${params.avoid.join('; ') || '(none)'}.
+(variety token: ${Math.floor(Math.random() * 1e9)})
 
 Return ONLY valid JSON:
 { "course": "${params.course}", "dish": "Dish name", "description": "1–2 sentence description", "prepTime": "20 min", "cookTime": "10 min", "makeAheadNote": "optional: what can be done ahead" }`;
 
-  const message = await client.messages.create({ model: 'claude-haiku-4-5', max_tokens: 500, messages: [{ role: 'user', content: prompt }] });
+  const message = await client.messages.create({ model: 'claude-haiku-4-5', max_tokens: 500, temperature: 1, messages: [{ role: 'user', content: prompt }] });
   const text = message.content[0].type === 'text' ? message.content[0].text : '';
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error('Failed to swap dish');
