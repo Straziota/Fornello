@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUser, getAnthropicKey } from '@/lib/auth';
 import { getSettings, saveGlobalRecipeIfNew, getGlobalRecipe } from '@/lib/db';
+import { unitsInstruction } from '@/lib/claude';
+import { normalizeRecipeUnits } from '@/lib/unit-convert';
 import Anthropic from '@anthropic-ai/sdk';
 
 export const maxDuration = 30;
@@ -20,18 +22,20 @@ export async function POST(req: NextRequest) {
   const apiKey = getAnthropicKey();
   const settings = await getSettings(user!.id);
   const language = (settings as any).language;
+  const units = (settings as any).units;
   const portionSize = serves || settings.familySize || 4;
 
-  // Look up the global library first — return the cached canonical recipe if found
+  // Look up the global library first — return the cached canonical recipe if found.
+  // Normalize to the user's units so cached recipes stay consistent too.
   const cached = await getGlobalRecipe(query.trim());
   if (cached && cached.ingredients?.length && cached.instructions?.length) {
-    return NextResponse.json({
+    return NextResponse.json(normalizeRecipeUnits({
       name: cached.name, cuisine: cached.cuisine, description: cached.description,
       total_time: cached.total_time, prep_time: cached.prep_time, cook_time: cached.cook_time,
       difficulty: cached.difficulty, serves: cached.serves, tags: cached.tags,
       ingredients: cached.ingredients, instructions: cached.instructions,
       prep_ahead: cached.prep_ahead,
-    });
+    }, units));
   }
 
   const dietaryText = settings.restrictions?.length
@@ -44,7 +48,7 @@ export async function POST(req: NextRequest) {
 "${query}"
 
 Interpret their request generously — if they give a dish name, write the classic recipe. If they describe a craving or style, create the best matching dish.
-${langInstruction(language)}
+${langInstruction(language)}${unitsInstruction(units)}
 Serves: ${portionSize}
 ${dietaryText}
 ${prefsText}
@@ -61,7 +65,7 @@ Return ONLY valid JSON — no markdown:
   "serves": ${portionSize},
   "tags": ["tag1", "tag2"],
   "ingredients": [
-    { "amount": "500 g", "item": "ingredient name" }
+    { "amount": "1 lb", "item": "ingredient name" }
   ],
   "instructions": [
     "Step 1: ..."
@@ -100,5 +104,5 @@ Rules:
     sides: [], photo_url: '', source_site: 'Find a Recipe',
     category: 'dinner',
   }).catch(() => {});
-  return NextResponse.json(recipe);
+  return NextResponse.json(normalizeRecipeUnits(recipe, units));
 }

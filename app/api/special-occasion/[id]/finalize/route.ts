@@ -35,7 +35,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       try {
         result.menu[i].fullRecipe = await generateOccasionDishRecipe(apiKey, {
           dish: m.dish, course: m.course, occasion: row.occasion, guests,
-          cuisineTheme, restrictions: settings.restrictions || [], language: (settings as any).language,
+          cuisineTheme, restrictions: settings.restrictions || [], language: (settings as any).language, units: (settings as any).units,
         });
       } catch { /* leave without a full recipe; the card falls back to the summary */ }
     }));

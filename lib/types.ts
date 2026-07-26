@@ -96,6 +96,7 @@ export interface Settings {
   prioritizeMyRecipes: boolean;
   weekStartDay?: number;
   language?: string;
+  units?: 'us' | 'metric';
   vacations?: { start: string; end: string; note?: string }[];
   staples?: string[];
   stapleCategories?: Record<string, string>;

@@ -1,11 +1,22 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { Settings, WeeklyMenu, WeekSchedule, Meal, Ingredient, SubstituteResult } from './types';
+import { normalizeRecipeUnits } from './unit-convert';
 
 const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 
 function langInstruction(language?: string): string {
   if (!language || language === 'English') return '';
   return `\nIMPORTANT: Write ALL content in ${language}. This includes dish names, descriptions, ingredients, instructions, and all other text.`;
+}
+
+// Units preference — appended to every recipe-detail prompt so generated
+// ingredient amounts and cooking temperatures match the user's setting.
+// 'metric' → grams / mL / °C; anything else (default) → US customary.
+export function unitsInstruction(units?: string): string {
+  if (units === 'metric') {
+    return `\nUNITS: Use METRIC units throughout. Ingredient amounts in grams (g) and millilitres/litres (mL/L); all oven and cooking temperatures in degrees Celsius (°C). Do NOT use cups, tablespoons, teaspoons, ounces, pounds, or Fahrenheit.`;
+  }
+  return `\nUNITS: Use US customary units throughout. Ingredient amounts in cups, tablespoons (tbsp), and teaspoons (tsp) for volume, and ounces (oz) or pounds (lb) for weight; all oven and cooking temperatures in degrees Fahrenheit (°F). Do NOT use grams, millilitres, or Celsius.`;
 }
 
 // Without this, models (especially the faster Haiku) emit bare numbers like
@@ -665,7 +676,8 @@ export async function generateMealRecipe(
   meal: Meal,
   familySize: number,
   prepSchedule?: import('./types').PrepSchedule,
-  language?: string
+  language?: string,
+  units?: string
 ): Promise<{ ingredients: Ingredient[]; instructions: string[]; prep_ahead: string[]; sides?: import('./types').Side[] }> {
   const client = new Anthropic({ apiKey });
 
@@ -689,7 +701,7 @@ The following sides are planned for tonight. For each, write 2–3 cooking steps
 ${meal.sides!.map(s => `- ${s.name}${s.ingredients?.length ? ` (ingredients: ${s.ingredients.map(i => `${i.amount} ${i.item}`).join(', ')})` : ''}`).join('\n')}` : '';
 
   const prompt = `You are a professional chef. Write the full recipe for:
-${langInstruction(language)}
+${langInstruction(language)}${unitsInstruction(units)}
 Dish: ${meal.name} (${meal.cuisine})
 Serves: ${familySize}
 Total time: ${meal.total_time}
@@ -740,7 +752,7 @@ ${UNIT_RULE}`;
   const text = message.content[0].type === 'text' ? message.content[0].text : '';
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error('No recipe JSON returned');
-  return JSON.parse(jsonMatch[0]);
+  return normalizeRecipeUnits(JSON.parse(jsonMatch[0]), units);
 }
 
 // Generic UI string translator — keeps keys, translates values, preserves emojis/markdown
@@ -1030,6 +1042,7 @@ export async function generateOnTheFlyFullRecipe(
   familySize: number,
   restrictions: string[] = [],
   language?: string,
+  units?: string,
 ) {
   const client = new Anthropic({ apiKey });
 
@@ -1045,7 +1058,7 @@ export async function generateOnTheFlyFullRecipe(
 
 They have these ingredients available:
 ${ingredients.map(i => `- ${i}`).join('\n')}
-${langInstruction(language)}
+${langInstruction(language)}${unitsInstruction(units)}
 Family size: ${familySize} people.
 ${restrictText}
 
@@ -1090,7 +1103,7 @@ ${UNIT_RULE}`;
   const text = message.content[0].type === 'text' ? message.content[0].text : '';
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error('No valid JSON returned from Claude');
-  return JSON.parse(jsonMatch[0]);
+  return normalizeRecipeUnits(JSON.parse(jsonMatch[0]), units);
 }
 
 export async function generateOnTheFlyRecipe(
@@ -1593,7 +1606,7 @@ Respond with ONLY a JSON object of this exact shape (no prose, no markdown fence
 // Full recipe for a single occasion dish (used when finalizing the menu).
 export async function generateOccasionDishRecipe(
   apiKey: string,
-  params: { dish: string; course: string; occasion: string; guests: number; cuisineTheme?: string; restrictions?: string[]; language?: string },
+  params: { dish: string; course: string; occasion: string; guests: number; cuisineTheme?: string; restrictions?: string[]; language?: string; units?: string },
 ): Promise<OccasionDishRecipe> {
   const client = new Anthropic({ apiKey: apiKey || process.env.ANTHROPIC_API_KEY! });
   const serves = params.guests || 4;
@@ -1605,7 +1618,7 @@ export async function generateOccasionDishRecipe(
     params.restrictions?.length && `Dietary restrictions: ${params.restrictions.join(', ')}`,
   ].filter(Boolean).join('\n');
 
-  const prompt = `You are an expert chef. Write the complete recipe for this dish:${langInstruction(params.language)}
+  const prompt = `You are an expert chef. Write the complete recipe for this dish:${langInstruction(params.language)}${unitsInstruction(params.units)}
 
 Dish: ${params.dish}
 ${context}
@@ -1619,7 +1632,7 @@ Return ONLY valid JSON:
   "cookTime": "X min",
   "totalTime": "X min",
   "difficulty": "Easy" | "Medium" | "Hard",
-  "ingredients": [ { "amount": "200 g", "item": "ingredient name" } ],
+  "ingredients": [ { "amount": "1 cup", "item": "ingredient name" } ],
   "instructions": [ "Clear step-by-step instruction" ],
   "makeAheadNote": "What can be done ahead of time (1–2 sentences)"
 }
@@ -1633,7 +1646,8 @@ Rules:
   const text = message.content[0].type === 'text' ? message.content[0].text : '';
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error('Failed to generate recipe');
-  return JSON.parse(jsonMatch[0].replace(/,\s*([}\]])/g, '$1')) as OccasionDishRecipe;
+  const parsed = JSON.parse(jsonMatch[0].replace(/,\s*([}\]])/g, '$1')) as OccasionDishRecipe;
+  return normalizeRecipeUnits(parsed as any, params.units) as OccasionDishRecipe;
 }
 
 // Suggest ONE replacement dish for a course, avoiding the dishes already chosen.

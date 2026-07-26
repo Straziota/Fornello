@@ -77,6 +77,7 @@ export async function getSettings(userId: string) {
     skipIngredients: [...new Set([...(data.skip_ingredients ?? []), ...(data.disliked_ingredients ?? [])])],
     hasSeenTour: data.has_seen_tour ?? false,
     language: data.language ?? 'English',
+    units: data.units ?? 'us',
     weekStartDay: data.week_start_day ?? 1,
     vacations: data.vacations ?? [],
     staples: decodeStaples(data.staples).names,
@@ -89,12 +90,12 @@ export async function saveSettings(userId: string, s: {
   restrictions: string[]; schedule: object;
   randomizeMealTypes: boolean; randomizePool: string[]; prepSchedule: object;
   prioritizeMyRecipes: boolean; fromEmail?: string; emailFromName?: string; cookingTechniques?: string[];
-  preferredSides?: string[]; avoidedSides?: string[]; skipIngredients?: string[]; hasSeenTour?: boolean; language?: string; weekStartDay?: number;
+  preferredSides?: string[]; avoidedSides?: string[]; skipIngredients?: string[]; hasSeenTour?: boolean; language?: string; units?: string; weekStartDay?: number;
   vacations?: { start: string; end: string; note?: string }[];
   staples?: string[];
   stapleCategories?: Record<string, string>;
 }) {
-  const { error } = await adminClient.from('settings').upsert({
+  const row: Record<string, unknown> = {
     user_id: userId,
     family_size: s.familySize,
     websites: s.websites,
@@ -114,10 +115,18 @@ export async function saveSettings(userId: string, s: {
     skip_ingredients: s.skipIngredients ?? [],
     has_seen_tour: s.hasSeenTour ?? false,
     language: s.language ?? 'English',
+    units: s.units ?? 'us',
     week_start_day: s.weekStartDay ?? 1,
     vacations: s.vacations ?? [],
     staples: encodeStaples(s.staples ?? [], s.stapleCategories),
-  }, { onConflict: 'user_id' });
+  };
+  let { error } = await adminClient.from('settings').upsert(row, { onConflict: 'user_id' });
+  // Resilience: if the `units` column hasn't been added to the DB yet (migration
+  // sql/2026-07-25-settings-units.sql), retry without it so saving still works.
+  if (error && /units/i.test(error.message) && /column|schema cache/i.test(error.message)) {
+    delete row.units;
+    ({ error } = await adminClient.from('settings').upsert(row, { onConflict: 'user_id' }));
+  }
   if (error) throw new Error(error.message);
 }
 

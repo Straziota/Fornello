@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireUser, getAnthropicKey } from '@/lib/auth';
 import { getSettings, saveGlobalRecipeIfNew, getGlobalRecipe } from '@/lib/db';
 import { generateOnTheFlyFullRecipe } from '@/lib/claude';
+import { normalizeRecipeUnits } from '@/lib/unit-convert';
 
 export async function POST(req: NextRequest) {
   const { user, error } = await requireUser();
@@ -12,11 +13,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing option or ingredients.' }, { status: 400 });
     }
     const settings = await getSettings(user!.id);
+    const units = (settings as any).units;
 
-    // Look up the global library first — return cached version if found
+    // Look up the global library first — return cached version if found.
+    // Normalize to the user's units so cached recipes stay consistent too.
     const cached = await getGlobalRecipe(option.name);
     if (cached && cached.ingredients?.length && cached.instructions?.length) {
-      return NextResponse.json({
+      return NextResponse.json(normalizeRecipeUnits({
         name: cached.name, cuisine: cached.cuisine, description: cached.description,
         total_time: cached.total_time, prep_time: cached.prep_time, cook_time: cached.cook_time,
         difficulty: cached.difficulty, serves: cached.serves,
@@ -24,11 +27,11 @@ export async function POST(req: NextRequest) {
         missingIngredients: option.missingIngredients || [],
         ingredients: cached.ingredients, instructions: cached.instructions,
         prep_ahead: cached.prep_ahead,
-      });
+      }, units));
     }
 
     const recipe = await generateOnTheFlyFullRecipe(
-      getAnthropicKey(), option, ingredients, settings.familySize, settings.restrictions, (settings as any).language
+      getAnthropicKey(), option, ingredients, settings.familySize, settings.restrictions, (settings as any).language, units
     );
     // Tag as dinner and save to global library (fire and forget)
     saveGlobalRecipeIfNew({

@@ -371,6 +371,25 @@ export default function SettingsPage() {
           </select>
         </Section>
 
+        {/* Measurement units */}
+        <Section tour="set-units" title="Measurement Units">
+          <p className="text-sm mb-3" style={{ color: 'var(--text-2)' }}>
+            All generated recipes will use these units — temperatures, weights, and volumes.
+          </p>
+          <select
+            value={(settings as any).units === 'metric' ? 'metric' : 'us'}
+            onChange={e => setSettings(s => ({ ...s, units: e.target.value } as any))}
+            style={{
+              width: '100%', maxWidth: '340px', padding: '10px 14px',
+              borderRadius: '10px', border: '1px solid var(--border)',
+              background: 'var(--cream)', color: 'var(--text)',
+              fontSize: '14px', fontFamily: 'Georgia, serif', outline: 'none',
+            }}>
+            <option value="us">US — °F, cups, tablespoons, oz &amp; lb</option>
+            <option value="metric">Metric — °C, grams &amp; millilitres</option>
+          </select>
+        </Section>
+
         {/* Family size */}
         <Section tour="set-family" icon="/icons/Family size.png" title="Family Size">
           <div className="flex items-center gap-3">

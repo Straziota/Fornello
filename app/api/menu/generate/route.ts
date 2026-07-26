@@ -195,7 +195,7 @@ export async function POST(req: Request) {
               await updateMealRecipe(user!.id, id, meal.day, global);
               return { ...meal, ...global, recipeLoaded: true };
             }
-            const recipe = await generateMealRecipe(apiKey, meal, settings.familySize, settings.prepSchedule, (settings as any).language);
+            const recipe = await generateMealRecipe(apiKey, meal, settings.familySize, settings.prepSchedule, (settings as any).language, (settings as any).units);
             await Promise.all([
               updateMealRecipe(user!.id, id, meal.day, recipe),
               saveGlobalRecipeIfNew({ ...meal, ...recipe, mealType: meal.tags?.[0] || '', source_site: meal.source_site || '' }),

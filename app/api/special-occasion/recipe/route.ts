@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUser, getAnthropicKey } from '@/lib/auth';
 import { getSettings, saveGlobalRecipeIfNew, getGlobalRecipe } from '@/lib/db';
+import { unitsInstruction } from '@/lib/claude';
+import { normalizeRecipeUnits, normalizeText } from '@/lib/unit-convert';
 import Anthropic from '@anthropic-ai/sdk';
 
 export const maxDuration = 30;
@@ -14,18 +16,20 @@ export async function POST(req: NextRequest) {
 
   const apiKey = getAnthropicKey();
   const settings = await getSettings(user!.id);
+  const units = (settings as any).units;
   const serves = guests || settings.familySize || 4;
 
-  // Look up the global library first — return cached version if found
+  // Look up the global library first — return cached version if found.
+  // Normalize to the user's units so cached recipes stay consistent too.
   const cached = await getGlobalRecipe(dish);
   if (cached && cached.ingredients?.length && cached.instructions?.length) {
-    return NextResponse.json({
+    return NextResponse.json(normalizeRecipeUnits({
       name: cached.name, description: cached.description, serves: cached.serves,
       prepTime: cached.prep_time, cookTime: cached.cook_time, totalTime: cached.total_time,
       difficulty: cached.difficulty,
       ingredients: cached.ingredients, instructions: cached.instructions,
-      makeAheadNote: cached.prep_ahead?.[0] || '',
-    });
+      makeAheadNote: normalizeText(cached.prep_ahead?.[0] || '', units),
+    }, units));
   }
 
   const context = [
@@ -39,7 +43,7 @@ export async function POST(req: NextRequest) {
   const prompt = `You are an expert chef. Write the complete recipe for this dish:
 
 Dish: ${dish}
-${context}
+${context}${unitsInstruction(units)}
 
 Return ONLY valid JSON:
 {
@@ -51,7 +55,7 @@ Return ONLY valid JSON:
   "totalTime": "X min",
   "difficulty": "Easy" | "Medium" | "Hard",
   "ingredients": [
-    { "amount": "200 g", "item": "ingredient name" }
+    { "amount": "1 cup", "item": "ingredient name" }
   ],
   "instructions": [
     "Clear step-by-step instruction"
@@ -86,5 +90,5 @@ Rules:
     sides: [], photo_url: '', source_site: 'Special Occasion',
     category: 'special',
   }).catch(() => {});
-  return NextResponse.json(recipe);
+  return NextResponse.json(normalizeRecipeUnits({ ...recipe, makeAheadNote: normalizeText(recipe.makeAheadNote || '', units) }, units));
 }

@@ -18,7 +18,7 @@ interface SweetCard {
   bakersTip?: string;
 }
 
-const CATEGORIES = ['All', 'Cakes', 'Cookies', 'Tarts', 'Pastry & Bread', 'Puddings & Creams', 'Ice Cream & Gelato', 'Chocolate'];
+const CATEGORIES = ['All', 'Cakes', 'Cupcakes', 'Cookies', 'Tarts', 'Pastry & Bread', 'Puddings & Creams', 'Ice Cream & Gelato', 'Chocolate'];
 const DIFFICULTIES = ['Any', 'Easy', 'Medium', 'Hard'];
 
 const DIFF_STYLE: Record<string, React.CSSProperties> = {
@@ -28,7 +28,7 @@ const DIFF_STYLE: Record<string, React.CSSProperties> = {
 };
 
 const CATEGORY_ICONS: Record<string, string> = {
-  'Cakes': '🎂', 'Cookies': '🍪', 'Tarts': '🥧', 'Pastry & Bread': '🥐',
+  'Cakes': '🎂', 'Cupcakes': '🧁', 'Cookies': '🍪', 'Tarts': '🥧', 'Pastry & Bread': '🥐',
   'Puddings & Creams': '🍮', 'Ice Cream & Gelato': '🍦', 'Chocolate': '🍫',
 };
 

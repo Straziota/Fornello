@@ -71,7 +71,7 @@ Return ONLY valid JSON — no markdown:
 ]
 
 Rules:
-- category must be one of: Cakes, Cookies, Tarts, Pastry & Bread, Puddings & Creams, Ice Cream & Gelato, Chocolate
+- category must be one of: Cakes, Cupcakes, Cookies, Tarts, Pastry & Bread, Puddings & Creams, Ice Cream & Gelato, Chocolate
 - difficulty must be exactly "Easy", "Medium", or "Hard"
 - total_time = prep_time + cook_time (be accurate)
 - Vary styles — don't repeat the same flavour or technique twice`;

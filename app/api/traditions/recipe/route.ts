@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUser, getAnthropicKey } from '@/lib/auth';
 import { getSettings, saveGlobalRecipeIfNew, getGlobalRecipe } from '@/lib/db';
+import { unitsInstruction } from '@/lib/claude';
+import { normalizeRecipeUnits } from '@/lib/unit-convert';
 import Anthropic from '@anthropic-ai/sdk';
 
 export const maxDuration = 30;
@@ -20,20 +22,22 @@ export async function POST(req: NextRequest) {
   const apiKey = getAnthropicKey();
   const settings = await getSettings(user!.id);
   const language = (settings as any).language;
+  const units = (settings as any).units;
   const portionSize = serves || settings.familySize || 4;
 
-  // Look up the global library first — return cached version if found
+  // Look up the global library first — return cached version if found.
+  // Normalize to the user's units so cached recipes stay consistent too.
   const cached = await getGlobalRecipe(name);
   if (cached && cached.ingredients?.length && cached.instructions?.length) {
-    return NextResponse.json({
+    return NextResponse.json(normalizeRecipeUnits({
       ingredients: cached.ingredients,
       instructions: cached.instructions,
       prep_ahead: cached.prep_ahead,
-    });
+    }, units));
   }
 
   const prompt = `You are a culinary expert specialising in world cuisines. Write the complete authentic recipe for this traditional dish.
-${langInstruction(language)}
+${langInstruction(language)}${unitsInstruction(units)}
 
 Dish: ${name}
 Cuisine: ${cuisine}
@@ -47,7 +51,7 @@ ${settings.restrictions?.length ? `Dietary restrictions: ${settings.restrictions
 Return ONLY valid JSON — no markdown:
 {
   "ingredients": [
-    { "amount": "500 g", "item": "ingredient name" }
+    { "amount": "1 lb", "item": "ingredient name" }
   ],
   "instructions": [
     "Step 1: ..."
@@ -58,7 +62,7 @@ Return ONLY valid JSON — no markdown:
 }
 
 Rules:
-- 8–14 ingredients with precise amounts — use traditional measurements where appropriate
+- 8–14 ingredients with precise amounts in the units specified above
 - 6–8 clear, detailed instruction steps respecting authentic technique
 - 2–4 prep_ahead tasks (plain action steps, no timing labels as prefixes)
 - Every prep_ahead task must state the quantity of each ingredient being prepped, matching the ingredient list (e.g. "Dice 2 onions") — never quantity-less tasks like "Chop the onions"
@@ -86,5 +90,5 @@ Rules:
     prep_ahead: recipe.prep_ahead || [], sides: [], photo_url: '',
     source_site: 'Traditions', category: 'tradition',
   }).catch(() => {});
-  return NextResponse.json(recipe);
+  return NextResponse.json(normalizeRecipeUnits(recipe, units));
 }

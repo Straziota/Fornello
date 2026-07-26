@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireUser, getAnthropicKey } from '@/lib/auth';
 import { getSettings, getLatestMenu, updateMealRecipe, getUserRecipes, getGlobalRecipe, getRecipeOverride, saveGlobalRecipeIfNew } from '@/lib/db';
 import { generateMealRecipe } from '@/lib/claude';
+import { normalizeRecipeUnits } from '@/lib/unit-convert';
 import { Meal } from '@/lib/types';
 
 export async function POST(req: Request) {
@@ -11,12 +12,13 @@ export async function POST(req: Request) {
     const { menuId, meal }: { menuId: number; meal: Meal } = await req.json();
     const [settings, menu] = await Promise.all([getSettings(user!.id), getLatestMenu(user!.id)]);
     const language = (menu as any)?.language ?? (settings as any).language ?? 'English';
+    const units = (settings as any).units;
 
     // 1. User's My Recipes (explicit saves — highest trust)
     const userRecipes = await getUserRecipes(user!.id);
     const savedUserRecipe = userRecipes.find(r => r.name.toLowerCase() === meal.name.toLowerCase());
     if (savedUserRecipe) {
-      const recipe = { ingredients: savedUserRecipe.ingredients, instructions: savedUserRecipe.instructions, prep_ahead: savedUserRecipe.prep_ahead };
+      const recipe = normalizeRecipeUnits({ ingredients: savedUserRecipe.ingredients, instructions: savedUserRecipe.instructions, prep_ahead: savedUserRecipe.prep_ahead }, units);
       await updateMealRecipe(user!.id, menuId, meal.day, recipe);
       return NextResponse.json({ ...recipe, recipeLoaded: true });
     }
@@ -24,7 +26,7 @@ export async function POST(req: Request) {
     // 2. User's personal override ("Make it mine")
     const override = await getRecipeOverride(user!.id, meal.name);
     if (override) {
-      const recipe = { ingredients: override.ingredients, instructions: override.instructions, prep_ahead: override.prep_ahead, sides: override.sides };
+      const recipe = normalizeRecipeUnits({ ingredients: override.ingredients, instructions: override.instructions, prep_ahead: override.prep_ahead, sides: override.sides }, units);
       await updateMealRecipe(user!.id, menuId, meal.day, recipe);
       return NextResponse.json({ ...recipe, recipeLoaded: true, isOverride: true });
     }
@@ -32,13 +34,13 @@ export async function POST(req: Request) {
     // 3. Global recipe library (admin-curated or previously generated)
     const globalRecipe = await getGlobalRecipe(meal.name);
     if (globalRecipe) {
-      const recipe = { ingredients: globalRecipe.ingredients, instructions: globalRecipe.instructions, prep_ahead: globalRecipe.prep_ahead, sides: globalRecipe.sides };
+      const recipe = normalizeRecipeUnits({ ingredients: globalRecipe.ingredients, instructions: globalRecipe.instructions, prep_ahead: globalRecipe.prep_ahead, sides: globalRecipe.sides }, units);
       await updateMealRecipe(user!.id, menuId, meal.day, recipe);
       return NextResponse.json({ ...recipe, recipeLoaded: true });
     }
 
     // 4. Generate new recipe → save to global library for everyone
-    const recipe = await generateMealRecipe(getAnthropicKey(), meal, settings.familySize, settings.prepSchedule, language);
+    const recipe = await generateMealRecipe(getAnthropicKey(), meal, settings.familySize, settings.prepSchedule, language, units);
     await Promise.all([
       updateMealRecipe(user!.id, menuId, meal.day, recipe),
       saveGlobalRecipeIfNew({ ...meal, ...recipe, mealType: meal.tags?.[0] || '', source_site: meal.source_site || '' }),

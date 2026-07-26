@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUser, getAnthropicKey } from '@/lib/auth';
 import { getSettings, saveGlobalRecipeIfNew, getGlobalRecipe } from '@/lib/db';
+import { unitsInstruction } from '@/lib/claude';
+import { normalizeRecipeUnits } from '@/lib/unit-convert';
 import Anthropic from '@anthropic-ai/sdk';
 
 export const maxDuration = 30;
@@ -20,20 +22,22 @@ export async function POST(req: NextRequest) {
   const apiKey = getAnthropicKey();
   const settings = await getSettings(user!.id);
   const language = (settings as any).language;
+  const units = (settings as any).units;
   const portionSize = serves || settings.familySize || 4;
 
-  // Look up the global library first — return cached version if found
+  // Look up the global library first — return cached version if found.
+  // Normalize to the user's units so cached recipes stay consistent too.
   const cached = await getGlobalRecipe(name);
   if (cached && cached.ingredients?.length && cached.instructions?.length) {
-    return NextResponse.json({
+    return NextResponse.json(normalizeRecipeUnits({
       ingredients: cached.ingredients,
       instructions: cached.instructions,
       prep_ahead: cached.prep_ahead,
-    });
+    }, units));
   }
 
   const prompt = `You are a celebrated pastry chef. Write the complete recipe for this dessert or baking dish.
-${langInstruction(language)}
+${langInstruction(language)}${unitsInstruction(units)}
 
 Recipe: ${name}
 Category: ${category || 'Dessert'}
@@ -46,10 +50,10 @@ ${settings.restrictions?.length ? `Dietary restrictions: ${settings.restrictions
 Return ONLY valid JSON — no markdown:
 {
   "ingredients": [
-    { "amount": "200 g", "item": "plain flour, sifted" }
+    { "amount": "1¾ cups", "item": "plain flour, sifted" }
   ],
   "instructions": [
-    "Step 1: Preheat the oven to 180°C (160°C fan). Line a 23 cm round cake tin..."
+    "Step 1: Preheat the oven to 350°F. Line a 9-inch round cake tin..."
   ],
   "prep_ahead": [
     "Bring butter and eggs to room temperature 30 minutes before baking."
@@ -57,7 +61,7 @@ Return ONLY valid JSON — no markdown:
 }
 
 Rules:
-- 8–12 ingredients with precise amounts (use weight measurements where appropriate)
+- 8–12 ingredients with precise amounts in the units specified above
 - 6–8 clear, detailed instruction steps — include temperatures, timings, and visual cues
 - 2–4 prep_ahead tips specific to this recipe
 - Scale all quantities for ${portionSize} servings
@@ -84,5 +88,5 @@ Rules:
     sides: [], photo_url: '', source_site: 'Something Sweet',
     category: 'dessert',
   }).catch(() => {});
-  return NextResponse.json(recipe);
+  return NextResponse.json(normalizeRecipeUnits(recipe, units));
 }
