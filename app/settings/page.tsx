@@ -372,7 +372,7 @@ export default function SettingsPage() {
         </Section>
 
         {/* Measurement units */}
-        <Section tour="set-units" title="Measurement Units">
+        <Section tour="set-units" icon="/icons/Conversions.png" title="Measurement Units">
           <p className="text-sm mb-3" style={{ color: 'var(--text-2)' }}>
             All generated recipes will use these units — temperatures, weights, and volumes.
           </p>
