@@ -158,10 +158,11 @@ function DishRecipeModal({ dish, recipe, loading, onClose }: {
   );
 }
 
-function ResultCard({ result, meta, occasionContext, onBack, onEdit, onPrint, onDishClick, onToggleSelect, onSwap, onFinalize, finalizing, swappingIndex }: {
+function ResultCard({ result, meta, occasionContext, recipesStale, onBack, onEdit, onPrint, onDishClick, onToggleSelect, onSwap, onFinalize, finalizing, swappingIndex }: {
   result: SpecialOccasionResult;
   meta: { guests: string; servingTime: string; eventDate: string };
   occasionContext: { occasion: string; guests: number; cuisineTheme?: string };
+  recipesStale: boolean;
   onBack: () => void;
   onEdit: () => void;
   onPrint: () => void;
@@ -248,6 +249,12 @@ function ResultCard({ result, meta, occasionContext, onBack, onEdit, onPrint, on
             {result.finalized && (
               <p style={{ fontSize: '12px', color: '#8B6A42', fontStyle: 'italic', marginBottom: '10px' }}>
                 ✓ Menu finalized — the recipes and prep plan are below. Change a dish and finalize again to update them.
+              </p>
+            )}
+            {recipesStale && (
+              <p style={{ fontSize: '12px', color: '#8B4A20', fontStyle: 'italic', marginBottom: '10px' }}>
+                The guest count changed since these recipes were written (they serve {result.recipesServeGuests}).
+                Re-finalize to rescale them for {meta.guests || 'the new count'}.
               </p>
             )}
             <button onClick={onFinalize} disabled={finalizing || selectedCount === 0}
@@ -367,7 +374,9 @@ export default function SpecialOccasionPage() {
   const [error, setError]                   = useState('');
   const [finalizing, setFinalizing]         = useState(false);
   const [swappingIndex, setSwappingIndex]   = useState<number | null>(null);
-  const [editingId, setEditingId]           = useState<number | null>(null); // occasion being regenerated in place
+  const [editingId, setEditingId]           = useState<number | null>(null); // occasion being edited in place
+  const [savingDetails, setSavingDetails]   = useState(false);
+  const [confirmRegen, setConfirmRegen]     = useState(false); // guard on the destructive "regenerate whole menu"
 
   // Dish recipe modal
   const [selectedDish, setSelectedDish]     = useState<{ dish: string; course: string } | null>(null);
@@ -449,10 +458,43 @@ export default function SpecialOccasionPage() {
       const target = editingId ? saved.find(e => e.id === editingId) : saved[0];
       if (target) { setActiveEvent(target); setView('result'); }
       setEditingId(null);
+      setConfirmRegen(false);
     } catch {
       setError('Something went wrong — please try again.');
     } finally {
       setGenerating(false);
+    }
+  };
+
+  // Save edited details WITHOUT touching the menu. This is the primary action
+  // when adjusting an existing occasion — regenerating would throw away the
+  // chosen dishes and their finalized recipes.
+  const saveDetails = async () => {
+    if (!editingId || !occasion.trim()) return;
+    setSavingDetails(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/special-occasion/${editingId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          details: { occasion, guests: Number(guests) || 0, servingTime, cuisineTheme,
+                     dietaryNotes, mustHaveDishes, eventDate, prepStartDate, daySchedules, eventType },
+        }),
+      });
+      if (!res.ok) throw new Error('Failed');
+      const updated = await fetch('/api/special-occasion');
+      if (!updated.ok) throw new Error('Could not load saved event');
+      const saved: SavedEvent[] = await updated.json();
+      setEvents(saved);
+      const target = saved.find(e => e.id === editingId);
+      if (target) { setActiveEvent(target); setView('result'); }
+      setEditingId(null);
+      setConfirmRegen(false);
+    } catch {
+      setError('Could not save your changes — please try again.');
+    } finally {
+      setSavingDetails(false);
     }
   };
 
@@ -540,7 +582,8 @@ export default function SpecialOccasionPage() {
     setPrepStartDate(p.prepStartDate || '');
     setEventType(activeEvent.result.eventType || 'served-dinner');
     if (p.daySchedules?.length) setDaySchedules(p.daySchedules); // keep saved per-day minutes
-    setEditingId(activeEvent.id); // regenerate overwrites this occasion instead of adding a new one
+    setEditingId(activeEvent.id); // saving updates this occasion in place
+    setConfirmRegen(false);
     setError('');
     setView('form');
   };
@@ -548,6 +591,7 @@ export default function SpecialOccasionPage() {
   // Start a fresh occasion (blank form, no in-place editing).
   const startNewOccasion = () => {
     setEditingId(null);
+    setConfirmRegen(false);
     setOccasion(''); setGuests(''); setServingTime(''); setCuisineTheme('');
     setDietaryNotes(''); setMustHaveDishes(''); setEventDate(''); setPrepStartDate('');
     setEventType('served-dinner'); setDaySchedules([]); setError('');
@@ -747,17 +791,49 @@ export default function SpecialOccasionPage() {
             {error && <p style={{ color: '#c0392b', fontSize: '13px', marginBottom: '12px' }}>{error}</p>}
 
             <div className="flex gap-3">
-              <button onClick={() => { setEditingId(null); setView('list'); }}
+              <button onClick={() => { setEditingId(null); setConfirmRegen(false); setView(editingId && activeEvent ? 'result' : 'list'); }}
                 className="rounded-full px-5 py-3 text-xs uppercase tracking-[0.18em] transition-opacity hover:opacity-70"
                 style={{ border: '1px solid #C4A265', color: '#8B6A42', background: 'transparent', fontFamily: 'Georgia, serif', cursor: 'pointer' }}>
                 Cancel
               </button>
-              <button onClick={generate} disabled={generating || !occasion.trim()}
+              <button onClick={editingId ? saveDetails : generate} disabled={generating || savingDetails || !occasion.trim()}
                 className="flex-1 py-3 rounded-full uppercase tracking-[0.2em] transition-opacity hover:opacity-80 disabled:opacity-40"
                 style={{ background: '#8B6A42', color: '#fff', fontSize: '12px', fontFamily: 'Georgia, serif', border: 'none', cursor: 'pointer' }}>
-                {generating ? 'Planning your menu…' : editingId ? 'Update my menu' : 'Plan my menu'}
+                {savingDetails ? 'Saving…' : generating ? 'Planning your menu…' : editingId ? 'Save changes' : 'Plan my menu'}
               </button>
             </div>
+
+            {/* Regenerating is destructive — it replaces every dish and any recipes
+                already written — so it lives behind its own confirmation. */}
+            {editingId && (
+              <div style={{ marginTop: '18px', paddingTop: '16px', borderTop: '1px solid #E8D5B0', textAlign: 'center' }}>
+                {confirmRegen ? (
+                  <div style={{ background: '#FBF0E6', border: '1px solid #E0B48C', borderRadius: '12px', padding: '14px 16px' }}>
+                    <p style={{ fontSize: '12.5px', color: '#8B4A20', lineHeight: 1.6, marginBottom: '12px', fontStyle: 'italic' }}>
+                      This throws away the current menu — every dish, every swap, and any recipes
+                      already written — and plans a brand-new one. It cannot be undone.
+                    </p>
+                    <div className="flex items-center justify-center gap-3">
+                      <button onClick={() => setConfirmRegen(false)}
+                        className="rounded-full px-4 py-2 text-xs uppercase tracking-[0.18em] transition-opacity hover:opacity-70"
+                        style={{ border: '1px solid #C4A265', color: '#8B6A42', background: 'transparent', fontFamily: 'Georgia, serif', cursor: 'pointer' }}>
+                        Keep my menu
+                      </button>
+                      <button onClick={generate} disabled={generating}
+                        className="rounded-full px-4 py-2 text-xs uppercase tracking-[0.18em] transition-opacity hover:opacity-80"
+                        style={{ background: '#A5451E', color: '#fff', border: 'none', fontFamily: 'Georgia, serif', cursor: 'pointer' }}>
+                        Yes, replace the menu
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button onClick={() => setConfirmRegen(true)}
+                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#B09070', fontSize: '12px', fontFamily: 'Georgia, serif', textDecoration: 'underline', textUnderlineOffset: '3px' }}>
+                    Or plan a completely new menu for this occasion…
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -781,6 +857,9 @@ export default function SpecialOccasionPage() {
             result={activeEvent.result}
             meta={{ guests: activeEvent.guests?.toString() || '', servingTime: activeEvent.serving_time || '', eventDate: activeEvent.event_date || '' }}
             occasionContext={{ occasion: activeEvent.occasion, guests: activeEvent.guests || 4 }}
+            recipesStale={!!activeEvent.result.finalized
+              && typeof activeEvent.result.recipesServeGuests === 'number'
+              && activeEvent.result.recipesServeGuests !== (activeEvent.guests || 0)}
             onBack={() => { fetchEvents(); setView('list'); }}
             onEdit={editDetails}
             onPrint={() => window.open(`/print/occasion/${activeEvent.id}`, '_blank')}

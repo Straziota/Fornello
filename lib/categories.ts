@@ -28,7 +28,7 @@ export const CATEGORY_ICONS: Record<string, string> = {
   'Beverages': '/icons/Beverages.png',
   'Snacks': '/icons/Snacks.png',
   'Household': '/icons/Household.png',
-  'Other': '/icons/Other.png',
+  'Other': '/icons/Basket.png',
 };
 
 // Every user-created ("personalized") category shares this one icon.

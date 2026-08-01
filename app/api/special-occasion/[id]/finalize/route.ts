@@ -28,10 +28,14 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: 'Select at least one dish before finalizing.' }, { status: 400 });
   }
 
+  // Saved recipes are scaled to a guest count. If that count changed since they
+  // were written (the user adjusted the details), rewrite them at the new size.
+  const recipesStale = typeof result.recipesServeGuests === 'number' && result.recipesServeGuests !== guests;
+
   try {
     // Full recipes for the selected dishes, in parallel.
     await Promise.all(selected.map(async ({ m, i }) => {
-      if (m.fullRecipe?.ingredients?.length) return; // already generated
+      if (m.fullRecipe?.ingredients?.length && !recipesStale) return; // already generated at this size
       try {
         result.menu[i].fullRecipe = await generateOccasionDishRecipe(apiKey, {
           dish: m.dish, course: m.course, occasion: row.occasion, guests,
@@ -55,6 +59,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     });
     if (timeline.length) result.timeline = timeline;
     result.finalized = true;
+    result.recipesServeGuests = guests;
 
     await updateSpecialOccasion(user!.id, Number(id), result);
     return NextResponse.json(result);

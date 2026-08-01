@@ -1319,6 +1319,9 @@ export interface SpecialOccasionResult {
   hostingTips: string[];
   servingNotes: string;
   finalized?: boolean;
+  // Guest count the saved fullRecipes were scaled to. If the user later edits the
+  // guest count, this goes stale and re-finalizing rewrites the recipes to match.
+  recipesServeGuests?: number;
   // Planning inputs persisted at generation so finalize can rebuild the timeline
   planning?: {
     prepStartDate?: string;

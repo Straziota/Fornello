@@ -9,7 +9,7 @@ import { categoryIcon, stapleCategory, BUILTIN_CATEGORIES } from '@/lib/categori
 function CategoryIcon({ src, size = 32 }: { src: string; size?: number }) {
   if (src.startsWith('/')) {
     return <img src={src} alt=""
-      onError={e => { const img = e.currentTarget; if (!img.src.endsWith('/icons/Other.png')) img.src = '/icons/Other.png'; }}
+      onError={e => { const img = e.currentTarget; if (!img.src.endsWith('/icons/Basket.png')) img.src = '/icons/Basket.png'; }}
       style={{ width: `${size}px`, height: `${size}px`, objectFit: 'contain' }} />;
   }
   return <span style={{ fontSize: `${size * 0.6}px` }}>{src}</span>;
@@ -27,6 +27,8 @@ export default function GroceriesPage() {
   const [printDays, setPrintDays] = useState<Set<string>>(new Set());
   const [showPrintOptions, setShowPrintOptions] = useState(false);
   const [combineLists, setCombineLists] = useState(false);
+  // Checked items are tucked away by default so the list reads as "what's left".
+  const [hideChecked, setHideChecked] = useState(true);
   const didTrigger = useRef(false);
 
   const fetchMenu = async () => {
@@ -60,6 +62,7 @@ export default function GroceriesPage() {
       setEditedAmounts(savedAmounts);
       const combined = localStorage.getItem('fornello_combine_lists') === '1';
       setCombineLists(combined);
+      setHideChecked(localStorage.getItem('fornello_hide_checked') !== '0');
     } catch {}
   }, []);
 
@@ -67,6 +70,14 @@ export default function GroceriesPage() {
     setCombineLists(v => {
       const next = !v;
       localStorage.setItem('fornello_combine_lists', next ? '1' : '0');
+      return next;
+    });
+  };
+
+  const toggleHideChecked = () => {
+    setHideChecked(v => {
+      const next = !v;
+      localStorage.setItem('fornello_hide_checked', next ? '1' : '0');
       return next;
     });
   };
@@ -215,6 +226,35 @@ export default function GroceriesPage() {
       })()
     : [];
 
+  // Checked items leave their aisle card and collect in one "In the cart" list at
+  // the bottom, so what's left on the shelves shrinks as you shop. Keys are
+  // unchanged, so tapping an item in the cart puts it straight back in its aisle.
+  const stapleSections = stapleCategories.map(([cat, items]) => ({
+    cat,
+    rows: items.map((item, i) => ({ key: `staple::${cat}::${i}::${item}`, item })),
+  }));
+  const recipeSections = (combineLists ? combinedCategories : categories).map(([cat, items]) => ({
+    cat,
+    rows: (items as GroceryItem[]).map((item, i) => ({ key: `${cat}::${i}::${item.item}`, item })),
+  }));
+
+  const cart = [
+    ...stapleSections.flatMap(s => s.rows
+      .filter(r => checked.has(r.key))
+      .map(r => ({ key: r.key, label: r.item, amount: '', cat: s.cat }))),
+    ...recipeSections.flatMap(s => s.rows
+      .filter(r => checked.has(r.key))
+      .map(r => ({ key: r.key, label: r.item.item, amount: editedAmounts[r.key] ?? r.item.amount ?? '', cat: s.cat }))),
+  ];
+
+  // Only the still-to-get rows stay in the aisle cards; a card (and its section
+  // heading) disappears once everything in it has been picked up.
+  const dropChecked = <S extends { rows: { key: string }[] }>(sections: S[]) =>
+    sections.map(s => ({ ...s, rows: s.rows.filter(r => !checked.has(r.key)) }))
+            .filter(s => s.rows.length > 0);
+  const stapleToGet = dropChecked(stapleSections);
+  const recipeToGet = dropChecked(recipeSections);
+
   return (
     <>
       <PageBackground src="/backgrounds/groceries-page.png" />
@@ -339,6 +379,16 @@ export default function GroceriesPage() {
               </div>
             </div>
           )}
+          {cart.length > 0 && (
+            <button onClick={toggleHideChecked}
+              title={hideChecked ? 'Show the items already in your cart' : 'Hide checked items so only what\'s left shows'}
+              className="rounded-full px-4 py-2 text-xs uppercase tracking-[0.18em] transition-opacity hover:opacity-80"
+              style={hideChecked
+                ? { border: '1px solid var(--border)', background: 'rgba(255,255,255,0.7)', color: 'var(--text-2)' }
+                : { border: '1px solid var(--green)', background: 'var(--green)', color: '#fff' }}>
+              {hideChecked ? `Show checked (${cart.length})` : 'Hide checked'}
+            </button>
+          )}
           {checked.size > 0 && (
             <button onClick={() => { setChecked(new Set()); localStorage.removeItem('fornello_checked'); setEditedAmounts({}); localStorage.removeItem('fornello_amounts'); }}
               className="rounded-full px-4 py-2 text-xs uppercase tracking-[0.18em]"
@@ -369,9 +419,54 @@ export default function GroceriesPage() {
         </div>
       )}
 
+      {/* In the cart — everything ticked off, collected out of the way. It sits
+          directly under its toolbar toggle so opening it is visible without
+          scrolling. Tap an item to put it back on the shelves. */}
+      {cart.length > 0 && !hideChecked && (
+        <div className="mb-8">
+          <div className="flex items-end justify-between gap-3 flex-wrap mb-3">
+            <div className="flex items-center gap-3">
+              <img src="/icons/Basket.png" alt="" style={{ width: '64px', height: '64px', objectFit: 'contain' }} />
+              <div>
+                <h3 className="text-[18px]" style={{ color: 'var(--text)' }}>In the cart</h3>
+                <p className="text-xs italic" style={{ color: 'var(--text-3)' }}>
+                  {cart.length} {cart.length === 1 ? 'item' : 'items'} picked up · tap one to put it back
+                </p>
+              </div>
+            </div>
+            <button onClick={toggleHideChecked}
+              className="rounded-full px-4 py-2 text-xs uppercase tracking-[0.18em] transition-opacity hover:opacity-80"
+              style={{ background: 'var(--green)', color: '#fff', border: '1px solid var(--green)' }}>
+              Hide checked
+            </button>
+          </div>
+
+          <div className="rounded-[22px] p-5 ring-1"
+               style={{ background: 'var(--white-2)', boxShadow: '0 6px 24px rgba(47,58,50,0.05)' }}>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-3">
+              {cart.map(row => (
+                <div key={row.key} onClick={() => toggle(row.key)}
+                     className="flex items-center justify-between gap-3 cursor-pointer">
+                  <span className="flex items-center gap-2 flex-1 min-w-0">
+                    <CategoryIcon src={categoryIcon(row.cat)} size={24} />
+                    <span className="text-[16px] leading-snug line-through" style={{ color: 'var(--text-3)' }}>
+                      {row.amount && <span style={{ fontSize: '13px', marginRight: '4px' }}>{row.amount}</span>}
+                      {row.label}
+                    </span>
+                  </span>
+                  <input type="checkbox" checked readOnly tabIndex={-1}
+                    className="h-4 w-4 rounded shrink-0 pointer-events-none"
+                    style={{ accentColor: 'var(--sage)', borderColor: 'var(--border-2)' }} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Staples — categorized by store aisle, hidden when combined mode is on
           (in combined mode they're merged into the recipe categories below). */}
-      {staples.length > 0 && !combineLists && (
+      {stapleToGet.length > 0 && !combineLists && (
         <>
           <div className="flex items-center gap-3 mb-3">
             <img src="/icons/pantry-v2.png" alt="" style={{ width: '64px', height: '64px', objectFit: 'contain' }} />
@@ -383,30 +478,24 @@ export default function GroceriesPage() {
             </div>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {stapleCategories.map(([cat, items]) => (
-              <div key={`s-${cat}`} className="rounded-[22px] p-5 ring-1 relative"
+            {stapleToGet.map(s => (
+              <div key={`s-${s.cat}`} className="rounded-[22px] p-5 ring-1 relative"
                    style={{ background: 'var(--white-2)', boxShadow: '0 6px 24px rgba(47,58,50,0.05)' }}>
                 <div className="absolute top-4 right-4">
-                  <CategoryIcon src={categoryIcon(cat)} size={64} />
+                  <CategoryIcon src={categoryIcon(s.cat)} size={64} />
                 </div>
-                <h3 className="text-[20px] mb-4 pr-20 min-h-[52px]" style={{ color: 'var(--text)' }}>{cat}</h3>
+                <h3 className="text-[20px] mb-4 pr-20 min-h-[52px]" style={{ color: 'var(--text)' }}>{s.cat}</h3>
                 <div className="space-y-3">
-                  {items.map((item, i) => {
-                    const key = `staple::${cat}::${i}::${item}`;
-                    const done = checked.has(key);
-                    return (
-                      <div key={i} onClick={() => toggle(key)}
-                           className="flex items-center justify-between gap-4 cursor-pointer"
-                           style={{ color: done ? 'var(--text-3)' : 'var(--text)' }}>
-                        <span className={`text-[18px] leading-snug flex-1 ${done ? 'line-through' : ''}`}>
-                          {item}
-                        </span>
-                        <input type="checkbox" checked={done} readOnly tabIndex={-1}
-                          className="h-4 w-4 rounded shrink-0 pointer-events-none"
-                          style={{ accentColor: 'var(--sage)', borderColor: 'var(--border-2)' }} />
-                      </div>
-                    );
-                  })}
+                  {s.rows.map(r => (
+                    <div key={r.key} onClick={() => toggle(r.key)}
+                         className="flex items-center justify-between gap-4 cursor-pointer"
+                         style={{ color: 'var(--text)' }}>
+                      <span className="text-[18px] leading-snug flex-1">{r.item}</span>
+                      <input type="checkbox" checked={false} readOnly tabIndex={-1}
+                        className="h-4 w-4 rounded shrink-0 pointer-events-none"
+                        style={{ accentColor: 'var(--sage)', borderColor: 'var(--border-2)' }} />
+                    </div>
+                  ))}
                 </div>
               </div>
             ))}
@@ -416,7 +505,7 @@ export default function GroceriesPage() {
 
       {/* Recipes header — same prominent styling as the Weekly staples header above.
           Hidden in combined mode (everything lives under one list there). */}
-      {categories.length > 0 && !combineLists && (
+      {recipeToGet.length > 0 && !combineLists && (
         <div className="flex items-center gap-3 mt-8 mb-3">
           <img src="/icons/this-week.png" alt="" style={{ width: '64px', height: '64px', objectFit: 'contain' }} />
           <div>
@@ -429,7 +518,7 @@ export default function GroceriesPage() {
       )}
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {(combineLists ? combinedCategories : categories).map(([cat, items]) => (
+        {recipeToGet.map(({ cat, rows }) => (
           <div key={cat} className="rounded-[22px] p-5 ring-1 relative"
                style={{ background: 'var(--white-2)', boxShadow: '0 6px 24px rgba(47,58,50,0.05)' }}>
             <div className="absolute top-4 right-4">
@@ -437,16 +526,14 @@ export default function GroceriesPage() {
             </div>
             <h3 className="text-[20px] mb-4 pr-20 min-h-[52px]" style={{ color: 'var(--text)' }}>{cat}</h3>
             <div className="space-y-3">
-              {(items as GroceryItem[]).map((item, i) => {
-                const key = `${cat}::${i}::${item.item}`;
-                const done = checked.has(key);
+              {rows.map(({ key, item }) => {
                 const inPantry = !((item as any).isStaple) && isInPantry(item.item);
                 return (
-                  <div key={i}
+                  <div key={key}
                     onClick={() => !inPantry && toggle(key)}
                     className="flex items-center justify-between gap-4 cursor-pointer"
-                    style={{ color: done || inPantry ? 'var(--text-3)' : 'var(--text)' }}>
-                    <span className={`text-[18px] leading-snug flex-1 ${done || inPantry ? 'line-through' : ''}`}>
+                    style={{ color: inPantry ? 'var(--text-3)' : 'var(--text)' }}>
+                    <span className={`text-[18px] leading-snug flex-1 ${inPantry ? 'line-through' : ''}`}>
                       {item.amount && (
                         editingKey === key ? (
                           <input
@@ -460,13 +547,13 @@ export default function GroceriesPage() {
                           />
                         ) : (
                           <span
-                            onClick={e => { if (!done && !inPantry) { e.stopPropagation(); setEditingKey(key); } }}
+                            onClick={e => { if (!inPantry) { e.stopPropagation(); setEditingKey(key); } }}
                             title="Tap to edit quantity"
                             style={{
                               color: editedAmounts[key] ? 'var(--green)' : 'var(--text-3)',
                               fontSize: '14px',
-                              cursor: done || inPantry ? 'default' : 'text',
-                              borderBottom: !done && !inPantry ? '1px dashed var(--border)' : 'none',
+                              cursor: inPantry ? 'default' : 'text',
+                              borderBottom: !inPantry ? '1px dashed var(--border)' : 'none',
                               marginRight: '4px',
                             }}>
                             {editedAmounts[key] ?? item.amount}
@@ -492,7 +579,7 @@ export default function GroceriesPage() {
                         </span>
                       )}
                     </span>
-                    <input type="checkbox" checked={done || inPantry} readOnly tabIndex={-1}
+                    <input type="checkbox" checked={inPantry} readOnly tabIndex={-1}
                       className="h-4 w-4 rounded shrink-0 pointer-events-none"
                       style={{ accentColor: 'var(--sage)', borderColor: 'var(--border-2)' }} />
                   </div>
@@ -502,6 +589,23 @@ export default function GroceriesPage() {
           </div>
         ))}
       </div>
+
+      {stapleToGet.length === 0 && recipeToGet.length === 0 && cart.length > 0 && (
+        <div className="text-center py-10">
+          <div className="text-4xl mb-3">🎉</div>
+          <h3 className="text-[22px]" style={{ fontFamily: 'AbramoSerif, serif', color: 'var(--text)' }}>
+            That&apos;s everything on the list
+          </h3>
+          <p className="text-xs italic mt-1" style={{ color: 'var(--text-3)' }}>
+            {hideChecked
+              ? `All ${cart.length} items are in your cart — use “Show checked” above to see them.`
+              : 'Every item is in the cart above.'}
+          </p>
+        </div>
+      )}
+
+      {/* In the cart — everything ticked off, collected in one place and out of
+          the way. Tap an item to put it back on the shelves. */}
     </>
   );
 }
