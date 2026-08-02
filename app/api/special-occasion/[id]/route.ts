@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUser } from '@/lib/auth';
 import { deleteSpecialOccasion, updateSpecialOccasion, getSpecialOccasion, replaceSpecialOccasion } from '@/lib/db';
+import { occasionFallbackTitle } from '../route';
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { user, error } = await requireUser();
@@ -36,6 +37,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       servingTime:    d.servingTime    ?? result.planning?.servingTime    ?? '',
     };
     if (d.eventType) result.eventType = d.eventType;
+    // Renaming from the edit form; blank falls back to the user's own wording.
+    if (d.title !== undefined) {
+      result.occasionTitle = d.title?.trim() || occasionFallbackTitle(d.occasion || row.occasion);
+    }
     try {
       const ok = await replaceSpecialOccasion(
         user!.id, Number(id),

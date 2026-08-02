@@ -61,6 +61,17 @@ export async function POST(req: Request) {
   }
 
   const grocery_list = await generateGroceryList(apiKey, menu.meals, settings.familySize);
+
+  // Items added from a Special Occasion aren't derived from this week's meals, so
+  // regenerating would drop them. Carry them across into the rebuilt list.
+  for (const [cat, items] of Object.entries((menu.grocery_list || {}) as Record<string, any[]>)) {
+    if (!Array.isArray(items)) continue;
+    const fromOccasion = items.filter(it => it?.occasion);
+    if (fromOccasion.length) {
+      (grocery_list as any)[cat] = [...((grocery_list as any)[cat] || []), ...fromOccasion];
+    }
+  }
+
   await updateMenuData(user!.id, menu.id, { ...menu, grocery_list });
 
   return NextResponse.json(grocery_list);

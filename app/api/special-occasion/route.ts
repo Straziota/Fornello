@@ -6,6 +6,14 @@ import Anthropic from '@anthropic-ai/sdk';
 
 export const maxDuration = 60;
 
+// When no title is given, fall back to the user's own first line rather than
+// letting the model name the event.
+export function occasionFallbackTitle(occasion: string) {
+  const first = (occasion || '').trim().split(/[\n.!?]/)[0].trim();
+  if (!first) return 'Special occasion';
+  return first.length > 70 ? `${first.slice(0, 70).trimEnd()}…` : first;
+}
+
 export async function GET() {
   const { user, error } = await requireUser();
   if (error) return error;
@@ -17,7 +25,7 @@ export async function POST(req: NextRequest) {
   const { user, error } = await requireUser();
   if (error) return error;
 
-  const { occasion, guests, servingTime, cuisineTheme, dietaryNotes, mustHaveDishes,
+  const { occasion, title, guests, servingTime, cuisineTheme, dietaryNotes, mustHaveDishes,
           eventDate, prepStartDate, daySchedules, eventType, editId } = await req.json();
 
   if (!occasion?.trim()) {
@@ -61,6 +69,9 @@ export async function POST(req: NextRequest) {
         // Every proposed dish starts selected; persist the planning inputs so the
         // finalize step can rebuild the timeline for the chosen dishes.
         result.menu = Array.isArray(result.menu) ? result.menu.map((m: any) => ({ ...m, selected: true })) : [];
+        // The title is the user's to choose. If they left it blank, use their own
+        // words rather than inventing a name for their event.
+        result.occasionTitle = title?.trim() || occasionFallbackTitle(occasion);
         result.eventType = eventType || 'served-dinner';
         result.planning = { prepStartDate: prepStartDate || '', daySchedules: daySchedules || [], cuisineTheme: cuisineTheme || '', dietaryNotes: dietaryNotes || '', mustHaveDishes: mustHaveDishes || '', eventDate: eventDate || '', servingTime: servingTime || '' };
         // Overwrite the existing occasion when regenerating after "Adjust details";

@@ -201,6 +201,27 @@ export async function getLatestMenu(userId: string) {
   return { ...data.data, id: data.id, created_at: data.created_at };
 }
 
+function currentWeekStart(startDay: number) {
+  const today = new Date();
+  const diff = ((today.getDay() - startDay) % 7 + 7) % 7;
+  const d = new Date(today);
+  d.setDate(today.getDate() - diff);
+  return d.toISOString().split('T')[0];
+}
+
+// The menu the app treats as "this week". getLatestMenu() happily returns a menu
+// whose week has already passed — the UI shows nothing for those, so writing to
+// one silently loses the change. Anything that modifies the live weekly list
+// (e.g. adding a Special Occasion's ingredients) must go through this.
+export async function getCurrentMenu(userId: string) {
+  const [menu, settings] = await Promise.all([getLatestMenu(userId), getSettings(userId)]);
+  if (!menu) return null;
+  const startDay = (settings as any).weekStartDay ?? 1;
+  // A menu pre-generated for next week still counts as current.
+  if (menu.week_start < currentWeekStart(startDay)) return null;
+  return menu;
+}
+
 export async function updateMenuData(userId: string, id: number, menu: object) {
   const clean = normalizeMenu(menu as Record<string, unknown>);
   await adminClient.from('menus').update({ data: clean }).eq('id', id).eq('user_id', userId);

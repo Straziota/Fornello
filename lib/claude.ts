@@ -492,6 +492,18 @@ export async function generateGroceryList(
     return JSON.parse(m[0]);
   }
 
+  return categorizeIngredients(apiKey, allIngredients);
+}
+
+// Shared by the weekly list and the Special Occasion list: takes raw ingredients
+// tagged with the meal (or occasion) they came from and returns them grouped
+// into store-aisle categories, combined and quantity-summed.
+async function categorizeIngredients(
+  apiKey: string,
+  allIngredients: { amount: string; item: string; meal: string }[]
+): Promise<WeeklyMenu['grocery_list']> {
+  const client = new Anthropic({ apiKey });
+
   const ingredientList = allIngredients
     .map(i => `${i.amount} ${i.item} (${i.meal})`)
     .join('\n');
@@ -550,6 +562,32 @@ Return ONLY valid JSON:
   if (!jsonMatch) throw new Error('No grocery list JSON returned');
   const list = JSON.parse(jsonMatch[0]);
   return fixGroceryCategories(list) as WeeklyMenu['grocery_list'];
+}
+
+// Build a categorized grocery list from a finalized Special Occasion menu. Items
+// come back tagged with the occasion title and with no `meals`, so the groceries
+// page always shows them regardless of the per-day print filter.
+export async function generateOccasionGroceryList(
+  apiKey: string,
+  dishes: { dish: string; ingredients: { amount: string; item: string }[] }[],
+  occasionTitle: string,
+  occasionId: number
+): Promise<WeeklyMenu['grocery_list']> {
+  const allIngredients = dishes.flatMap(d =>
+    (d.ingredients || []).map(ing => ({ amount: ing.amount, item: ing.item, meal: d.dish }))
+  );
+  if (!allIngredients.length) return {} as WeeklyMenu['grocery_list'];
+
+  const list = await categorizeIngredients(apiKey, allIngredients);
+  for (const items of Object.values(list as Record<string, any[]>)) {
+    if (!Array.isArray(items)) continue;
+    for (const it of items) {
+      it.meals = [];
+      it.occasion = occasionTitle;
+      it.occasionId = occasionId;
+    }
+  }
+  return list;
 }
 
 // Deterministic safety net — moves items to the correct category based on keyword matches.
@@ -1309,6 +1347,8 @@ export interface SpecialOccasionMenuItem {
 }
 
 export interface SpecialOccasionResult {
+  // Set by the user, never invented by the model. Falls back to the first line of
+  // their own description of the occasion when they leave the field blank.
   occasionTitle: string;
   eventType?: 'served-dinner' | 'hors-doeuvres';
   menu: SpecialOccasionMenuItem[];
@@ -1395,7 +1435,6 @@ ${timelineInstructions}
 
 Return ONLY valid JSON:
 {
-  "occasionTitle": "elegant short title for this menu",
   "menu": [
     {
       "course": "Antipasto",
@@ -1474,7 +1513,6 @@ ${timelineInstructions}
 
 Return ONLY valid JSON:
 {
-  "occasionTitle": "elegant short title for this menu",
   "menu": [
     {
       "course": "Antipasto",

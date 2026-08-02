@@ -15,6 +15,19 @@ function CategoryIcon({ src, size = 32 }: { src: string; size?: number }) {
   return <span style={{ fontSize: `${size * 0.6}px` }}>{src}</span>;
 }
 
+type Row = {
+  key: string;
+  label: string;
+  amount: string;
+  cat: string;
+  meals?: string[];
+  editable?: boolean;                                    // quantity is tap-to-edit
+  inPantry?: boolean;
+  badge?: { text: string; bg: string; fg: string };
+};
+type Section = { cat: string; rows: Row[] };
+type Source = { key: string; label: string; hint: string; icon: string; sections: Section[] };
+
 export default function GroceriesPage() {
   const [menu, setMenu] = useState<WeeklyMenu | null>(null);
   const [checked, setChecked] = useState<Set<string>>(new Set());
@@ -26,7 +39,11 @@ export default function GroceriesPage() {
   const [generating, setGenerating] = useState(false);
   const [printDays, setPrintDays] = useState<Set<string>>(new Set());
   const [showPrintOptions, setShowPrintOptions] = useState(false);
-  const [combineLists, setCombineLists] = useState(false);
+  // Which of the page's lists (staples, this week's recipes, each special
+  // occasion) are folded together into one store-aisle list. Anything not in
+  // here keeps its own section.
+  const [combinedSources, setCombinedSources] = useState<Set<string>>(new Set());
+  const [showCombineOptions, setShowCombineOptions] = useState(false);
   // Checked items are tucked away by default so the list reads as "what's left".
   const [hideChecked, setHideChecked] = useState(true);
   const didTrigger = useRef(false);
@@ -60,16 +77,22 @@ export default function GroceriesPage() {
       setChecked(new Set(saved));
       const savedAmounts = JSON.parse(localStorage.getItem('fornello_amounts') || '{}');
       setEditedAmounts(savedAmounts);
-      const combined = localStorage.getItem('fornello_combine_lists') === '1';
-      setCombineLists(combined);
+      const savedSources = localStorage.getItem('fornello_combined_sources');
+      if (savedSources) {
+        setCombinedSources(new Set(JSON.parse(savedSources)));
+      } else if (localStorage.getItem('fornello_combine_lists') === '1') {
+        // Migrate the old all-or-nothing toggle: it merged staples into recipes.
+        setCombinedSources(new Set(['staples', 'recipes']));
+      }
       setHideChecked(localStorage.getItem('fornello_hide_checked') !== '0');
     } catch {}
   }, []);
 
-  const toggleCombine = () => {
-    setCombineLists(v => {
-      const next = !v;
-      localStorage.setItem('fornello_combine_lists', next ? '1' : '0');
+  const toggleSourceCombined = (key: string) => {
+    setCombinedSources(prev => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      localStorage.setItem('fornello_combined_sources', JSON.stringify([...next]));
       return next;
     });
   };
@@ -194,7 +217,6 @@ export default function GroceriesPage() {
         ] as [string, GroceryItem[]])
         .filter(([, items]) => items.length > 0)
     : allCategories;
-  const total = categories.reduce((n, [, items]) => n + items.length, 0);
 
   // Group user staples by store-aisle category using the same icon set as recipe items.
   const groupedStaples = staples.reduce<Record<string, string[]>>((acc, s) => {
@@ -209,51 +231,112 @@ export default function GroceriesPage() {
     .filter(c => groupedStaples[c]?.length > 0)
     .map(c => [c, groupedStaples[c]] as [string, string[]]);
 
-  // When combined mode is on, fold staples into the recipe categories so the user
-  // sees a single store-aisle-organized list. Staples render with a small badge.
-  const combinedCategories: [string, GroceryItem[]][] = combineLists
-    ? (() => {
-        const map: Record<string, GroceryItem[]> = {};
-        for (const [cat, items] of categories) map[cat] = [...items];
-        for (const [cat, items] of stapleCategories) {
-          for (const s of items) {
-            (map[cat] = map[cat] || []).push({ item: s, amount: '', meals: [], isStaple: true } as any);
-          }
-        }
-        return CATEGORY_ORDER
-          .filter(c => map[c]?.length > 0)
-          .map(c => [c, map[c]] as [string, GroceryItem[]]);
-      })()
-    : [];
+  // ── Sources ───────────────────────────────────────────────────────────────
+  // Three kinds of list feed this page: the weekly staples, this week's recipe
+  // ingredients, and one per Special Occasion whose ingredients were added. Each
+  // is a "source" the user can keep separate or fold into a single combined list.
+  // Row keys are name-based (not index-based) so they stay stable as the list is
+  // regrouped, and carry their source so the same item in two lists stays distinct.
+  const sortCats = (cats: string[]) => {
+    const custom = cats.filter(c => !(BUILTIN_CATEGORIES as readonly string[]).includes(c));
+    return [...BUILTIN_CATEGORIES, ...custom].filter(c => cats.includes(c));
+  };
+  const groupRows = (rows: Row[]): Section[] => {
+    const map: Record<string, Row[]> = {};
+    for (const r of rows) (map[r.cat] = map[r.cat] || []).push(r);
+    return sortCats(Object.keys(map)).map(cat => ({ cat, rows: map[cat] }));
+  };
 
-  // Checked items leave their aisle card and collect in one "In the cart" list at
-  // the bottom, so what's left on the shelves shrinks as you shop. Keys are
-  // unchanged, so tapping an item in the cart puts it straight back in its aisle.
-  const stapleSections = stapleCategories.map(([cat, items]) => ({
+  const stapleRows: Row[] = stapleCategories.flatMap(([cat, items]) =>
+    items.map(item => ({
+      key: `staple::${cat}::${item}`, label: item, amount: '', cat,
+      badge: { text: '🥫 staple', bg: 'rgba(232,201,122,0.25)', fg: '#7A5B10' },
+    }))
+  );
+
+  const toRow = (it: GroceryItem, cat: string, sourceKey: string): Row => ({
+    key: `${sourceKey}::${cat}::${it.item}`,
+    label: it.item,
+    amount: it.amount || '',
     cat,
-    rows: items.map((item, i) => ({ key: `staple::${cat}::${i}::${item}`, item })),
-  }));
-  const recipeSections = (combineLists ? combinedCategories : categories).map(([cat, items]) => ({
-    cat,
-    rows: (items as GroceryItem[]).map((item, i) => ({ key: `${cat}::${i}::${item.item}`, item })),
+    meals: it.meals,
+    editable: true,
+    inPantry: isInPantry(it.item),
+    badge: it.occasion
+      ? { text: `🥂 ${it.occasion}`, bg: 'rgba(196,162,101,0.22)', fg: '#8B6A42' }
+      : undefined,
+  });
+
+  const recipeRows: Row[] = categories.flatMap(([cat, items]) =>
+    items.filter(it => !it.occasion).map(it => toRow(it, cat, 'recipes'))
+  );
+
+  // One source per occasion on the list, identified by id where present so a
+  // renamed occasion stays one group rather than splitting in two.
+  const occasionKeyOf = (it: GroceryItem) => `occasion:${it.occasionId ?? it.occasion}`;
+  const occasionGroups = new Map<string, { label: string; items: [GroceryItem, string][] }>();
+  for (const [cat, items] of categories) {
+    for (const it of items) {
+      if (!it.occasion) continue;
+      const k = occasionKeyOf(it);
+      if (!occasionGroups.has(k)) occasionGroups.set(k, { label: it.occasion, items: [] });
+      occasionGroups.get(k)!.items.push([it, cat]);
+    }
+  }
+  const occasionSources: Source[] = [...occasionGroups.entries()].map(([key, g]) => ({
+    key,
+    label: g.label,
+    hint: 'Ingredients from this occasion’s menu.',
+    icon: '/icons/special-occasion.png',
+    sections: groupRows(g.items.map(([it, cat]) => toRow(it, cat, key))),
   }));
 
-  const cart = [
-    ...stapleSections.flatMap(s => s.rows
-      .filter(r => checked.has(r.key))
-      .map(r => ({ key: r.key, label: r.item, amount: '', cat: s.cat }))),
-    ...recipeSections.flatMap(s => s.rows
-      .filter(r => checked.has(r.key))
-      .map(r => ({ key: r.key, label: r.item.item, amount: editedAmounts[r.key] ?? r.item.amount ?? '', cat: s.cat }))),
+  const sources: Source[] = [
+    ...(stapleRows.length ? [{
+      key: 'staples', label: 'Weekly staples',
+      hint: 'Check what you need to reorder this week.',
+      icon: '/icons/pantry-v2.png', sections: groupRows(stapleRows),
+    }] : []),
+    ...(recipeRows.length ? [{
+      key: 'recipes', label: 'This week’s recipes',
+      hint: 'Ingredients pulled from this week’s planned meals.',
+      icon: '/icons/this-week.png', sections: groupRows(recipeRows),
+    }] : []),
+    ...occasionSources,
   ];
 
-  // Only the still-to-get rows stay in the aisle cards; a card (and its section
-  // heading) disappears once everything in it has been picked up.
-  const dropChecked = <S extends { rows: { key: string }[] }>(sections: S[]) =>
-    sections.map(s => ({ ...s, rows: s.rows.filter(r => !checked.has(r.key)) }))
-            .filter(s => s.rows.length > 0);
-  const stapleToGet = dropChecked(stapleSections);
-  const recipeToGet = dropChecked(recipeSections);
+  // Combining only means something with two or more lists selected.
+  const mergedKeys = sources.filter(s => combinedSources.has(s.key)).map(s => s.key);
+  const isMerged = mergedKeys.length >= 2;
+  const combinedSection: Source | null = isMerged
+    ? {
+        key: '__combined', label: 'Your combined list',
+        hint: `${mergedKeys.length} lists merged by store aisle.`,
+        icon: '/icons/groceries.png',
+        sections: groupRows(sources.filter(s => mergedKeys.includes(s.key)).flatMap(s => s.sections.flatMap(sec => sec.rows))),
+      }
+    : null;
+  const separateSources = isMerged ? sources.filter(s => !mergedKeys.includes(s.key)) : sources;
+  const shownSources = combinedSection ? [combinedSection, ...separateSources] : separateSources;
+
+  const allRows = sources.flatMap(s => s.sections.flatMap(sec => sec.rows));
+  const total = allRows.length;
+
+  // Checked items leave their aisle card and collect in one "In the cart" list,
+  // keeping their key so tapping one puts it straight back where it came from.
+  const cart = allRows
+    .filter(r => checked.has(r.key))
+    .map(r => ({ key: r.key, label: r.label, amount: editedAmounts[r.key] ?? r.amount, cat: r.cat }));
+
+  // Only still-to-get rows stay in the aisle cards; a card — and its section
+  // heading — disappears once everything in it has been picked up.
+  const toGet = (src: Source) => ({
+    ...src,
+    sections: src.sections
+      .map(sec => ({ ...sec, rows: sec.rows.filter(r => !checked.has(r.key)) }))
+      .filter(sec => sec.rows.length > 0),
+  });
+  const visibleSources = shownSources.map(toGet).filter(s => s.sections.length > 0);
 
   return (
     <>
@@ -280,27 +363,33 @@ export default function GroceriesPage() {
               : '';
             const filterDays = printDays.size > 0 ? printDays : new Set(cookingDays.map(c => c.day));
             const includeAll = filterDays.size === cookingDays.length;
-            const filteredCategories = categories
-              .map(([cat, items]) => [
-                cat,
-                (items as GroceryItem[]).filter(item =>
-                  !item.meals || item.meals.length === 0 || item.meals.some(d => filterDays.has(d))
-                ),
-              ] as [string, GroceryItem[]])
-              .filter(([, items]) => items.length > 0);
             const iconHtml = (cat: string) =>
               `<img src="${SITE_URL}${categoryIcon(cat)}" style="width:20px;height:20px;object-fit:contain;vertical-align:middle;margin-right:6px;">`;
-            const rows = filteredCategories.map(([cat, items]) =>
-              `<div class="cat">
-                <h2>${iconHtml(cat)} ${cat}</h2>
-                ${items.map(item =>
-                  `<div class="item">
-                    <span class="check">☐</span>
-                    <span>${item.amount ? `<span class="amt">${item.amount}</span> ` : ''}${item.item}</span>
-                  </div>`
-                ).join('')}
-              </div>`
-            ).join('');
+            // Print mirrors the screen: whatever is combined prints as one list,
+            // and each separate list gets its own heading.
+            const sourcesHtml = shownSources.map(src => {
+              const secs = src.sections
+                .map(sec => ({
+                  cat: sec.cat,
+                  rows: sec.rows.filter(r =>
+                    !r.meals || r.meals.length === 0 || r.meals.some(d => filterDays.has(d))
+                  ),
+                }))
+                .filter(sec => sec.rows.length > 0);
+              if (!secs.length) return '';
+              const cats = secs.map(sec =>
+                `<div class="cat">
+                  <h2>${iconHtml(sec.cat)} ${sec.cat}</h2>
+                  ${sec.rows.map(r =>
+                    `<div class="item">
+                      <span class="check">☐</span>
+                      <span>${r.amount ? `<span class="amt">${editedAmounts[r.key] ?? r.amount}</span> ` : ''}${r.label}</span>
+                    </div>`
+                  ).join('')}
+                </div>`
+              ).join('');
+              return `<h3 class="src">${src.label}</h3><div class="grid">${cats}</div>`;
+            }).join('');
             const filterLabel = includeAll
               ? `Week of ${weekLabel}`
               : `Week of ${weekLabel} · for: ${[...filterDays].join(', ')}`;
@@ -312,6 +401,8 @@ export default function GroceriesPage() {
               .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
               .cat { break-inside: avoid; }
               h2 { font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.15em; color: #556257; border-bottom: 1px solid #E7E0D6; padding-bottom: 6px; margin-bottom: 10px; }
+              .src { font-size: 18px; margin: 28px 0 12px; padding-bottom: 4px; border-bottom: 2px solid #C4A265; }
+              .src:first-of-type { margin-top: 0; }
               .item { display: flex; gap: 10px; padding: 6px 0; border-bottom: 1px dotted #D4B896; font-size: 14px; align-items: flex-start; }
               .check { color: #aaa; flex-shrink: 0; }
               .amt { color: #556257; font-weight: bold; }
@@ -319,14 +410,7 @@ export default function GroceriesPage() {
             </style></head><body>
               <h1>Grocery List</h1>
               <p class="week">${filterLabel}</p>
-              ${staples.length > 0 ? `<div class="cat" style="border:1px solid #E8C97A; background:#FEF6E4; padding:14px 18px; border-radius:8px; margin-bottom:24px;">
-                <h2 style="color:#7A5B10;">Weekly staples — check what to reorder</h2>
-                ${stapleCategories.map(([cat, items]) => `<div style="margin-top:12px;">
-                  <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.12em; color:#9A7B30; font-weight:bold; margin-bottom:4px;">${iconHtml(cat)} ${cat}</div>
-                  ${items.map(s => `<div class="item"><span class="check">☐</span><span>${s}</span></div>`).join('')}
-                </div>`).join('')}
-              </div>` : ''}
-              <div class="grid">${rows}</div>
+              ${sourcesHtml}
             </body></html>`);
             win.document.close();
             win.focus();
@@ -405,17 +489,63 @@ export default function GroceriesPage() {
              style={{ background: 'var(--sage)', width: `${total ? (checked.size / total) * 100 : 0}%` }} />
       </div>
 
-      {/* Combine toggle — lets the user collapse staples + recipes into a single
-          store-aisle list when they want one consolidated trip. */}
-      {staples.length > 0 && categories.length > 0 && (
-        <div className="flex justify-end mb-4">
-          <button onClick={toggleCombine}
+      {/* Combine picker — tick the lists that should share one store-aisle list.
+          Anything left unticked keeps its own section, which is how a Special
+          Occasion stays separate from the weekly shop. */}
+      {sources.length > 1 && (
+        <div className="flex justify-end mb-4 relative">
+          <button onClick={() => setShowCombineOptions(o => !o)}
             className="rounded-full px-4 py-2 text-xs uppercase tracking-[0.18em] transition-opacity hover:opacity-80 flex items-center gap-2"
-            style={combineLists
+            style={isMerged
               ? { background: 'var(--green)', color: '#fff', border: '1px solid var(--green)' }
               : { background: 'var(--white)', color: 'var(--text-2)', border: '1px solid var(--border)' }}>
-            {combineLists ? '✓ Combined into one list' : '⇆ Combine into one list'}
+            {isMerged ? `✓ ${mergedKeys.length} lists combined` : '⇆ Combine lists'}
           </button>
+          {showCombineOptions && (
+            <div className="absolute right-0 top-full mt-2 rounded-2xl p-4 z-20 w-80"
+                 style={{ background: 'var(--white)', border: '1px solid var(--border)', boxShadow: '0 12px 32px rgba(0,0,0,0.15)' }}>
+              <p className="text-xs uppercase tracking-widest mb-1" style={{ color: 'var(--text-3)' }}>Combine which lists?</p>
+              <p className="text-xs italic mb-3" style={{ color: 'var(--text-3)' }}>
+                Ticked lists merge into one list sorted by store aisle. Unticked ones stay on their own.
+              </p>
+              <div className="flex flex-col gap-2 mb-3">
+                {sources.map(s => (
+                  <label key={s.key} className="flex items-start gap-2 cursor-pointer text-sm" style={{ color: 'var(--text-2)' }}>
+                    <input type="checkbox" checked={combinedSources.has(s.key)} onChange={() => toggleSourceCombined(s.key)}
+                           style={{ accentColor: 'var(--green)', marginTop: '3px' }} />
+                    <span>
+                      <strong style={{ color: 'var(--text)' }}>{s.label}</strong>
+                      <span className="block text-xs italic" style={{ color: 'var(--text-3)' }}>
+                        {s.sections.reduce((n, sec) => n + sec.rows.length, 0)} items
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              {mergedKeys.length === 1 && (
+                <p className="text-xs italic mb-3" style={{ color: '#8B6A42' }}>
+                  Tick at least two lists to merge them.
+                </p>
+              )}
+              <div className="flex flex-col gap-2 pt-3 border-t" style={{ borderColor: 'var(--border)' }}>
+                <button onClick={() => setShowCombineOptions(false)}
+                  className="w-full py-2 rounded-full text-xs font-semibold uppercase tracking-widest transition-opacity hover:opacity-80"
+                  style={{ background: 'var(--green)', color: '#fff' }}>
+                  ✓ Done
+                </button>
+                <div className="flex gap-2 justify-center">
+                  <button onClick={() => { const all = new Set(sources.map(s => s.key)); setCombinedSources(all); localStorage.setItem('fornello_combined_sources', JSON.stringify([...all])); }}
+                    className="text-xs px-3 py-1.5 rounded-full" style={{ border: '1px solid var(--border)', color: 'var(--text-3)' }}>
+                    Combine all
+                  </button>
+                  <button onClick={() => { setCombinedSources(new Set()); localStorage.setItem('fornello_combined_sources', '[]'); }}
+                    className="text-xs px-3 py-1.5 rounded-full" style={{ border: '1px solid var(--border)', color: 'var(--text-3)' }}>
+                    Keep all separate
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -464,133 +594,97 @@ export default function GroceriesPage() {
         </div>
       )}
 
-      {/* Staples — categorized by store aisle, hidden when combined mode is on
-          (in combined mode they're merged into the recipe categories below). */}
-      {stapleToGet.length > 0 && !combineLists && (
-        <>
+      {/* One block per list still to shop — the combined list first when lists
+          are merged, then whatever the user chose to keep separate. */}
+      {visibleSources.map((src, si) => (
+        <div key={src.key} className={si === 0 ? '' : 'mt-8'}>
           <div className="flex items-center gap-3 mb-3">
-            <img src="/icons/pantry-v2.png" alt="" style={{ width: '64px', height: '64px', objectFit: 'contain' }} />
+            <img src={src.icon} alt=""
+                 onError={e => { e.currentTarget.style.visibility = 'hidden'; }}
+                 style={{ width: '64px', height: '64px', objectFit: 'contain' }} />
             <div>
-              <h3 className="text-[18px]" style={{ color: 'var(--text)' }}>Weekly staples</h3>
-              <p className="text-xs italic" style={{ color: 'var(--text-3)' }}>
-                Check what you need to reorder this week.
-              </p>
+              <h3 className="text-[18px]" style={{ color: 'var(--text)' }}>{src.label}</h3>
+              <p className="text-xs italic" style={{ color: 'var(--text-3)' }}>{src.hint}</p>
             </div>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {stapleToGet.map(s => (
-              <div key={`s-${s.cat}`} className="rounded-[22px] p-5 ring-1 relative"
+            {src.sections.map(({ cat, rows }) => (
+              <div key={`${src.key}-${cat}`} className="rounded-[22px] p-5 ring-1 relative"
                    style={{ background: 'var(--white-2)', boxShadow: '0 6px 24px rgba(47,58,50,0.05)' }}>
                 <div className="absolute top-4 right-4">
-                  <CategoryIcon src={categoryIcon(s.cat)} size={64} />
+                  <CategoryIcon src={categoryIcon(cat)} size={64} />
                 </div>
-                <h3 className="text-[20px] mb-4 pr-20 min-h-[52px]" style={{ color: 'var(--text)' }}>{s.cat}</h3>
+                <h3 className="text-[20px] mb-4 pr-20 min-h-[52px]" style={{ color: 'var(--text)' }}>{cat}</h3>
                 <div className="space-y-3">
-                  {s.rows.map(r => (
-                    <div key={r.key} onClick={() => toggle(r.key)}
-                         className="flex items-center justify-between gap-4 cursor-pointer"
-                         style={{ color: 'var(--text)' }}>
-                      <span className="text-[18px] leading-snug flex-1">{r.item}</span>
-                      <input type="checkbox" checked={false} readOnly tabIndex={-1}
-                        className="h-4 w-4 rounded shrink-0 pointer-events-none"
-                        style={{ accentColor: 'var(--sage)', borderColor: 'var(--border-2)' }} />
-                    </div>
-                  ))}
+                  {rows.map(row => {
+                    const { key, inPantry } = row;
+                    return (
+                      <div key={key}
+                        onClick={() => !inPantry && toggle(key)}
+                        className="flex items-center justify-between gap-4 cursor-pointer"
+                        style={{ color: inPantry ? 'var(--text-3)' : 'var(--text)' }}>
+                        <span className={`text-[18px] leading-snug flex-1 ${inPantry ? 'line-through' : ''}`}>
+                          {row.editable && row.amount && (
+                            editingKey === key ? (
+                              <input
+                                autoFocus
+                                defaultValue={editedAmounts[key] ?? row.amount}
+                                onClick={e => e.stopPropagation()}
+                                onBlur={e => saveAmount(key, e.target.value, row.amount)}
+                                onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') { setEditingKey(null); } }}
+                                className="outline-none border-b text-sm w-20 mr-1"
+                                style={{ borderColor: 'var(--green)', color: 'var(--green)', background: 'transparent', fontFamily: 'Georgia, serif' }}
+                              />
+                            ) : (
+                              <span
+                                onClick={e => { if (!inPantry) { e.stopPropagation(); setEditingKey(key); } }}
+                                title="Tap to edit quantity"
+                                style={{
+                                  color: editedAmounts[key] ? 'var(--green)' : 'var(--text-3)',
+                                  fontSize: '14px',
+                                  cursor: inPantry ? 'default' : 'text',
+                                  borderBottom: !inPantry ? '1px dashed var(--border)' : 'none',
+                                  marginRight: '4px',
+                                }}>
+                                {editedAmounts[key] ?? row.amount}
+                              </span>
+                            )
+                          )}
+                          {row.label}
+                          {/* Source badges only earn their space in the combined
+                              list — in a separate section the heading says it. */}
+                          {row.badge && src.key === '__combined' && (
+                            <span className="ml-2 text-xs px-2 py-0.5 rounded-full no-underline"
+                                  style={{ background: row.badge.bg, color: row.badge.fg, textDecoration: 'none', verticalAlign: 'middle' }}>
+                              {row.badge.text}
+                            </span>
+                          )}
+                          {inPantry && (
+                            <span className="ml-2 text-xs px-2 py-0.5 rounded-full no-underline"
+                                  style={{ background: 'var(--green-lt)', color: 'var(--green)', textDecoration: 'none', verticalAlign: 'middle' }}>
+                              ✓ in pantry
+                            </span>
+                          )}
+                          {(row.meals?.length ?? 0) > 0 && (
+                            <span className="block text-xs italic mt-0.5" style={{ color: 'var(--text-3)' }}>
+                              {row.meals!.join(', ')}
+                            </span>
+                          )}
+                        </span>
+                        <input type="checkbox" checked={!!inPantry} readOnly tabIndex={-1}
+                          className="h-4 w-4 rounded shrink-0 pointer-events-none"
+                          style={{ accentColor: 'var(--sage)', borderColor: 'var(--border-2)' }} />
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             ))}
           </div>
-        </>
-      )}
-
-      {/* Recipes header — same prominent styling as the Weekly staples header above.
-          Hidden in combined mode (everything lives under one list there). */}
-      {recipeToGet.length > 0 && !combineLists && (
-        <div className="flex items-center gap-3 mt-8 mb-3">
-          <img src="/icons/this-week.png" alt="" style={{ width: '64px', height: '64px', objectFit: 'contain' }} />
-          <div>
-            <h3 className="text-[18px]" style={{ color: 'var(--text)' }}>This week's recipes</h3>
-            <p className="text-xs italic" style={{ color: 'var(--text-3)' }}>
-              Ingredients pulled from this week's planned meals.
-            </p>
-          </div>
         </div>
-      )}
+      ))}
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {recipeToGet.map(({ cat, rows }) => (
-          <div key={cat} className="rounded-[22px] p-5 ring-1 relative"
-               style={{ background: 'var(--white-2)', boxShadow: '0 6px 24px rgba(47,58,50,0.05)' }}>
-            <div className="absolute top-4 right-4">
-              <CategoryIcon src={categoryIcon(cat)} size={64} />
-            </div>
-            <h3 className="text-[20px] mb-4 pr-20 min-h-[52px]" style={{ color: 'var(--text)' }}>{cat}</h3>
-            <div className="space-y-3">
-              {rows.map(({ key, item }) => {
-                const inPantry = !((item as any).isStaple) && isInPantry(item.item);
-                return (
-                  <div key={key}
-                    onClick={() => !inPantry && toggle(key)}
-                    className="flex items-center justify-between gap-4 cursor-pointer"
-                    style={{ color: inPantry ? 'var(--text-3)' : 'var(--text)' }}>
-                    <span className={`text-[18px] leading-snug flex-1 ${inPantry ? 'line-through' : ''}`}>
-                      {item.amount && (
-                        editingKey === key ? (
-                          <input
-                            autoFocus
-                            defaultValue={editedAmounts[key] ?? item.amount}
-                            onClick={e => e.stopPropagation()}
-                            onBlur={e => saveAmount(key, e.target.value, item.amount)}
-                            onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') { setEditingKey(null); } }}
-                            className="outline-none border-b text-sm w-20 mr-1"
-                            style={{ borderColor: 'var(--green)', color: 'var(--green)', background: 'transparent', fontFamily: 'Georgia, serif' }}
-                          />
-                        ) : (
-                          <span
-                            onClick={e => { if (!inPantry) { e.stopPropagation(); setEditingKey(key); } }}
-                            title="Tap to edit quantity"
-                            style={{
-                              color: editedAmounts[key] ? 'var(--green)' : 'var(--text-3)',
-                              fontSize: '14px',
-                              cursor: inPantry ? 'default' : 'text',
-                              borderBottom: !inPantry ? '1px dashed var(--border)' : 'none',
-                              marginRight: '4px',
-                            }}>
-                            {editedAmounts[key] ?? item.amount}
-                          </span>
-                        )
-                      )}
-                      {item.item}
-                      {(item as any).isStaple && (
-                        <span className="ml-2 text-xs px-2 py-0.5 rounded-full no-underline"
-                              style={{ background: 'rgba(232,201,122,0.25)', color: '#7A5B10', textDecoration: 'none', verticalAlign: 'middle' }}>
-                          🥫 staple
-                        </span>
-                      )}
-                      {inPantry && (
-                        <span className="ml-2 text-xs px-2 py-0.5 rounded-full no-underline"
-                              style={{ background: 'var(--green-lt)', color: 'var(--green)', textDecoration: 'none', verticalAlign: 'middle' }}>
-                          ✓ in pantry
-                        </span>
-                      )}
-                      {item.meals?.length > 0 && (
-                        <span className="block text-xs italic mt-0.5" style={{ color: 'var(--text-3)' }}>
-                          {item.meals.join(', ')}
-                        </span>
-                      )}
-                    </span>
-                    <input type="checkbox" checked={inPantry} readOnly tabIndex={-1}
-                      className="h-4 w-4 rounded shrink-0 pointer-events-none"
-                      style={{ accentColor: 'var(--sage)', borderColor: 'var(--border-2)' }} />
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {stapleToGet.length === 0 && recipeToGet.length === 0 && cart.length > 0 && (
+      {visibleSources.length === 0 && cart.length > 0 && (
         <div className="text-center py-10">
           <div className="text-4xl mb-3">🎉</div>
           <h3 className="text-[22px]" style={{ fontFamily: 'AbramoSerif, serif', color: 'var(--text)' }}>

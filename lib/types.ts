@@ -7,6 +7,11 @@ export interface GroceryItem {
   item: string;
   amount: string;
   meals: string[];
+  // Set when the item came from a Special Occasion menu rather than the week's
+  // meals, and survives a grocery-list refresh. `occasion` is the display label;
+  // `occasionId` is the identity, so renaming an occasion doesn't orphan items.
+  occasion?: string;
+  occasionId?: number;
 }
 
 export interface Side {

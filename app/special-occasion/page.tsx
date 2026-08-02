@@ -158,7 +158,7 @@ function DishRecipeModal({ dish, recipe, loading, onClose }: {
   );
 }
 
-function ResultCard({ result, meta, occasionContext, recipesStale, onBack, onEdit, onPrint, onDishClick, onToggleSelect, onSwap, onFinalize, finalizing, swappingIndex }: {
+function ResultCard({ result, meta, occasionContext, recipesStale, onBack, onEdit, onPrint, onDishClick, onToggleSelect, onSwap, onFinalize, finalizing, swappingIndex, onAddToGroceries, onRemoveFromGroceries, addingGroceries, groceriesAdded }: {
   result: SpecialOccasionResult;
   meta: { guests: string; servingTime: string; eventDate: string };
   occasionContext: { occasion: string; guests: number; cuisineTheme?: string };
@@ -172,7 +172,12 @@ function ResultCard({ result, meta, occasionContext, recipesStale, onBack, onEdi
   onFinalize: () => void;
   finalizing: boolean;
   swappingIndex: number | null;
+  onAddToGroceries: () => void;
+  onRemoveFromGroceries: () => void;
+  addingGroceries: boolean;
+  groceriesAdded: number | null;
 }) {
+  const onGroceryList = (groceriesAdded ?? 0) > 0;
   const selectedCount = (result.menu ?? []).filter(m => m.selected !== false).length;
   return (
     <div className="max-w-3xl">
@@ -256,6 +261,37 @@ function ResultCard({ result, meta, occasionContext, recipesStale, onBack, onEdi
                 The guest count changed since these recipes were written (they serve {result.recipesServeGuests}).
                 Re-finalize to rescale them for {meta.guests || 'the new count'}.
               </p>
+            )}
+            {/* Only offered once the menu is finalized — the ingredients live on
+                the generated recipes, so there's nothing to add before then. */}
+            {result.finalized && selectedCount > 0 && (
+              <div style={{ marginBottom: '14px' }}>
+                {onGroceryList ? (
+                  <>
+                    <p style={{ fontSize: '12px', color: '#5C7A4A', fontStyle: 'italic', marginBottom: '8px' }}>
+                      {`✓ ${groceriesAdded} ${groceriesAdded === 1 ? 'ingredient is' : 'ingredients are'} on this week's grocery list.`}
+                    </p>
+                    <div className="flex items-center justify-center gap-3">
+                      <button onClick={onAddToGroceries} disabled={addingGroceries}
+                        className="transition-opacity hover:opacity-80"
+                        style={{ background: 'transparent', border: '1px solid #C4A265', borderRadius: '999px', padding: '9px 20px', fontSize: '11px', letterSpacing: '0.18em', textTransform: 'uppercase', color: '#8B6A42', cursor: addingGroceries ? 'default' : 'pointer', fontFamily: 'Georgia, serif', opacity: addingGroceries ? 0.6 : 1 }}>
+                        {addingGroceries ? 'Working…' : '↻ Update the list'}
+                      </button>
+                      <button onClick={onRemoveFromGroceries} disabled={addingGroceries}
+                        className="transition-opacity hover:opacity-80"
+                        style={{ background: 'transparent', border: '1px solid #D8BFAF', borderRadius: '999px', padding: '9px 20px', fontSize: '11px', letterSpacing: '0.18em', textTransform: 'uppercase', color: '#A5451E', cursor: addingGroceries ? 'default' : 'pointer', fontFamily: 'Georgia, serif', opacity: addingGroceries ? 0.6 : 1 }}>
+                        Remove from list
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <button onClick={onAddToGroceries} disabled={addingGroceries}
+                    className="transition-opacity hover:opacity-80"
+                    style={{ background: 'transparent', border: '1px solid #C4A265', borderRadius: '999px', padding: '11px 24px', fontSize: '11px', letterSpacing: '0.18em', textTransform: 'uppercase', color: '#8B6A42', cursor: addingGroceries ? 'default' : 'pointer', fontFamily: 'Georgia, serif', opacity: addingGroceries ? 0.6 : 1 }}>
+                    {addingGroceries ? 'Adding to your grocery list…' : '🛒 Add ingredients to grocery list'}
+                  </button>
+                )}
+              </div>
             )}
             <button onClick={onFinalize} disabled={finalizing || selectedCount === 0}
               style={{ background: '#8B6A42', color: '#fff', border: 'none', borderRadius: '999px', padding: '13px 30px', fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', cursor: (finalizing || selectedCount === 0) ? 'default' : 'pointer', fontFamily: 'Georgia, serif', opacity: (finalizing || selectedCount === 0) ? 0.5 : 1 }}>
@@ -361,6 +397,7 @@ export default function SpecialOccasionPage() {
 
   // Form state
   const [occasion, setOccasion]             = useState('');
+  const [title, setTitle]                   = useState('');
   const [guests, setGuests]                 = useState('');
   const [servingTime, setServingTime]       = useState('');
   const [cuisineTheme, setCuisineTheme]     = useState('');
@@ -374,6 +411,8 @@ export default function SpecialOccasionPage() {
   const [error, setError]                   = useState('');
   const [finalizing, setFinalizing]         = useState(false);
   const [swappingIndex, setSwappingIndex]   = useState<number | null>(null);
+  const [addingGroceries, setAddingGroceries] = useState(false);
+  const [groceriesAdded, setGroceriesAdded]   = useState<number | null>(null);
   const [editingId, setEditingId]           = useState<number | null>(null); // occasion being edited in place
   const [savingDetails, setSavingDetails]   = useState(false);
   const [confirmRegen, setConfirmRegen]     = useState(false); // guard on the destructive "regenerate whole menu"
@@ -440,7 +479,7 @@ export default function SpecialOccasionPage() {
       const res = await fetch('/api/special-occasion', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ occasion, guests: Number(guests) || 0, servingTime, cuisineTheme, dietaryNotes, mustHaveDishes, eventDate, prepStartDate, daySchedules, eventType, editId: editingId }),
+        body: JSON.stringify({ occasion, title, guests: Number(guests) || 0, servingTime, cuisineTheme, dietaryNotes, mustHaveDishes, eventDate, prepStartDate, daySchedules, eventType, editId: editingId }),
       });
       if (!res.ok) throw new Error('Failed');
       // Drain stream — generation + DB save happen server-side
@@ -478,7 +517,7 @@ export default function SpecialOccasionPage() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          details: { occasion, guests: Number(guests) || 0, servingTime, cuisineTheme,
+          details: { occasion, title, guests: Number(guests) || 0, servingTime, cuisineTheme,
                      dietaryNotes, mustHaveDishes, eventDate, prepStartDate, daySchedules, eventType },
         }),
       });
@@ -550,6 +589,50 @@ export default function SpecialOccasionPage() {
     }
   };
 
+  const addToGroceries = async () => {
+    if (!activeEvent) return;
+    setAddingGroceries(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/special-occasion/${activeEvent.id}/groceries`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      setGroceriesAdded(data.added ?? 0);
+    } catch (e: any) {
+      setError(e.message || 'Could not add these to the grocery list.');
+    } finally {
+      setAddingGroceries(false);
+    }
+  };
+
+  const removeFromGroceries = async () => {
+    if (!activeEvent) return;
+    setAddingGroceries(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/special-occasion/${activeEvent.id}/groceries`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      setGroceriesAdded(0);
+    } catch (e: any) {
+      setError(e.message || 'Could not remove these from the grocery list.');
+    } finally {
+      setAddingGroceries(false);
+    }
+  };
+
+  // Reflect what this occasion has already contributed to the weekly list, so a
+  // revisit offers "Remove" rather than silently re-adding.
+  useEffect(() => {
+    if (view !== 'result' || !activeEvent) return;
+    let cancelled = false;
+    fetch(`/api/special-occasion/${activeEvent.id}/groceries`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (!cancelled && d) setGroceriesAdded(d.count ?? 0); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [view, activeEvent?.id]);
+
   const finalize = async () => {
     if (!activeEvent) return;
     setFinalizing(true);
@@ -573,6 +656,7 @@ export default function SpecialOccasionPage() {
     if (!activeEvent) return;
     const p = activeEvent.result.planning || {};
     setOccasion(activeEvent.occasion || '');
+    setTitle(activeEvent.result.occasionTitle || '');
     setGuests(activeEvent.guests?.toString() || '');
     setServingTime(activeEvent.serving_time || p.servingTime || '');
     setCuisineTheme(p.cuisineTheme || '');
@@ -592,7 +676,7 @@ export default function SpecialOccasionPage() {
   const startNewOccasion = () => {
     setEditingId(null);
     setConfirmRegen(false);
-    setOccasion(''); setGuests(''); setServingTime(''); setCuisineTheme('');
+    setOccasion(''); setTitle(''); setGuests(''); setServingTime(''); setCuisineTheme('');
     setDietaryNotes(''); setMustHaveDishes(''); setEventDate(''); setPrepStartDate('');
     setEventType('served-dinner'); setDaySchedules([]); setError('');
     setView('form');
@@ -662,7 +746,7 @@ export default function SpecialOccasionPage() {
                 <div key={ev.id}
                      className="rounded-[18px] cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 group relative"
                      style={{ background: '#FEFAF0', border: '1px solid #D4B896', padding: '20px 22px', boxShadow: '0 2px 12px rgba(47,30,10,0.07)' }}
-                     onClick={() => { setActiveEvent(ev); setView('result'); }}>
+                     onClick={() => { setActiveEvent(ev); setGroceriesAdded(null); setView('result'); }}>
                   {/* Delete button */}
                   <button
                     onClick={e => deleteEvent(ev.id, e)}
@@ -695,6 +779,18 @@ export default function SpecialOccasionPage() {
         <div className="max-w-2xl" style={{ fontFamily: 'Georgia, serif' }}>
           <div className="rounded-[22px] p-8"
                style={{ background: '#FEFAF0', border: '1px solid #D4B896', boxShadow: '0 4px 24px rgba(47,30,10,0.08)' }}>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={labelStyle}>Name this occasion</label>
+              <input type="text"
+                placeholder="e.g. Christmas Eve Dinner"
+                value={title} onChange={e => setTitle(e.target.value)}
+                style={inputStyle} />
+              <p style={{ fontSize: '11px', color: '#B09070', fontStyle: 'italic', marginTop: '5px' }}>
+                This is the title on your menu and printouts. Leave it blank and we&apos;ll use your own
+                first line below — we won&apos;t invent one.
+              </p>
+            </div>
 
             <div style={{ marginBottom: '20px' }}>
               <label style={labelStyle}>Describe the occasion *</label>
@@ -869,6 +965,10 @@ export default function SpecialOccasionPage() {
             onFinalize={finalize}
             finalizing={finalizing}
             swappingIndex={swappingIndex}
+            onAddToGroceries={addToGroceries}
+            onRemoveFromGroceries={removeFromGroceries}
+            addingGroceries={addingGroceries}
+            groceriesAdded={groceriesAdded}
           />
         </div>
       )}
