@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUser, getAnthropicKey } from '@/lib/auth';
-import { getSettings, saveGlobalRecipeIfNew, getGlobalRecipe } from '@/lib/db';
-import { unitsInstruction } from '@/lib/claude';
-import { normalizeRecipeUnits, normalizeText } from '@/lib/unit-convert';
-import Anthropic from '@anthropic-ai/sdk';
+import { getSettings, saveGlobalRecipeIfNew } from '@/lib/db';
+import { generateOccasionDishRecipe } from '@/lib/claude';
+
 
 export const maxDuration = 30;
 
@@ -14,84 +13,41 @@ export async function POST(req: NextRequest) {
   const { dish, course, occasion, guests, cuisineTheme } = await req.json();
   if (!dish) return NextResponse.json({ error: 'Dish required' }, { status: 400 });
 
-  const apiKey = getAnthropicKey();
   const settings = await getSettings(user!.id);
   const units = (settings as any).units;
   const serves = guests || settings.familySize || 4;
 
-  // Look up the global library first — return cached version if found.
-  // Normalize to the user's units so cached recipes stay consistent too.
-  // The cache is shared across users and keyed on dish name alone, so a recipe
-  // stored for 4 would otherwise hand back 4-portion amounts to someone cooking
-  // for 30. Only reuse it when it was written for this many servings.
-  const cached = await getGlobalRecipe(dish);
-  if (cached && cached.serves === serves && cached.ingredients?.length && cached.instructions?.length) {
-    return NextResponse.json(normalizeRecipeUnits({
-      name: cached.name, description: cached.description, serves: cached.serves,
-      prepTime: cached.prep_time, cookTime: cached.cook_time, totalTime: cached.total_time,
-      difficulty: cached.difficulty,
-      ingredients: cached.ingredients, instructions: cached.instructions,
-      makeAheadNote: normalizeText(cached.prep_ahead?.[0] || '', units),
-    }, units));
+  // The shared recipe library is deliberately NOT read here. It's keyed on dish
+  // name across all users, holds no yield, and never passes back through the
+  // quantity audit — so one bad generation for a dish is served to everyone who
+  // cooks it afterwards, at whatever serving count it happened to be written for.
+  // Occasion menus are cooked for large numbers where wrong amounts actually
+  // fail, so these are always generated and checked fresh. We still contribute
+  // to the library below for the cheaper paths that read it.
+
+  // One generator for occasion recipes, shared with finalize. Two prompts for the
+  // same job drifted apart — and its scaling rules are what keep the quantities
+  // honest at large guest counts.
+  try {
+    const recipe = await generateOccasionDishRecipe(getAnthropicKey(), {
+      dish, course, occasion, guests: serves,
+      cuisineTheme, restrictions: settings.restrictions || [],
+      language: (settings as any).language, units,
+    });
+
+    saveGlobalRecipeIfNew({
+      name: dish, cuisine: cuisineTheme || '', mealType: course || 'special',
+      serves, total_time: recipe.totalTime || '', prep_time: recipe.prepTime || '',
+      cook_time: recipe.cookTime || '', difficulty: recipe.difficulty || 'Medium',
+      description: recipe.description || '', tags: ['special-occasion', course].filter(Boolean) as string[],
+      ingredients: recipe.ingredients || [], instructions: recipe.instructions || [],
+      prep_ahead: recipe.makeAheadNote ? [recipe.makeAheadNote] : [],
+      sides: [], photo_url: '', source_site: 'Special Occasion',
+      category: 'special',
+    }).catch(() => {});
+
+    return NextResponse.json(recipe);
+  } catch {
+    return NextResponse.json({ error: 'Failed to generate recipe' }, { status: 500 });
   }
-
-  const context = [
-    occasion && `Occasion: ${occasion}`,
-    cuisineTheme && `Cuisine: ${cuisineTheme}`,
-    `Course: ${course}`,
-    `Serves: ${serves}`,
-    settings.restrictions?.length && `Dietary restrictions: ${settings.restrictions.join(', ')}`,
-  ].filter(Boolean).join('\n');
-
-  const prompt = `You are an expert chef. Write the complete recipe for this dish:
-
-Dish: ${dish}
-${context}${unitsInstruction(units)}
-
-Return ONLY valid JSON:
-{
-  "name": "${dish}",
-  "description": "one evocative sentence",
-  "serves": ${serves},
-  "prepTime": "X min",
-  "cookTime": "X min",
-  "totalTime": "X min",
-  "difficulty": "Easy" | "Medium" | "Hard",
-  "ingredients": [
-    { "amount": "1 cup", "item": "ingredient name" }
-  ],
-  "instructions": [
-    "Clear step-by-step instruction"
-  ],
-  "makeAheadNote": "What can be done ahead of time (1–2 sentences)"
-}
-
-Rules:
-- Ingredients must have precise amounts
-- 5–8 clear instruction steps
-- Scale quantities for ${serves} people
-- Difficulty must be exactly "Easy", "Medium", or "Hard"`;
-
-  const client = new Anthropic({ apiKey });
-  const message = await client.messages.create({
-    model: 'claude-haiku-4-5',
-    max_tokens: 1500,
-    messages: [{ role: 'user', content: prompt }],
-  });
-
-  const text = message.content[0].type === 'text' ? message.content[0].text : '';
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) return NextResponse.json({ error: 'Failed to generate recipe' }, { status: 500 });
-  const recipe = JSON.parse(jsonMatch[0]);
-  saveGlobalRecipeIfNew({
-    name: dish, cuisine: cuisineTheme || '', mealType: course || 'special',
-    serves, total_time: recipe.totalTime || '', prep_time: recipe.prepTime || '',
-    cook_time: recipe.cookTime || '', difficulty: recipe.difficulty || 'Medium',
-    description: recipe.description || '', tags: ['special-occasion', course].filter(Boolean) as string[],
-    ingredients: recipe.ingredients || [], instructions: recipe.instructions || [],
-    prep_ahead: recipe.makeAheadNote ? [recipe.makeAheadNote] : [],
-    sides: [], photo_url: '', source_site: 'Special Occasion',
-    category: 'special',
-  }).catch(() => {});
-  return NextResponse.json(normalizeRecipeUnits({ ...recipe, makeAheadNote: normalizeText(recipe.makeAheadNote || '', units) }, units));
 }

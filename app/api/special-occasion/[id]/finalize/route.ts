@@ -44,25 +44,33 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       } catch { /* leave without a full recipe; the card falls back to the summary */ }
     }));
 
-    // Rebuild the timeline for just the final selection.
-    const timeline = await generateOccasionTimeline(apiKey, {
-      occasionTitle: result.occasionTitle,
-      eventType: result.eventType,
-      dishes: selected.map(({ i }) => {
-        const m = result.menu[i];
-        return { course: m.course, dish: m.dish, prepTime: m.prepTime, cookTime: m.cookTime, makeAheadNote: m.fullRecipe?.makeAheadNote || m.makeAheadNote };
-      }),
-      daySchedules: result.planning?.daySchedules || [],
-      eventDate: result.planning?.eventDate,
-      servingTime: result.planning?.servingTime || row.serving_time || '',
-      language: (settings as any).language,
-    });
-    if (timeline.length) result.timeline = timeline;
+    // Rebuild the timeline for just the final selection. A failure here must not
+    // discard the recipes generated above — they're the expensive part, and
+    // losing them silently leaves dishes with no recipe at all.
+    let timelineError = '';
+    try {
+      const timeline = await generateOccasionTimeline(apiKey, {
+        occasionTitle: result.occasionTitle,
+        eventType: result.eventType,
+        dishes: selected.map(({ i }) => {
+          const m = result.menu[i];
+          return { course: m.course, dish: m.dish, prepTime: m.prepTime, cookTime: m.cookTime, makeAheadNote: m.fullRecipe?.makeAheadNote || m.makeAheadNote };
+        }),
+        daySchedules: result.planning?.daySchedules || [],
+        eventDate: result.planning?.eventDate,
+        servingTime: result.planning?.servingTime || row.serving_time || '',
+        language: (settings as any).language,
+      });
+      if (timeline.length) result.timeline = timeline;
+    } catch (e: any) {
+      timelineError = e?.message || 'The prep plan could not be rebuilt.';
+    }
+
     result.finalized = true;
     result.recipesServeGuests = guests;
 
     await updateSpecialOccasion(user!.id, Number(id), result);
-    return NextResponse.json(result);
+    return NextResponse.json({ ...result, timelineError: timelineError || undefined });
   } catch (e: any) {
     return NextResponse.json({ error: e.message || 'Could not finalize the menu.' }, { status: 500 });
   }

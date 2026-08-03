@@ -1385,6 +1385,10 @@ export interface OccasionDishRecipe {
   name: string;
   description: string;
   serves: number;
+  // What the quantities actually make, and in what — e.g. "48 bars in two
+  // 9x13-inch pans". Scaling to a large guest count is only trustworthy when the
+  // recipe commits to a yield and sizes the ingredients to fill those vessels.
+  yield?: string;
   prepTime: string;
   cookTime: string;
   totalTime: string;
@@ -1740,6 +1744,7 @@ Return ONLY valid JSON:
   "name": "${params.dish}",
   "description": "one evocative sentence",
   "serves": ${serves},
+  "yield": "what this makes, e.g. 48 bars in two 9x13-inch pans",
   "prepTime": "X min",
   "cookTime": "X min",
   "totalTime": "X min",
@@ -1750,16 +1755,89 @@ Return ONLY valid JSON:
 }
 
 Rules:
-- Ingredients must have precise amounts, scaled for ${serves} people
 - 5–8 clear instruction steps
-- Difficulty must be exactly "Easy", "Medium", or "Hard"`;
+- Difficulty must be exactly "Easy", "Medium", or "Hard"
+
+Scaling — work in this order, because naively multiplying a small recipe produces amounts that do not work:
+1. Decide the yield first: how many pieces or portions ${serves} people need, and the pans, tins or dishes that holds — e.g. "48 bars in two 9x13-inch pans", "60 canapés on four trays". State it in "yield" and name those same vessels in the instructions.
+2. Size the ingredients to fill THOSE vessels to their correct depth. A crust is a few millimetres thick; a filling reaches the rim, not above it. If the amounts would overfill, add another pan rather than deepening the layer.
+3. Keep every component's internal ratio intact while scaling. These are structural — getting them wrong means the dish fails, not merely tastes off:
+   - Shortbread / pastry crust: fat to flour is roughly 1:1 by weight (never less than 1:1.5), or it stays as loose crumbs and will not press together.
+   - Custard, curd and lemon-bar fillings: thickened with a little flour or cornflour only — on the order of 2 tablespoons per 4 eggs. Enough flour to make a batter turns a silky filling into cake.
+   - Baked custards and curds: roughly equal weights of sugar and liquid; far more sugar than that is cloying and will not set cleanly.
+   - Doughs and batters: hold the flour-to-liquid and flour-to-egg ratios of the standard recipe.
+4. Re-read the finished ingredient list against the vessels and the ratios above before returning it. Fix anything inconsistent. The amounts in the instructions must match the ingredient list exactly.`;
 
   const message = await client.messages.create({ model: 'claude-haiku-4-5', max_tokens: 1500, messages: [{ role: 'user', content: prompt }] });
   const text = message.content[0].type === 'text' ? message.content[0].text : '';
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error('Failed to generate recipe');
   const parsed = JSON.parse(jsonMatch[0].replace(/,\s*([}\]])/g, '$1')) as OccasionDishRecipe;
-  return normalizeRecipeUnits(parsed as any, params.units) as OccasionDishRecipe;
+
+  // Writing the scaling rules into the prompt gets the ratios close but not
+  // reliably right — a batch sized for one tin while the method calls for two
+  // reads perfectly well and only fails in the kitchen. So audit the finished
+  // list against its own stated yield in a second pass, where the numbers can be
+  // checked instead of composed.
+  const audited = await auditRecipeQuantities(client, parsed, serves);
+  return normalizeRecipeUnits(audited as any, params.units) as OccasionDishRecipe;
+}
+
+// Second-pass arithmetic check on a generated recipe. Returns the original
+// unchanged if the check fails or comes back unusable — never worse than before.
+async function auditRecipeQuantities(
+  client: Anthropic,
+  recipe: OccasionDishRecipe,
+  serves: number,
+): Promise<OccasionDishRecipe> {
+  try {
+    const list = (recipe.ingredients || []).map(i => `${i.amount} ${i.item}`).join('\n');
+    const steps = (recipe.instructions || []).map((s, i) => `${i + 1}. ${s}`).join('\n');
+
+    const prompt = `Check the arithmetic in this recipe. You are not rewriting or improving it — only correcting quantities that do not add up.
+
+Dish: ${recipe.name}
+Serves: ${serves}
+Stated yield: ${(recipe as any).yield || '(none stated)'}
+
+Ingredients:
+${list}
+
+Method:
+${steps}
+
+Check each of these and correct ONLY what is wrong:
+1. Vessel fill — do the amounts actually fill the tins, pans or dishes named in the method, at the right depth? A crust or base sized for one tin while the method uses two is the most common error: scale the component to the number of vessels, or change the vessel count to match the amounts. Say which you did. State the per-vessel amount and the multiplication you did, so the arithmetic is visible rather than assumed.
+2. Component ratios — fat to flour in a pastry or shortbread base (about 1:1 by weight); thickener in a custard or curd (about 2 tbsp flour per 4 eggs); sugar to liquid in a baked custard (roughly equal by weight); flour to liquid in a batter or dough.
+3. Portion sense — does the total quantity divided by ${serves} give a sane portion for this course? Flag a total that would feed far more or far fewer.
+4. The amounts written in the method must match the ingredient list exactly.
+
+Return ONLY valid JSON, the complete recipe with corrections applied:
+{
+  "yield": "…",
+  "ingredients": [ { "amount": "…", "item": "…" } ],
+  "instructions": [ "…" ],
+  "corrections": ["what you changed and why, one line each — empty array if nothing was wrong"]
+}`;
+
+    const res = await client.messages.create({
+      model: 'claude-haiku-4-5', max_tokens: 2000, messages: [{ role: 'user', content: prompt }],
+    });
+    const t = res.content[0].type === 'text' ? res.content[0].text : '';
+    const m = t.match(/\{[\s\S]*\}/);
+    if (!m) return recipe;
+    const fixed = JSON.parse(m[0].replace(/,\s*([}\]])/g, '$1'));
+    if (!Array.isArray(fixed.ingredients) || !fixed.ingredients.length) return recipe;
+    if (!Array.isArray(fixed.instructions) || !fixed.instructions.length) return recipe;
+    return {
+      ...recipe,
+      yield: fixed.yield || (recipe as any).yield,
+      ingredients: fixed.ingredients,
+      instructions: fixed.instructions,
+    } as OccasionDishRecipe;
+  } catch {
+    return recipe;
+  }
 }
 
 // Suggest ONE replacement dish for a course, avoiding the dishes already chosen.
@@ -1797,6 +1875,56 @@ Return ONLY valid JSON:
 
 // Rebuild the prep timeline for the FINAL (selected) dishes, respecting the
 // per-day time budgets the user set.
+
+// A long plan can run past the model's output limit and arrive as truncated
+// JSON. Rather than losing the whole thing, parse what arrived and keep every
+// complete bucket — a plan missing its last session is far better than none.
+function parseTimelineBuckets(text: string): TimelineBucket[] {
+  const withTasks = (list: any[]): TimelineBucket[] => list
+    .filter(b => b && typeof b.when === 'string')
+    .map((b: any) => ({
+      ...b,
+      tasks: Array.isArray(b.tasks) && b.tasks.length
+        ? b.tasks
+        : (b.steps || []).map((st: any) => st?.text).filter(Boolean),
+    }));
+
+  const whole = text.match(/\{[\s\S]*\}/);
+  if (whole) {
+    try {
+      const parsed = JSON.parse(whole[0].replace(/,\s*([}\]])/g, '$1'));
+      if (Array.isArray(parsed.timeline)) return withTasks(parsed.timeline);
+    } catch { /* truncated — fall through and salvage */ }
+  }
+
+  // Walk the timeline array and keep each brace-balanced object that closed.
+  const start = text.indexOf('"timeline"');
+  if (start === -1) return [];
+  const open = text.indexOf('[', start);
+  if (open === -1) return [];
+  const out: any[] = [];
+  let depth = 0, objStart = -1, inStr = false, esc = false;
+  for (let i = open + 1; i < text.length; i++) {
+    const c = text[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (c === '\\') esc = true;
+      else if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') { inStr = true; continue; }
+    if (c === '{') { if (depth === 0) objStart = i; depth++; }
+    else if (c === '}') {
+      depth--;
+      if (depth === 0 && objStart >= 0) {
+        try { out.push(JSON.parse(text.slice(objStart, i + 1))); } catch { /* skip */ }
+        objStart = -1;
+      }
+    } else if (c === ']' && depth === 0) break;
+  }
+  return withTasks(out);
+}
+
 const SESSION_SCRIPT_RULES = `Each bucket is a single cooking session the cook follows from start to finish, so write it like a recipe for that session — not a to-do list. Order the steps so that long unattended stretches (simmering, chilling, proving, marinating, baking, cooling) are started EARLY and the shorter hands-on jobs are slotted into the waiting time.
 
 For every bucket return:
@@ -1855,12 +1983,10 @@ Return ONLY valid JSON:
   ]
 }`;
 
-  const message = await client.messages.create({ model: 'claude-haiku-4-5', max_tokens: 8000, messages: [{ role: 'user', content: prompt }] });
+  const message = await client.messages.create({ model: 'claude-haiku-4-5', max_tokens: 16000, messages: [{ role: 'user', content: prompt }] });
   const text = message.content[0].type === 'text' ? message.content[0].text : '';
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error('Failed to build timeline');
-  const parsed = JSON.parse(jsonMatch[0].replace(/,\s*([}\]])/g, '$1'));
-  const buckets = Array.isArray(parsed.timeline) ? parsed.timeline : [];
+  const buckets = parseTimelineBuckets(text);
+  if (!buckets.length) throw new Error('Failed to build timeline');
   // Keep `tasks` populated from the steps: older saved occasions and the print
   // view read it, so it stays the plain-text spine of every bucket.
   return buckets.map((b: any) => ({
@@ -1939,17 +2065,11 @@ Return ONLY valid JSON:
   ]
 }`;
 
-  const message = await client.messages.create({ model: 'claude-haiku-4-5', max_tokens: 8000, messages: [{ role: 'user', content: prompt }] });
+  const message = await client.messages.create({ model: 'claude-haiku-4-5', max_tokens: 16000, messages: [{ role: 'user', content: prompt }] });
   const text = message.content[0].type === 'text' ? message.content[0].text : '';
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error('Failed to rebuild the plan');
-  const parsed = JSON.parse(jsonMatch[0].replace(/,\s*([}\]])/g, '$1'));
-  const buckets = (Array.isArray(parsed.timeline) ? parsed.timeline : []).map((b: any) => ({
-    ...b,
-    tasks: Array.isArray(b.tasks) && b.tasks.length
-      ? b.tasks
-      : (b.steps || []).map((st: any) => st?.text).filter(Boolean),
-  }));
+  const buckets = parseTimelineBuckets(text);
+  if (!buckets.length) throw new Error('Failed to rebuild the plan');
+  const parsed = (() => { try { return JSON.parse((text.match(/\{[\s\S]*\}/) || ['{}'])[0].replace(/,\s*([}\]])/g, '$1')); } catch { return {}; } })();
   // Only surface a warning when the model actually says it doesn't fit. Left to
   // its own devices it writes a reassuring summary here, which reads as an alarm.
   const fits = parsed.fits !== false;

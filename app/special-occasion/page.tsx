@@ -121,7 +121,7 @@ function DishRecipeModal({ dish, recipe, loading, onClose }: {
                 </p>
               )}
               <p style={{ textAlign: 'center', color: '#8B6A42', fontSize: '12px', letterSpacing: '0.05em', marginBottom: '20px' }}>
-                {[recipe.totalTime && `${recipe.totalTime}`, recipe.serves && `Serves ${recipe.serves}`, recipe.difficulty].filter(Boolean).join('  ·  ')}
+                {[recipe.totalTime && `${recipe.totalTime}`, (recipe as any).yield || (recipe.serves && `Serves ${recipe.serves}`), recipe.difficulty].filter(Boolean).join('  ·  ')}
               </p>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '16px' }}>
@@ -324,7 +324,7 @@ function ResultCard({ result, meta, occasionContext, recipesStale, onBack, onEdi
                     <p style={{ fontSize: '9px', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#C4A265', marginBottom: '2px' }}>{m.course}</p>
                     <h3 style={{ fontFamily: 'AbramoSerif, Georgia, serif', fontSize: '21px', color: '#2B1810', lineHeight: 1.2, marginBottom: '4px' }}>{m.fullRecipe!.name}</h3>
                     <p style={{ fontSize: '12px', color: '#8B6A42', letterSpacing: '0.04em', marginBottom: '14px' }}>
-                      {[m.fullRecipe!.totalTime, m.fullRecipe!.serves && `Serves ${m.fullRecipe!.serves}`, m.fullRecipe!.difficulty].filter(Boolean).join('  ·  ')}
+                      {[m.fullRecipe!.totalTime, m.fullRecipe!.yield || (m.fullRecipe!.serves && `Serves ${m.fullRecipe!.serves}`), m.fullRecipe!.difficulty].filter(Boolean).join('  ·  ')}
                     </p>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: '24px' }}>
                       <div>
