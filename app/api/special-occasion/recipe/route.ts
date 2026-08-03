@@ -21,8 +21,11 @@ export async function POST(req: NextRequest) {
 
   // Look up the global library first — return cached version if found.
   // Normalize to the user's units so cached recipes stay consistent too.
+  // The cache is shared across users and keyed on dish name alone, so a recipe
+  // stored for 4 would otherwise hand back 4-portion amounts to someone cooking
+  // for 30. Only reuse it when it was written for this many servings.
   const cached = await getGlobalRecipe(dish);
-  if (cached && cached.ingredients?.length && cached.instructions?.length) {
+  if (cached && cached.serves === serves && cached.ingredients?.length && cached.instructions?.length) {
     return NextResponse.json(normalizeRecipeUnits({
       name: cached.name, description: cached.description, serves: cached.serves,
       prepTime: cached.prep_time, cookTime: cached.cook_time, totalTime: cached.total_time,

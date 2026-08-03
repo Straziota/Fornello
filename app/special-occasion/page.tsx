@@ -56,6 +56,12 @@ function buildDaySchedules(eventDate: string, prepStartDate: string, defaultMinu
   return days;
 }
 
+function fmtMins(m: number) {
+  if (m < 60) return `${m} min`;
+  const h = Math.floor(m / 60), r = m % 60;
+  return r ? `${h}h ${r}m` : `${h} hour${h > 1 ? 's' : ''}`;
+}
+
 function fmtDate(d: string) {
   if (!d) return '';
   return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
@@ -158,7 +164,7 @@ function DishRecipeModal({ dish, recipe, loading, onClose }: {
   );
 }
 
-function ResultCard({ result, meta, occasionContext, recipesStale, onBack, onEdit, onPrint, onDishClick, onToggleSelect, onSwap, onFinalize, finalizing, swappingIndex, onAddToGroceries, onRemoveFromGroceries, addingGroceries, groceriesAdded }: {
+function ResultCard({ result, meta, occasionContext, recipesStale, onBack, onEdit, onPrint, onDishClick, onToggleSelect, onSwap, onFinalize, finalizing, swappingIndex, onAddToGroceries, onRemoveFromGroceries, addingGroceries, groceriesAdded, missedDays, onToggleMissed, onClearMissed, onReschedule, rescheduling }: {
   result: SpecialOccasionResult;
   meta: { guests: string; servingTime: string; eventDate: string };
   occasionContext: { occasion: string; guests: number; cuisineTheme?: string };
@@ -176,6 +182,11 @@ function ResultCard({ result, meta, occasionContext, recipesStale, onBack, onEdi
   onRemoveFromGroceries: () => void;
   addingGroceries: boolean;
   groceriesAdded: number | null;
+  missedDays: Set<number>;
+  onToggleMissed: (index: number) => void;
+  onClearMissed: () => void;
+  onReschedule: () => void;
+  rescheduling: boolean;
 }) {
   const onGroceryList = (groceriesAdded ?? 0) > 0;
   const selectedCount = (result.menu ?? []).filter(m => m.selected !== false).length;
@@ -351,20 +362,96 @@ function ResultCard({ result, meta, occasionContext, recipesStale, onBack, onEdi
           )}
 
           <Divider label="Preparation Timeline" />
+
+          {/* Life happens: mark the days that didn't, and the rest of the plan is
+              rebuilt around the time actually left. */}
+          {(result.timeline?.length ?? 0) > 0 && (
+            <div className="no-print" style={{ marginBottom: '18px' }}>
+              {missedDays.size === 0 ? (
+                <p style={{ fontSize: '11px', color: '#B09070', fontStyle: 'italic', textAlign: 'center' }}>
+                  Fell behind? Tick any day you didn&apos;t get to and we&apos;ll roll that work into the days you have left.
+                </p>
+              ) : (
+                <div style={{ background: '#FBF0E6', border: '1px solid #E0B48C', borderRadius: '12px', padding: '14px 16px', textAlign: 'center' }}>
+                  <p style={{ fontSize: '12.5px', color: '#8B4A20', lineHeight: 1.6, marginBottom: '10px' }}>
+                    {missedDays.size === 1 ? '1 day' : `${missedDays.size} days`} marked as missed. Rebuilding rewrites the
+                    plan from the earliest missed day onwards, fitting it into the days you have left.
+                  </p>
+                  <div className="flex items-center justify-center gap-3">
+                    <button onClick={onClearMissed} disabled={rescheduling}
+                      className="rounded-full px-4 py-2 text-xs uppercase tracking-[0.18em] transition-opacity hover:opacity-70"
+                      style={{ border: '1px solid #C4A265', color: '#8B6A42', background: 'transparent', fontFamily: 'Georgia, serif', cursor: 'pointer' }}>
+                      Cancel
+                    </button>
+                    <button onClick={onReschedule} disabled={rescheduling}
+                      className="rounded-full px-4 py-2 text-xs uppercase tracking-[0.18em] transition-opacity hover:opacity-80"
+                      style={{ background: '#8B6A42', color: '#fff', border: 'none', fontFamily: 'Georgia, serif', cursor: rescheduling ? 'default' : 'pointer', opacity: rescheduling ? 0.6 : 1 }}>
+                      {rescheduling ? 'Rebuilding your plan…' : 'Rebuild the remaining days'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {result.timelineWarning && (
+            <p className="no-print" style={{ fontSize: '12.5px', color: '#8B4A20', lineHeight: 1.6, marginBottom: '16px', padding: '10px 14px', background: '#FBF0E6', border: '1px solid #E0B48C', borderRadius: '10px' }}>
+              ⚠ {result.timelineWarning}
+            </p>
+          )}
+
           <div style={{ position: 'relative', paddingLeft: '24px' }}>
             <div style={{ position: 'absolute', left: '6px', top: '8px', bottom: '8px', width: '1px', background: '#D4B896' }} />
             {(result.timeline ?? []).map((bucket, i) => (
-              <div key={i} style={{ position: 'relative', marginBottom: '24px' }}>
+              <div key={i} style={{ position: 'relative', marginBottom: '28px' }}>
                 <div style={{ position: 'absolute', left: '-21px', top: '4px', width: '10px', height: '10px', borderRadius: '50%', background: '#C4A265', border: '2px solid #FEFAF0', boxShadow: '0 0 0 1px #C4A265' }} />
-                <p style={{ fontSize: '10px', letterSpacing: '0.25em', textTransform: 'uppercase', color: '#8B6A42', marginBottom: '8px' }}>{bucket.when}</p>
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                  {bucket.tasks.map((task, j) => (
-                    <li key={j} style={{ display: 'flex', gap: '10px', marginBottom: '6px', fontSize: '13px', color: '#3D2714', lineHeight: 1.55 }}>
-                      <span style={{ color: '#C4A265', flexShrink: 0, fontWeight: 700 }}>—</span>
-                      <span>{task}</span>
-                    </li>
-                  ))}
-                </ul>
+                <div className="flex items-baseline justify-between gap-3 flex-wrap">
+                  <p style={{ fontSize: '10px', letterSpacing: '0.25em', textTransform: 'uppercase', color: '#8B6A42', marginBottom: '2px' }}>{bucket.when}</p>
+                  <label className="no-print" onClick={e => e.stopPropagation()}
+                    style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', fontSize: '9px', letterSpacing: '0.12em', textTransform: 'uppercase', color: missedDays.has(i) ? '#A5451E' : '#C4A265' }}>
+                    <input type="checkbox" checked={missedDays.has(i)} onChange={() => onToggleMissed(i)}
+                           style={{ accentColor: '#A5451E', cursor: 'pointer' }} />
+                    Didn&apos;t get to this
+                  </label>
+                </div>
+                {bucket.activeMinutes ? (
+                  <p style={{ fontSize: '11px', color: '#B09070', fontStyle: 'italic', marginBottom: '10px' }}>
+                    about {fmtMins(bucket.activeMinutes)} hands-on
+                  </p>
+                ) : <div style={{ height: '6px' }} />}
+
+                {bucket.steps?.length ? (
+                  /* Follow-along script: elapsed-time gutter, so waits are visible
+                     and the cook can see what to start next while something rests. */
+                  <ol style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                    {bucket.steps.map((step, j) => (
+                      <li key={j} style={{ display: 'flex', gap: '12px', marginBottom: '10px', fontSize: '13px', color: '#3D2714', lineHeight: 1.6 }}>
+                        <span style={{
+                          flexShrink: 0, minWidth: '42px', textAlign: 'right', fontVariantNumeric: 'tabular-nums',
+                          color: '#8B6A42', fontSize: '11px', fontWeight: 700, paddingTop: '2px', letterSpacing: '0.04em',
+                        }}>{step.at}</span>
+                        <span style={{ flexShrink: 0, color: '#E0CDA9' }}>│</span>
+                        <span>{step.text}</span>
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  /* Occasions planned before the step-by-step script existed. */
+                  <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                    {bucket.tasks.map((task, j) => (
+                      <li key={j} style={{ display: 'flex', gap: '10px', marginBottom: '6px', fontSize: '13px', color: '#3D2714', lineHeight: 1.55 }}>
+                        <span style={{ color: '#C4A265', flexShrink: 0, fontWeight: 700 }}>—</span>
+                        <span>{task}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                {bucket.endsWith && (
+                  <p style={{ fontSize: '12px', color: '#8B6A42', fontStyle: 'italic', marginTop: '10px', padding: '8px 12px', background: '#FBF5E6', border: '1px solid #E8D5B0', borderRadius: '8px' }}>
+                    Ends with: {bucket.endsWith}
+                  </p>
+                )}
               </div>
             ))}
           </div>
@@ -411,6 +498,8 @@ export default function SpecialOccasionPage() {
   const [error, setError]                   = useState('');
   const [finalizing, setFinalizing]         = useState(false);
   const [swappingIndex, setSwappingIndex]   = useState<number | null>(null);
+  const [missedDays, setMissedDays]           = useState<Set<number>>(new Set());
+  const [rescheduling, setRescheduling]       = useState(false);
   const [addingGroceries, setAddingGroceries] = useState(false);
   const [groceriesAdded, setGroceriesAdded]   = useState<number | null>(null);
   const [editingId, setEditingId]           = useState<number | null>(null); // occasion being edited in place
@@ -448,10 +537,23 @@ export default function SpecialOccasionPage() {
     setEvents(prev => prev.filter(ev => ev.id !== id));
   };
 
+  // The saved fullRecipe is the one truth for a dish — it's what the printout,
+  // the grocery list and the prep plan are all built from. Generating a fresh one
+  // here (as this used to) produced a different recipe every tap, so the screen
+  // and the printout disagreed. Only generate when nothing is saved yet, and
+  // persist it immediately so everything downstream matches.
   const handleDishClick = async (dish: string, course: string) => {
     if (!activeEvent) return;
     setSelectedDish({ dish, course });
     setDishRecipe(null);
+
+    const idx = activeEvent.result.menu.findIndex(m => m.dish === dish && m.course === course);
+    const saved = idx >= 0 ? activeEvent.result.menu[idx]?.fullRecipe : undefined;
+    if (saved?.ingredients?.length) {
+      setDishRecipe(saved as DishRecipe);
+      return;
+    }
+
     setLoadingRecipe(true);
     try {
       const res = await fetch('/api/special-occasion/recipe', {
@@ -462,10 +564,21 @@ export default function SpecialOccasionPage() {
           course,
           occasion: activeEvent.occasion,
           guests: activeEvent.guests || 4,
-          cuisineTheme: '',
+          cuisineTheme: activeEvent.result.planning?.cuisineTheme || '',
         }),
       });
-      if (res.ok) setDishRecipe(await res.json());
+      if (!res.ok) return;
+      const recipe = await res.json();
+      setDishRecipe(recipe);
+      if (idx >= 0 && recipe?.ingredients?.length) {
+        setActiveEvent(prev => {
+          if (!prev) return prev;
+          const menu = prev.result.menu.map((m, i) => i === idx ? { ...m, fullRecipe: recipe } : m);
+          const result = { ...prev.result, menu };
+          persistResult(prev.id, result);
+          return { ...prev, result };
+        });
+      }
     } finally {
       setLoadingRecipe(false);
     }
@@ -633,6 +746,36 @@ export default function SpecialOccasionPage() {
     return () => { cancelled = true; };
   }, [view, activeEvent?.id]);
 
+  const toggleMissedDay = (index: number) => {
+    setMissedDays(prev => {
+      const next = new Set(prev);
+      next.has(index) ? next.delete(index) : next.add(index);
+      return next;
+    });
+  };
+
+  // Roll the missed days' work into whatever days are left before the event.
+  const rescheduleTimeline = async () => {
+    if (!activeEvent || missedDays.size === 0) return;
+    setRescheduling(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/special-occasion/${activeEvent.id}/reschedule`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ missedIndexes: [...missedDays] }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      setActiveEvent(prev => prev ? { ...prev, result: data } : prev);
+      setMissedDays(new Set());
+      fetchEvents();
+    } catch (e: any) {
+      setError(e.message || 'Could not rebuild the plan — please try again.');
+    } finally {
+      setRescheduling(false);
+    }
+  };
+
   const finalize = async () => {
     if (!activeEvent) return;
     setFinalizing(true);
@@ -746,7 +889,7 @@ export default function SpecialOccasionPage() {
                 <div key={ev.id}
                      className="rounded-[18px] cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 group relative"
                      style={{ background: '#FEFAF0', border: '1px solid #D4B896', padding: '20px 22px', boxShadow: '0 2px 12px rgba(47,30,10,0.07)' }}
-                     onClick={() => { setActiveEvent(ev); setGroceriesAdded(null); setView('result'); }}>
+                     onClick={() => { setActiveEvent(ev); setGroceriesAdded(null); setMissedDays(new Set()); setView('result'); }}>
                   {/* Delete button */}
                   <button
                     onClick={e => deleteEvent(ev.id, e)}
@@ -967,6 +1110,11 @@ export default function SpecialOccasionPage() {
             swappingIndex={swappingIndex}
             onAddToGroceries={addToGroceries}
             onRemoveFromGroceries={removeFromGroceries}
+            missedDays={missedDays}
+            onToggleMissed={toggleMissedDay}
+            onClearMissed={() => setMissedDays(new Set())}
+            onReschedule={rescheduleTimeline}
+            rescheduling={rescheduling}
             addingGroceries={addingGroceries}
             groceriesAdded={groceriesAdded}
           />

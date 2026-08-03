@@ -1322,6 +1322,65 @@ Rules:
   return JSON.parse(jsonMatch[0]);
 }
 
+// Rewrite a recipe with one ingredient dropped entirely — no replacement. Used by
+// "Remove from recipe" on a disliked ingredient. Returns a short note when losing
+// the ingredient meaningfully changes the dish, so the user isn't surprised.
+export async function removeIngredient(
+  apiKey: string,
+  meal: Meal,
+  ingredient: string,
+  language?: string,
+): Promise<{ ingredients: Ingredient[]; instructions: string[]; note?: string }> {
+  const client = new Anthropic({ apiKey });
+
+  const ingredientList = (meal.ingredients || []).map(i => `${i.amount} ${i.item}`).join('\n');
+  const instructionList = (meal.instructions || []).map((s, i) => `${i + 1}. ${s}`).join('\n');
+
+  const prompt = `You are a professional chef. Rewrite this recipe with ONE ingredient removed completely — the cook does not want it and does not want it replaced.
+
+Dish: ${meal.name} (${meal.cuisine || 'unspecified cuisine'})
+Serves: ${meal.serves || 4}
+
+Original ingredients:
+${ingredientList}
+
+Original instructions:
+${instructionList}
+
+Remove "${ingredient}" entirely.
+${langInstruction(language)}
+
+Return ONLY valid JSON in this exact shape — no markdown, no explanations:
+{
+  "ingredients": [
+    {"amount": "200 g", "item": "ingredient name"}
+  ],
+  "instructions": [
+    "Step 1 text…"
+  ],
+  "note": "one short sentence, or omit"
+}
+
+Rules:
+- Output the COMPLETE ingredient list with "${ingredient}" gone. Do NOT add a replacement for it.
+- Keep every other ingredient exactly the same (same item names, same amounts)
+- Output the COMPLETE instructions list, rewritten so it never mentions "${ingredient}". Drop steps that exist only to prepare it, and merge or reword the remaining steps so they read naturally.
+- Adjust seasoning, liquid, or timing where the removal genuinely requires it (e.g. less liquid to compensate), but change as little as possible.
+- Strip "Step N:" prefixes from instructions — just the action text
+- Set "note" ONLY if removing this ingredient noticeably changes the dish's texture, flavour balance, or how it should be served — one plain sentence saying what to expect. Omit "note" entirely when the removal is inconsequential.`;
+
+  const message = await client.messages.create({
+    model: 'claude-haiku-4-5',
+    max_tokens: 2000,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  const text = message.content[0].type === 'text' ? message.content[0].text : '';
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('Could not rewrite recipe');
+  return JSON.parse(jsonMatch[0]);
+}
+
 export interface OccasionDishRecipe {
   name: string;
   description: string;
@@ -1333,6 +1392,18 @@ export interface OccasionDishRecipe {
   ingredients: { amount: string; item: string }[];
   instructions: string[];
   makeAheadNote?: string;
+}
+
+// One prep session — a day, or a slot on the event day. `steps` is the
+// follow-along script with elapsed-time markers; `tasks` is the same content as
+// plain lines, kept because occasions saved before the script existed only have
+// that, and the print view reads it.
+export interface TimelineBucket {
+  when: string;
+  tasks: string[];
+  steps?: { at: string; text: string }[];
+  activeMinutes?: number;
+  endsWith?: string;
 }
 
 export interface SpecialOccasionMenuItem {
@@ -1352,10 +1423,10 @@ export interface SpecialOccasionResult {
   occasionTitle: string;
   eventType?: 'served-dinner' | 'hors-doeuvres';
   menu: SpecialOccasionMenuItem[];
-  timeline: {
-    when: string;
-    tasks: string[];
-  }[];
+  timeline: TimelineBucket[];
+  // Set when the plan was rebuilt after missed days and the remaining time is
+  // genuinely tight — says what to drop or buy in.
+  timelineWarning?: string;
   hostingTips: string[];
   servingNotes: string;
   finalized?: boolean;
@@ -1726,10 +1797,24 @@ Return ONLY valid JSON:
 
 // Rebuild the prep timeline for the FINAL (selected) dishes, respecting the
 // per-day time budgets the user set.
+const SESSION_SCRIPT_RULES = `Each bucket is a single cooking session the cook follows from start to finish, so write it like a recipe for that session — not a to-do list. Order the steps so that long unattended stretches (simmering, chilling, proving, marinating, baking, cooling) are started EARLY and the shorter hands-on jobs are slotted into the waiting time.
+
+For every bucket return:
+- "steps": the ordered steps. Each step has:
+  - "at": elapsed time from the start of that session as "H:MM" (start at "0:00"). Advance it by how long the previous hands-on work actually takes — not by the length of unattended waits.
+  - "text": what to do, in the second person. When a step happens during a wait, say so ("While the polenta simmers, …"). When a step returns to something already underway, say that too ("The dough has had its hour — knock it back and …"). Include pan sizes, temperatures, times and doneness cues, exactly as a recipe would. Name the dish each step belongs to.
+- "activeMinutes": total hands-on minutes for the session (exclude unattended waiting), as a number.
+- "endsWith": one sentence describing the state everything is left in when the session ends (what is in the fridge, what is cooling, what is covered), or omit it for the final serving bucket.
+
+Rules:
+- The hands-on work in each bucket MUST fit the time available for that day. If it doesn't, move work to an earlier day rather than overrunning.
+- Never leave an unattended wait empty when there is other work outstanding — fill it.
+- Do not invent equipment beyond a normal home kitchen.`;
+
 export async function generateOccasionTimeline(
   apiKey: string,
   params: { occasionTitle: string; eventType?: string; dishes: { course: string; dish: string; prepTime?: string; cookTime?: string; makeAheadNote?: string }[]; daySchedules: DaySchedule[]; eventDate?: string; servingTime?: string; language?: string },
-): Promise<{ when: string; tasks: string[] }[]> {
+): Promise<TimelineBucket[]> {
   const client = new Anthropic({ apiKey: apiKey || process.env.ANTHROPIC_API_KEY! });
   let dateContext = '';
   if (params.daySchedules?.length) {
@@ -1751,14 +1836,122 @@ ${dishList}
 ${params.servingTime ? `Serving time: ${params.servingTime}` : ''}${dateContext}
 
 ${timelineInstructions}
-Cover every dish, referencing dishes by name in the tasks. Front-load make-ahead work onto earlier days.
+Cover every dish, referencing dishes by name in the steps. Front-load make-ahead work onto earlier days.
 
-Return ONLY valid JSON: { "timeline": [ { "when": "label", "tasks": ["specific task"] } ] }`;
+${SESSION_SCRIPT_RULES}
 
-  const message = await client.messages.create({ model: 'claude-haiku-4-5', max_tokens: 2000, messages: [{ role: 'user', content: prompt }] });
+Return ONLY valid JSON:
+{
+  "timeline": [
+    {
+      "when": "label",
+      "activeMinutes": 80,
+      "steps": [
+        { "at": "0:00", "text": "Start the …" },
+        { "at": "0:05", "text": "While that simmers, …" }
+      ],
+      "endsWith": "…"
+    }
+  ]
+}`;
+
+  const message = await client.messages.create({ model: 'claude-haiku-4-5', max_tokens: 8000, messages: [{ role: 'user', content: prompt }] });
   const text = message.content[0].type === 'text' ? message.content[0].text : '';
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error('Failed to build timeline');
   const parsed = JSON.parse(jsonMatch[0].replace(/,\s*([}\]])/g, '$1'));
-  return Array.isArray(parsed.timeline) ? parsed.timeline : [];
+  const buckets = Array.isArray(parsed.timeline) ? parsed.timeline : [];
+  // Keep `tasks` populated from the steps: older saved occasions and the print
+  // view read it, so it stays the plain-text spine of every bucket.
+  return buckets.map((b: any) => ({
+    ...b,
+    tasks: Array.isArray(b.tasks) && b.tasks.length
+      ? b.tasks
+      : (b.steps || []).map((s: any) => s?.text).filter(Boolean),
+  }));
+}
+
+// Rebuild the remaining plan after the cook loses days. Everything still
+// outstanding gets redistributed across the days that are actually left, within
+// the time available on each. Returns a warning when it genuinely will not fit,
+// rather than quietly producing an impossible schedule.
+export async function rescheduleOccasionTimeline(
+  apiKey: string,
+  params: {
+    occasionTitle: string;
+    eventType?: string;
+    dishes: { course: string; dish: string; makeAheadNote?: string }[];
+    remainingDays: DaySchedule[];
+    outstandingWork: string[];
+    missedLabels: string[];
+    eventDate?: string;
+    servingTime?: string;
+    language?: string;
+  },
+): Promise<{ timeline: TimelineBucket[]; warning?: string }> {
+  const client = new Anthropic({ apiKey: apiKey || process.env.ANTHROPIC_API_KEY! });
+
+  const dayLines = params.remainingDays.map(d => {
+    const rel = d.daysUntilEvent === 0 ? 'event day' : d.daysUntilEvent === 1 ? '1 day before' : `${d.daysUntilEvent} days before`;
+    return `- ${d.label} (${rel}): ${d.minutes === 0 ? 'NO TIME — skip this day' : fmtMinutes(d.minutes) + ' available'}`;
+  }).join('\n');
+  const dishList = params.dishes.map(d => `- ${d.course}: ${d.dish}${d.makeAheadNote ? ` (can make ahead: ${d.makeAheadNote})` : ''}`).join('\n');
+  const outstanding = params.outstandingWork.map(w => `- ${w}`).join('\n');
+
+  const totalAvailable = params.remainingDays.reduce((n, d) => n + (d.minutes || 0), 0);
+
+  const prompt = `You are an expert event chef rescuing a preparation plan that has slipped.
+
+The cook was unable to do any of the prep on: ${params.missedLabels.join('; ') || 'earlier planned days'}. That work was NOT done and must be absorbed into the days that remain.
+
+Occasion: "${params.occasionTitle}" — ${params.eventType === 'hors-doeuvres' ? "hors d'oeuvres spread" : 'plated dinner'}${params.servingTime ? `, serving at ${params.servingTime}` : ''}.${langInstruction(params.language)}
+
+Dishes to prepare:
+${dishList}
+
+Work still outstanding (nothing here has been done):
+${outstanding}
+
+Days actually remaining, and the time available on each (${fmtMinutes(totalAvailable)} in total):
+${dayLines}
+
+Rebuild the plan across ONLY the days listed above. Use the EXACT date labels given. On the event day, split into buckets (Morning, 2 hours before, 30 minutes before, At the table) as the remaining time allows.
+
+Re-sequence properly rather than just shifting the old days along: with less runway, favour the make-ahead work that keeps best, push short fresh jobs closest to service, and combine tasks that share equipment or an oven temperature into the same session.
+
+${SESSION_SCRIPT_RULES}
+
+A bucket's "activeMinutes" must never exceed the window its own label describes. "30 minutes before service" means at most 30 minutes of work; an event-day slot is bounded by the gap to the next slot. If a slot cannot hold the work, move that work to an earlier day or an earlier slot.
+
+Set "fits" to false ONLY when the outstanding work genuinely cannot be done in the time remaining. When "fits" is false, also set "warning" to a short, direct paragraph naming what to drop, simplify, or buy ready-made. When "fits" is true, leave "warning" empty — do not use it to summarise or reassure.
+
+Return ONLY valid JSON:
+{
+  "fits": true,
+  "warning": "",
+  "timeline": [
+    {
+      "when": "label",
+      "activeMinutes": 80,
+      "steps": [ { "at": "0:00", "text": "…" } ],
+      "endsWith": "…"
+    }
+  ]
+}`;
+
+  const message = await client.messages.create({ model: 'claude-haiku-4-5', max_tokens: 8000, messages: [{ role: 'user', content: prompt }] });
+  const text = message.content[0].type === 'text' ? message.content[0].text : '';
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('Failed to rebuild the plan');
+  const parsed = JSON.parse(jsonMatch[0].replace(/,\s*([}\]])/g, '$1'));
+  const buckets = (Array.isArray(parsed.timeline) ? parsed.timeline : []).map((b: any) => ({
+    ...b,
+    tasks: Array.isArray(b.tasks) && b.tasks.length
+      ? b.tasks
+      : (b.steps || []).map((st: any) => st?.text).filter(Boolean),
+  }));
+  // Only surface a warning when the model actually says it doesn't fit. Left to
+  // its own devices it writes a reassuring summary here, which reads as an alarm.
+  const fits = parsed.fits !== false;
+  return { timeline: buckets, warning: fits ? undefined : (parsed.warning || undefined) };
 }

@@ -76,6 +76,8 @@ export default function MealModal({ meal: initialMeal, menuId, dislikedIngredien
   const [subLoading, setSubLoading] = useState(false);
   const [applyingSub, setApplyingSub] = useState<string | null>(null); // which substitute is being applied
   const [appliedSub, setAppliedSub] = useState<{ original: string; substitute: string } | null>(null);
+  const [removingIngredient, setRemovingIngredient] = useState<string | null>(null);
+  const [removedIngredient, setRemovedIngredient] = useState<{ ingredient: string; note?: string } | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatQ, setChatQ] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
@@ -237,6 +239,33 @@ export default function MealModal({ meal: initialMeal, menuId, dislikedIngredien
   const dismiss = (ingredient: string) => {
     setDismissedConflicts(prev => new Set([...prev, ingredient]));
     if (activeIngredient === ingredient) { setActiveIngredient(null); setSubResult(null); }
+  };
+
+  // Drop the ingredient entirely, with no replacement, and rewrite the recipe
+  // around its absence.
+  const removeIngredientFromRecipe = async (ingredient: string) => {
+    setRemovingIngredient(ingredient);
+    try {
+      const res = await fetch('/api/menu/ingredient/remove', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ meal, ingredient }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to remove ingredient');
+      const updated = { ...meal, ingredients: data.ingredients, instructions: data.instructions, recipeLoaded: true };
+      setMeal(updated);
+      setIsOverride(true);
+      setRemovedIngredient({ ingredient, note: data.note });
+      onRecipeLoaded?.(meal.day, { ingredients: data.ingredients, instructions: data.instructions, prep_ahead: meal.prep_ahead || [], sides: meal.sides });
+      setDismissedConflicts(prev => new Set([...prev, ingredient]));
+      setActiveIngredient(null);
+      setSubResult(null);
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setRemovingIngredient(null);
+    }
   };
 
   const askChefClaude = async () => {
@@ -532,8 +561,15 @@ export default function MealModal({ meal: initialMeal, menuId, dislikedIngredien
                       style={{ background: 'var(--green)', color: '#fff' }}>
                       🔄 Find substitute
                     </button>
+                    <button onClick={() => removeIngredientFromRecipe(ing)}
+                      disabled={removingIngredient !== null}
+                      className="text-xs px-3 py-1.5 rounded-lg font-medium transition-opacity hover:opacity-80 disabled:opacity-40"
+                      style={{ background: 'var(--white)', border: '1px solid var(--green)', color: 'var(--green)' }}>
+                      {removingIngredient === ing ? '⏳ Removing…' : '🚫 Remove from recipe'}
+                    </button>
                     <button onClick={() => dismiss(ing)}
-                      className="text-xs px-3 py-1.5 rounded-lg font-medium"
+                      disabled={removingIngredient !== null}
+                      className="text-xs px-3 py-1.5 rounded-lg font-medium disabled:opacity-40"
                       style={{ background: 'var(--cream)', border: '1px solid var(--border)', color: 'var(--text-2)' }}>
                       ✓ Use anyway
                     </button>
@@ -798,6 +834,22 @@ export default function MealModal({ meal: initialMeal, menuId, dislikedIngredien
                 </span>
                 <button onClick={() => setAppliedSub(null)}
                   className="text-xs transition-opacity hover:opacity-60"
+                  style={{ color: 'var(--text-3)' }}>✕</button>
+              </div>
+            )}
+            {removedIngredient && (
+              <div className="mb-4 rounded-xl px-4 py-3 text-sm flex items-start justify-between gap-3"
+                   style={{ background: 'var(--green-lt)', color: 'var(--green-dk)' }}>
+                <span>
+                  ✓ Recipe rewritten without <strong>{removedIngredient.ingredient}</strong>.
+                  {removedIngredient.note && (
+                    <span className="block mt-1 italic" style={{ color: 'var(--text-2)' }}>
+                      {removedIngredient.note}
+                    </span>
+                  )}
+                </span>
+                <button onClick={() => setRemovedIngredient(null)}
+                  className="text-xs transition-opacity hover:opacity-60 shrink-0"
                   style={{ color: 'var(--text-3)' }}>✕</button>
               </div>
             )}

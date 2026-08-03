@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, use } from 'react';
-import type { SpecialOccasionResult, OccasionDishRecipe } from '@/lib/claude';
+import type { SpecialOccasionResult, OccasionDishRecipe, TimelineBucket } from '@/lib/claude';
 
 interface LoadedDish { course: string; dish: string; recipe: OccasionDishRecipe }
 
@@ -15,7 +15,7 @@ export default function PrintOccasionPage({ params }: { params: Promise<{ id: st
   const [title, setTitle] = useState('');
   const [metaLine, setMetaLine] = useState('');
   const [dishes, setDishes] = useState<LoadedDish[]>([]);
-  const [timeline, setTimeline] = useState<{ when: string; tasks: string[] }[]>([]);
+  const [timeline, setTimeline] = useState<TimelineBucket[]>([]);
   const [progress, setProgress] = useState(0);
   const [total, setTotal] = useState(0);
   const [ready, setReady] = useState(false);
@@ -52,6 +52,9 @@ export default function PrintOccasionPage({ params }: { params: Promise<{ id: st
         const chosen = (result.menu ?? []).filter(m => m.selected !== false);
         setTotal(chosen.length);
         const loaded: LoadedDish[] = [];
+        // Anything generated here is saved back onto the occasion, so the printout
+        // and the screen can never show two different recipes for the same dish.
+        const generated: Record<string, OccasionDishRecipe> = {};
         for (const m of chosen) {
           let recipe = m.fullRecipe;
           if (!recipe?.ingredients?.length) {
@@ -59,9 +62,23 @@ export default function PrintOccasionPage({ params }: { params: Promise<{ id: st
               method: 'POST', headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ dish: m.dish, course: m.course, occasion: ev.occasion, guests: ev.guests || 4, cuisineTheme: result.planning?.cuisineTheme || '' }),
             }).then(r => r.json());
+            if (recipe?.ingredients?.length) generated[`${m.course}::${m.dish}`] = recipe as OccasionDishRecipe;
           }
           loaded.push({ course: m.course, dish: m.dish, recipe: recipe as OccasionDishRecipe });
           setProgress(p => p + 1);
+        }
+        if (Object.keys(generated).length) {
+          const merged = {
+            ...result,
+            menu: (result.menu ?? []).map(m => {
+              const g = generated[`${m.course}::${m.dish}`];
+              return g ? { ...m, fullRecipe: g } : m;
+            }),
+          };
+          fetch(`/api/special-occasion/${ev.id}`, {
+            method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ result: merged }),
+          }).catch(() => {});
         }
         setDishes(loaded);
         setSelected(new Set(loaded.map(d => d.dish)));
@@ -262,10 +279,27 @@ export default function PrintOccasionPage({ params }: { params: Promise<{ id: st
                 <div className="meal">
                   <div className="meal-header">
                     <div className="meal-name" style={{ fontSize: '19px' }}>{bucket.when}</div>
+                    {bucket.activeMinutes ? (
+                      <div style={{ fontSize: '12px', fontStyle: 'italic', color: '#7A847B' }}>
+                        about {bucket.activeMinutes} min hands-on
+                      </div>
+                    ) : null}
                   </div>
-                  {bucket.tasks.map((task, i) => (
-                    <div key={i} className="tip"><span className="check">—</span><span>{task}</span></div>
-                  ))}
+                  {bucket.steps?.length
+                    ? bucket.steps.map((step, i) => (
+                        <div key={i} className="tip" style={{ alignItems: 'flex-start' }}>
+                          <span className="check" style={{ minWidth: '38px', textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{step.at}</span>
+                          <span>{step.text}</span>
+                        </div>
+                      ))
+                    : bucket.tasks.map((task, i) => (
+                        <div key={i} className="tip"><span className="check">—</span><span>{task}</span></div>
+                      ))}
+                  {bucket.endsWith && (
+                    <div className="tip" style={{ marginTop: '8px', fontStyle: 'italic' }}>
+                      <span className="check">✓</span><span>Ends with: {bucket.endsWith}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
