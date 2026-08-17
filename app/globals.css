@@ -86,3 +86,52 @@ ol.instruction-list { counter-reset: steps; }
   display: flex; align-items: center; justify-content: center;
   font-weight: 700; font-size: 0.8rem;
 }
+
+/* ---------------------------------------------------------------------------
+   Installed-app behaviour (iOS home screen today, Capacitor WKWebView later).
+   All of it is inert in a normal desktop browser tab, so it costs the web app
+   nothing.
+   --------------------------------------------------------------------------- */
+
+/* viewport-fit=cover lets the page paint behind the notch and home indicator.
+   These insets are what keep actual content out from under them. */
+body {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Kill the grey flash on every tap — the single biggest "this is a website"
+   tell on iOS. */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Rubber-band scrolling past the top of the page reveals the WebView behind it
+   and instantly breaks the illusion. Inner scrollers keep their own bounce. */
+html, body {
+  overscroll-behavior-y: none;
+}
+
+/* Chrome/UI shouldn't be text-selectable on long-press the way a web page is,
+   but recipes, ingredients, and instructions absolutely must stay selectable
+   and copyable — so this is opt-out, not a blanket rule. */
+nav, button, [role="button"], .no-select {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* iOS zooms the whole page when focusing an input whose font-size is under
+   16px. Enforcing 16px is the accessible fix; the alternative is disabling
+   zoom entirely, which we don't want to rely on. */
+input, select, textarea {
+  font-size: max(16px, 1rem);
+}
+
+@media print {
+  /* Insets are a screen concern — they'd otherwise add stray margins to the
+     printed week and recipe cards. */
+  body { padding: 0; }
+}
