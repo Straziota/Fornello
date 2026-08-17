@@ -16,6 +16,7 @@ function toUserRecipe(r: HeritageProfileRecipe) {
     cook_time: r.cook_time || '', difficulty: r.difficulty || 'Medium', description: r.description || '',
     tags: r.tags, ingredients: r.ingredients, instructions: r.instructions,
     prep_ahead: r.prep_ahead, nonna_wisdom: r.nonna_wisdom, photo_url: r.photo_url || undefined,
+    background: r.background || '', variants: r.variants,
     source: '',
   };
 }

@@ -39,6 +39,7 @@ export default function AddRecipePage({ params }: { params: Promise<{ slug: stri
   const [ingredients, setIngredients] = useState('');
   const [instructions, setInstructions] = useState('');
   const [wisdom, setWisdom] = useState('');
+  const [background, setBackground] = useState('');
   const [transcribed, setTranscribed] = useState(false);
 
   const [saving, setSaving] = useState(false);
@@ -94,6 +95,7 @@ export default function AddRecipePage({ params }: { params: Promise<{ slug: stri
           ingredients: parseIngredients(ingredients),
           instructions: linesToArray(instructions),
           nonna_wisdom: linesToArray(wisdom),
+          background,
           original_scan_url: scanUrl || undefined,
           transcription_status: transcribed ? 'done' : 'none',
         }),
@@ -211,6 +213,11 @@ export default function AddRecipePage({ params }: { params: Promise<{ slug: stri
         <Field label="Their wisdom / tips (optional)">
           <textarea rows={3} value={wisdom} onChange={e => setWisdom(e.target.value)} className="w-full input resize-y" style={inputStyle}
             placeholder="Secrets, margin notes, what makes it theirs — one per line." />
+        </Field>
+
+        <Field label="The story behind it (optional)">
+          <textarea rows={4} value={background} onChange={e => setBackground(e.target.value)} className="w-full input resize-y" style={inputStyle}
+            placeholder="Where it comes from, who made it, when it was cooked — the part that isn't on the card." />
         </Field>
 
         <button onClick={save} disabled={saving || !name.trim()}

@@ -202,6 +202,10 @@ export interface HeritageProfileRecipe {
   instructions: string[];
   prep_ahead: string[];
   nonna_wisdom: string[];
+  // The family story behind the dish, and any regional variations — the same
+  // two fields the curated Heritage Kitchen recipes carry.
+  background?: string | null;
+  variants: RecipeVariant[];
   original_scan_url?: string | null;
   photo_url?: string | null;
   transcription_status: TranscriptionStatus;
@@ -226,6 +230,8 @@ export interface HeritageProfileRecipeInput {
   instructions?: string[];
   prep_ahead?: string[];
   nonna_wisdom?: string[];
+  background?: string;
+  variants?: RecipeVariant[];
   original_scan_url?: string;
   photo_url?: string;
   transcription_status?: TranscriptionStatus;

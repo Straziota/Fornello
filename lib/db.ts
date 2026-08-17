@@ -911,6 +911,8 @@ function mapProfileRecipeRow(row: any): HeritageProfileRecipe {
     instructions: Array.isArray(row.instructions) ? row.instructions : [],
     prep_ahead: Array.isArray(row.prep_ahead) ? row.prep_ahead : [],
     nonna_wisdom: Array.isArray(row.nonna_wisdom) ? row.nonna_wisdom : [],
+    background: row.background,
+    variants: Array.isArray(row.variants) ? row.variants : [],
     original_scan_url: row.original_scan_url,
     photo_url: row.photo_url,
     transcription_status: row.transcription_status || 'none',
@@ -1038,6 +1040,8 @@ function recipeInputToRow(input: HeritageProfileRecipeInput): Record<string, unk
   setIf('instructions', input.instructions ?? undefined);
   setIf('prep_ahead', input.prep_ahead ?? undefined);
   setIf('nonna_wisdom', input.nonna_wisdom ?? undefined);
+  setIf('background', input.background?.trim() || null);
+  setIf('variants', input.variants ?? undefined);
   setIf('original_scan_url', input.original_scan_url ?? undefined);
   setIf('photo_url', input.photo_url ?? undefined);
   setIf('transcription_status', input.transcription_status ?? undefined);
