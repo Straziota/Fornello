@@ -3,7 +3,7 @@ import { requireUser, getAnthropicKey } from '@/lib/auth';
 import { translateContent } from '@/lib/claude';
 
 export async function POST(req: NextRequest) {
-  const { user, error } = await requireUser();
+  const { user, error } = await requireUser('translate');
   if (error) return error;
   try {
     const body = await req.json();

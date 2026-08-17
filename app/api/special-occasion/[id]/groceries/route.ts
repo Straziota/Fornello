@@ -29,7 +29,7 @@ function occasionTitleOf(row: any) {
 // GET — how many of this occasion's items are currently on the weekly list, so
 // the page can offer "Remove" instead of "Add" when they're already there.
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { user, error } = await requireUser();
+  const { user, error } = await requireUser('special-occasion:id:groceries');
   if (error) return error;
   const { id } = await params;
 
@@ -42,7 +42,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
 // DELETE — pull this occasion's items back out of the weekly list.
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { user, error } = await requireUser();
+  const { user, error } = await requireUser('special-occasion:id:groceries');
   if (error) return error;
   const { id } = await params;
 
@@ -67,7 +67,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 // Items are tagged with the occasion title so they can be told apart, replaced
 // on a re-add, and preserved when the weekly list is refreshed.
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { user, error } = await requireUser();
+  const { user, error } = await requireUser('special-occasion:id:groceries');
   if (error) return error;
   const { id } = await params;
 

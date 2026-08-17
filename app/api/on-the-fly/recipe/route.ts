@@ -5,7 +5,7 @@ import { generateOnTheFlyFullRecipe } from '@/lib/claude';
 import { normalizeRecipeUnits } from '@/lib/unit-convert';
 
 export async function POST(req: NextRequest) {
-  const { user, error } = await requireUser();
+  const { user, error } = await requireUser('on-the-fly:recipe');
   if (error) return error;
   try {
     const { option, ingredients } = await req.json();

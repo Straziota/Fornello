@@ -10,7 +10,7 @@ export const maxDuration = 300;
 // Generates the full recipe for every selected dish and rebuilds the prep
 // timeline for the final menu, then saves and returns the finalized result.
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { user, error } = await requireUser();
+  const { user, error } = await requireUser('special-occasion:id:finalize');
   if (error) return error;
   const { id } = await params;
 

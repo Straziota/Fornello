@@ -1,11 +1,11 @@
+import { anthropicClient } from '@/lib/anthropic';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUser, getAnthropicKey } from '@/lib/auth';
-import Anthropic from '@anthropic-ai/sdk';
 
 export const maxDuration = 30;
 
 export async function POST(req: NextRequest) {
-  const { user, error } = await requireUser();
+  const { user, error } = await requireUser('converter');
   if (error) return error;
 
   const { question } = await req.json();
@@ -37,7 +37,7 @@ Rules:
 - If the question isn't a conversion at all, return {"answer": "Try asking a conversion question like 'How many grams in 1 cup of flour?'", "explanation": "", "alternatives": []}`;
 
   try {
-    const client = new Anthropic({ apiKey: getAnthropicKey() });
+    const client = anthropicClient({ apiKey: getAnthropicKey() });
     const message = await client.messages.create({
       model: 'claude-haiku-4-5',
       max_tokens: 600,

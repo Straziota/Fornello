@@ -1,9 +1,9 @@
+import { anthropicClient } from '@/lib/anthropic';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUser, getAnthropicKey } from '@/lib/auth';
 import { getSettings, saveGlobalRecipeIfNew, getGlobalRecipe } from '@/lib/db';
 import { unitsInstruction } from '@/lib/claude';
 import { normalizeRecipeUnits } from '@/lib/unit-convert';
-import Anthropic from '@anthropic-ai/sdk';
 
 export const maxDuration = 30;
 
@@ -13,7 +13,7 @@ function langInstruction(language?: string): string {
 }
 
 export async function POST(req: NextRequest) {
-  const { user, error } = await requireUser();
+  const { user, error } = await requireUser('something-sweet:recipe');
   if (error) return error;
 
   const { name, category, difficulty, serves, total_time, bakersTip } = await req.json();
@@ -68,7 +68,7 @@ Rules:
 - prep_ahead: plain action steps, no timing labels as prefixes
 - Every prep_ahead step must state the quantity of each ingredient being prepped, matching the ingredient list (e.g. "Sift 200 g flour", "Soften 100 g butter") — never quantity-less steps like "Soften the butter"`;
 
-  const client = new Anthropic({ apiKey });
+  const client = anthropicClient({ apiKey });
   const message = await client.messages.create({
     model: 'claude-haiku-4-5',
     max_tokens: 2000,

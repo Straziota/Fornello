@@ -10,7 +10,7 @@ export const maxDuration = 300;
 // The cook lost some prep days. Everything from the first missed day onwards is
 // still outstanding, so rebuild the plan across the days that are actually left.
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { user, error } = await requireUser();
+  const { user, error } = await requireUser('special-occasion:id:reschedule');
   if (error) return error;
   const { id } = await params;
 

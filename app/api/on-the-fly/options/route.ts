@@ -4,7 +4,7 @@ import { getSettings } from '@/lib/db';
 import { generateOnTheFlyOptions } from '@/lib/claude';
 
 export async function POST(req: NextRequest) {
-  const { user, error } = await requireUser();
+  const { user, error } = await requireUser('on-the-fly:options');
   if (error) return error;
   try {
     const { ingredients, exclude } = await req.json();

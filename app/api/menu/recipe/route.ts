@@ -6,7 +6,7 @@ import { normalizeRecipeUnits } from '@/lib/unit-convert';
 import { Meal } from '@/lib/types';
 
 export async function POST(req: Request) {
-  const { user, error } = await requireUser();
+  const { user, error } = await requireUser('menu:recipe');
   if (error) return error;
   try {
     const { menuId, meal }: { menuId: number; meal: Meal } = await req.json();

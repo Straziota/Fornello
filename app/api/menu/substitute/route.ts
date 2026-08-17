@@ -3,7 +3,7 @@ import { requireUser, getAnthropicKey } from '@/lib/auth';
 import { getSubstitution } from '@/lib/claude';
 
 export async function POST(req: Request) {
-  const { user, error } = await requireUser();
+  const { user, error } = await requireUser('menu:substitute');
   if (error) return error;
   try {
     const { meal, ingredient } = await req.json();

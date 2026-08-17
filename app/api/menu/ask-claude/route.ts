@@ -1,7 +1,7 @@
+import { anthropicClient } from '@/lib/anthropic';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUser, getAnthropicKey } from '@/lib/auth';
 import { getSettings } from '@/lib/db';
-import Anthropic from '@anthropic-ai/sdk';
 
 export const maxDuration = 30;
 
@@ -11,7 +11,7 @@ function langInstruction(language?: string): string {
 }
 
 export async function POST(req: NextRequest) {
-  const { user, error } = await requireUser();
+  const { user, error } = await requireUser('menu:ask-claude');
   if (error) return error;
 
   const { meal, question } = await req.json();
@@ -49,7 +49,7 @@ ${langInstruction(language)}
 Respond in 2–5 sentences. Be specific to this recipe. Skip preamble (no "Great question!", no "Of course!") — go straight to the answer. If the question doesn't make sense for this recipe, say so kindly and offer what you CAN help with.`;
 
   try {
-    const client = new Anthropic({ apiKey: getAnthropicKey() });
+    const client = anthropicClient({ apiKey: getAnthropicKey() });
     const message = await client.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 600,

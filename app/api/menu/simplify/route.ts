@@ -5,7 +5,7 @@ import { simplifyRecipe } from '@/lib/claude';
 import { Meal } from '@/lib/types';
 
 export async function POST(req: NextRequest) {
-  const { user, error } = await requireUser();
+  const { user, error } = await requireUser('menu:simplify');
   if (error) return error;
   try {
     const { meal }: { meal: Meal } = await req.json();

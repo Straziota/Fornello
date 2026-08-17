@@ -7,7 +7,7 @@ import { fetchPexelsPhoto } from '@/lib/pexels';
 import { Meal } from '@/lib/types';
 
 export async function POST(req: NextRequest) {
-  const { user, error } = await requireUser();
+  const { user, error } = await requireUser('menu:replace');
   if (error) return error;
 
   try {

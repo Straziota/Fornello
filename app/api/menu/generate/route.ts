@@ -34,7 +34,7 @@ function isInVacation(date: Date, vacations: { start: string; end: string }[]): 
 }
 
 export async function POST(req: Request) {
-  const { user, error } = await requireUser();
+  const { user, error } = await requireUser('menu:generate');
   if (error) return error;
   try {
     const apiKey = getAnthropicKey();

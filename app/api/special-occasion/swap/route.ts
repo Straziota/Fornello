@@ -7,7 +7,7 @@ export const maxDuration = 30;
 
 // POST /api/special-occasion/swap → suggest one replacement dish for a course.
 export async function POST(req: NextRequest) {
-  const { user, error } = await requireUser();
+  const { user, error } = await requireUser('special-occasion:swap');
   if (error) return error;
 
   const { occasion, eventType, course, avoid, cuisineTheme, dietaryNotes, guests } = await req.json();

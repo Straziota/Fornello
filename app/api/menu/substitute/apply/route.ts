@@ -6,7 +6,7 @@ import { applySubstitute } from '@/lib/claude';
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
-  const { user, error } = await requireUser();
+  const { user, error } = await requireUser('menu:substitute:apply');
   if (error) return error;
   try {
     const { meal, originalIngredient, substitute } = await req.json();

@@ -6,7 +6,7 @@ import { generateGroceryList, generateMealRecipe } from '@/lib/claude';
 export const maxDuration = 300;
 
 export async function POST(req: Request) {
-  const { user, error } = await requireUser();
+  const { user, error } = await requireUser('menu:grocery-list');
   if (error) return error;
 
   // `force` rebuilds the list from the menu's current meals even if one already

@@ -1,4 +1,5 @@
-import Anthropic from '@anthropic-ai/sdk';
+import type Anthropic from '@anthropic-ai/sdk';
+import { anthropicClient } from './anthropic';
 import { Settings, WeeklyMenu, WeekSchedule, Meal, Ingredient, SubstituteResult } from './types';
 import { normalizeRecipeUnits } from './unit-convert';
 
@@ -82,7 +83,7 @@ export async function generateMenu(
   nextWeekPicks: string[] = [],
   globalRecipes: { name: string; cuisine: string; mealType: string; total_time: string; difficulty: string }[] = []
 ): Promise<WeeklyMenu> {
-  const client = new Anthropic({ apiKey: apiKey || settings.apiKey || process.env.ANTHROPIC_API_KEY! });
+  const client = anthropicClient({ apiKey: apiKey || settings.apiKey || process.env.ANTHROPIC_API_KEY! });
 
   const avoidRecent = recentMeals.length
     ? `\n🚫 DO NOT REPEAT THESE MEALS — they were served in the past 12 weeks. This includes minor renames or variations: "Italian Chicken Marsala" counts as a repeat of "Chicken Marsala"; "Penne Bolognese" counts as a repeat of "Spaghetti Bolognese"; "Slow-cooker Beef Stew" counts as a repeat of "Beef Stew". When in doubt, pick something genuinely different. The ONLY exception is if a meal appears in the "specifically requested" list below.\n${recentMeals.map(m => `- ${m}`).join('\n')}` : '';
@@ -330,7 +331,7 @@ export async function generateSidesOnly(
   settings: Settings & { apiKey?: string },
   technique?: string
 ): Promise<import('./types').Side[]> {
-  const client = new Anthropic({ apiKey: apiKey || process.env.ANTHROPIC_API_KEY! });
+  const client = anthropicClient({ apiKey: apiKey || process.env.ANTHROPIC_API_KEY! });
 
   const preferredText = settings.preferredSides?.length ? `Preferred sides: ${settings.preferredSides.join(', ')}.` : '';
   const avoidedText = settings.avoidedSides?.length ? `Never suggest: ${settings.avoidedSides.join(', ')}.` : '';
@@ -384,7 +385,7 @@ export async function generateSingleMeal(
   excludeNames: string[] = [],
   technique?: string
 ): Promise<Meal> {
-  const client = new Anthropic({ apiKey: apiKey || process.env.ANTHROPIC_API_KEY! });
+  const client = anthropicClient({ apiKey: apiKey || process.env.ANTHROPIC_API_KEY! });
 
   const prefsText = settings.preferences?.length ? `Food preferences: ${settings.preferences.join(', ')}.` : '';
   const restrictText = settings.restrictions?.length ? `STRICT dietary restrictions (never include): ${settings.restrictions.join(', ')}.` : '';
@@ -466,7 +467,7 @@ export async function generateGroceryList(
   meals: Meal[],
   familySize: number
 ): Promise<WeeklyMenu['grocery_list']> {
-  const client = new Anthropic({ apiKey });
+  const client = anthropicClient({ apiKey });
 
   // Compile ALL ingredients from actual loaded recipes — no estimation
   const allIngredients: { amount: string; item: string; meal: string }[] = [];
@@ -502,7 +503,7 @@ async function categorizeIngredients(
   apiKey: string,
   allIngredients: { amount: string; item: string; meal: string }[]
 ): Promise<WeeklyMenu['grocery_list']> {
-  const client = new Anthropic({ apiKey });
+  const client = anthropicClient({ apiKey });
 
   const ingredientList = allIngredients
     .map(i => `${i.amount} ${i.item} (${i.meal})`)
@@ -717,7 +718,7 @@ export async function generateMealRecipe(
   language?: string,
   units?: string
 ): Promise<{ ingredients: Ingredient[]; instructions: string[]; prep_ahead: string[]; sides?: import('./types').Side[] }> {
-  const client = new Anthropic({ apiKey });
+  const client = anthropicClient({ apiKey });
 
   function prepContext(ps?: import('./types').PrepSchedule): string {
     if (!ps || ps.type === 'daily') {
@@ -800,7 +801,7 @@ export async function translateUIStrings(
   targetLanguage: string,
 ): Promise<Record<string, string>> {
   if (!targetLanguage || targetLanguage === 'English') return strings;
-  const client = new Anthropic({ apiKey });
+  const client = anthropicClient({ apiKey });
   const prompt = `Translate the values in the following JSON object to ${targetLanguage}. Keep the keys EXACTLY the same. Translate all text naturally for a native speaker of ${targetLanguage}. Preserve emojis, line breaks, and markdown formatting. Return ONLY valid JSON with the exact same key structure.
 
 ${JSON.stringify(strings, null, 2)}`;
@@ -828,7 +829,7 @@ export async function translateContent(
   },
   targetLanguage: string = 'Spanish'
 ): Promise<typeof content> {
-  const client = new Anthropic({ apiKey });
+  const client = anthropicClient({ apiKey });
 
   const prompt = `Translate the following recipe content to ${targetLanguage}. Return ONLY valid JSON with the exact same structure. Translate ingredient names, instructions, descriptions, and all text fields.
 
@@ -859,7 +860,7 @@ export async function simplifyRecipe(
   simplifiedInstructions: string[];
   note: string;
 }> {
-  const client = new Anthropic({ apiKey: apiKey || process.env.ANTHROPIC_API_KEY! });
+  const client = anthropicClient({ apiKey: apiKey || process.env.ANTHROPIC_API_KEY! });
 
   const ingredientList = (meal.ingredients || []).map(i => `${i.amount} ${i.item}`).join('\n');
   const skipList = skipIngredients.join(', ');
@@ -915,7 +916,7 @@ export async function translateToEnglish(
     prep_ahead?: string[];
   }
 ): Promise<typeof content> {
-  const client = new Anthropic({ apiKey });
+  const client = anthropicClient({ apiKey });
 
   const prompt = `Translate the following recipe content to English. Return ONLY valid JSON with the exact same structure. Keep ingredient amounts (numbers, fractions, and units like g, ml, tbsp, tsp, kg, oz, cups) unchanged — only translate ingredient names and all text fields.
 
@@ -937,7 +938,7 @@ export async function parseRecipeFromText(
   apiKey: string,
   input: { url: string; platform: string; pageText: string; ogTitle?: string; ogDescription?: string; transcript?: string },
 ): Promise<any | null> {
-  const client = new Anthropic({ apiKey });
+  const client = anthropicClient({ apiKey });
 
   // Cap page text — social platforms include massive amounts of unrelated chrome.
   const trimmed = (input.pageText || '').slice(0, 15000);
@@ -1017,7 +1018,7 @@ export async function generateOnTheFlyOptions(
   language?: string,
   exclude: string[] = [],
 ): Promise<OnTheFlyOption[]> {
-  const client = new Anthropic({ apiKey });
+  const client = anthropicClient({ apiKey });
 
   const restrictText = restrictions.length
     ? `Strict dietary restrictions — never include: ${restrictions.join(', ')}.` : '';
@@ -1082,7 +1083,7 @@ export async function generateOnTheFlyFullRecipe(
   language?: string,
   units?: string,
 ) {
-  const client = new Anthropic({ apiKey });
+  const client = anthropicClient({ apiKey });
 
   const restrictText = restrictions.length
     ? `Strict dietary restrictions — never include: ${restrictions.join(', ')}.` : '';
@@ -1166,7 +1167,7 @@ export async function generateOnTheFlyRecipe(
   instructions: string[];
   prep_ahead: string[];
 }> {
-  const client = new Anthropic({ apiKey });
+  const client = anthropicClient({ apiKey });
 
   const restrictText = restrictions.length
     ? `Strict dietary restrictions — never include: ${restrictions.join(', ')}.` : '';
@@ -1230,7 +1231,7 @@ export async function getSubstitution(
   meal: Meal,
   ingredient: string
 ): Promise<SubstituteResult> {
-  const client = new Anthropic({ apiKey });
+  const client = anthropicClient({ apiKey });
 
   const ingredientList = (meal.ingredients || []).map(i => `${i.amount} ${i.item}`).join(', ');
 
@@ -1273,7 +1274,7 @@ export async function applySubstitute(
   substitute: string,
   language?: string,
 ): Promise<{ ingredients: Ingredient[]; instructions: string[] }> {
-  const client = new Anthropic({ apiKey });
+  const client = anthropicClient({ apiKey });
 
   const ingredientList = (meal.ingredients || []).map(i => `${i.amount} ${i.item}`).join('\n');
   const instructionList = (meal.instructions || []).map((s, i) => `${i + 1}. ${s}`).join('\n');
@@ -1331,7 +1332,7 @@ export async function removeIngredient(
   ingredient: string,
   language?: string,
 ): Promise<{ ingredients: Ingredient[]; instructions: string[]; note?: string }> {
-  const client = new Anthropic({ apiKey });
+  const client = anthropicClient({ apiKey });
 
   const ingredientList = (meal.ingredients || []).map(i => `${i.amount} ${i.item}`).join('\n');
   const instructionList = (meal.instructions || []).map((s, i) => `${i + 1}. ${s}`).join('\n');
@@ -1552,7 +1553,7 @@ export async function generateSpecialOccasionMenu(
   settings: { restrictions: string[]; preferences: string[] },
   apiKey?: string
 ): Promise<SpecialOccasionResult> {
-  const client = new Anthropic({ apiKey: apiKey || process.env.ANTHROPIC_API_KEY! });
+  const client = anthropicClient({ apiKey: apiKey || process.env.ANTHROPIC_API_KEY! });
 
   let dateContext = '';
   if (daySchedules.length > 0) {
@@ -1659,7 +1660,7 @@ export async function transcribeRecipeImage(
   mediaType: 'image/jpeg' | 'image/png' | 'image/webp',
   apiKey?: string,
 ): Promise<TranscribedRecipeDraft> {
-  const client = new Anthropic({ apiKey: apiKey || process.env.ANTHROPIC_API_KEY! });
+  const client = anthropicClient({ apiKey: apiKey || process.env.ANTHROPIC_API_KEY! });
 
   const prompt = `You are transcribing a photograph of an original family recipe — often a handwritten card, sometimes stained, faded, or in cursive, and possibly not in English. Read it faithfully and turn it into a structured recipe.
 
@@ -1724,7 +1725,7 @@ export async function generateOccasionDishRecipe(
   apiKey: string,
   params: { dish: string; course: string; occasion: string; guests: number; cuisineTheme?: string; restrictions?: string[]; language?: string; units?: string },
 ): Promise<OccasionDishRecipe> {
-  const client = new Anthropic({ apiKey: apiKey || process.env.ANTHROPIC_API_KEY! });
+  const client = anthropicClient({ apiKey: apiKey || process.env.ANTHROPIC_API_KEY! });
   const serves = params.guests || 4;
   const context = [
     params.occasion && `Occasion: ${params.occasion}`,
@@ -1845,7 +1846,7 @@ export async function generateOccasionSwapDish(
   apiKey: string,
   params: { occasion: string; eventType?: string; course: string; avoid: string[]; cuisineTheme?: string; dietaryNotes?: string; guests: number; restrictions?: string[]; language?: string },
 ): Promise<SpecialOccasionMenuItem> {
-  const client = new Anthropic({ apiKey: apiKey || process.env.ANTHROPIC_API_KEY! });
+  const client = anthropicClient({ apiKey: apiKey || process.env.ANTHROPIC_API_KEY! });
   const style = params.eventType === 'hors-doeuvres' ? "hors d'oeuvres / passed small bites" : 'served plated dinner';
   const context = [
     params.cuisineTheme && `Cuisine/theme: ${params.cuisineTheme}`,
@@ -1943,7 +1944,7 @@ export async function generateOccasionTimeline(
   apiKey: string,
   params: { occasionTitle: string; eventType?: string; dishes: { course: string; dish: string; prepTime?: string; cookTime?: string; makeAheadNote?: string }[]; daySchedules: DaySchedule[]; eventDate?: string; servingTime?: string; language?: string },
 ): Promise<TimelineBucket[]> {
-  const client = new Anthropic({ apiKey: apiKey || process.env.ANTHROPIC_API_KEY! });
+  const client = anthropicClient({ apiKey: apiKey || process.env.ANTHROPIC_API_KEY! });
   let dateContext = '';
   if (params.daySchedules?.length) {
     const lines = params.daySchedules.map(d => {
@@ -2015,7 +2016,7 @@ export async function rescheduleOccasionTimeline(
     language?: string;
   },
 ): Promise<{ timeline: TimelineBucket[]; warning?: string }> {
-  const client = new Anthropic({ apiKey: apiKey || process.env.ANTHROPIC_API_KEY! });
+  const client = anthropicClient({ apiKey: apiKey || process.env.ANTHROPIC_API_KEY! });
 
   const dayLines = params.remainingDays.map(d => {
     const rel = d.daysUntilEvent === 0 ? 'event day' : d.daysUntilEvent === 1 ? '1 day before' : `${d.daysUntilEvent} days before`;

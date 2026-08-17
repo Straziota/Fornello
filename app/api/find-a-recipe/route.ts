@@ -1,9 +1,9 @@
+import { anthropicClient } from '@/lib/anthropic';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUser, getAnthropicKey } from '@/lib/auth';
 import { getSettings, saveGlobalRecipeIfNew, getGlobalRecipe } from '@/lib/db';
 import { unitsInstruction } from '@/lib/claude';
 import { normalizeRecipeUnits } from '@/lib/unit-convert';
-import Anthropic from '@anthropic-ai/sdk';
 
 export const maxDuration = 30;
 
@@ -13,7 +13,7 @@ function langInstruction(language?: string): string {
 }
 
 export async function POST(req: NextRequest) {
-  const { user, error } = await requireUser();
+  const { user, error } = await requireUser('find-a-recipe');
   if (error) return error;
 
   const { query, serves } = await req.json();
@@ -83,7 +83,7 @@ Rules:
 - 2–4 prep_ahead tasks as plain action steps
 - Every prep_ahead task must state the quantity of each ingredient being prepped, matching the ingredient list (e.g. "Dice 2 onions") — never quantity-less tasks like "Chop the onions"`;
 
-  const client = new Anthropic({ apiKey });
+  const client = anthropicClient({ apiKey });
   const message = await client.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 2500,

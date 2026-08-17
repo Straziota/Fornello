@@ -5,7 +5,7 @@ import { translateUIStrings } from '@/lib/claude';
 export const maxDuration = 30;
 
 export async function POST(req: NextRequest) {
-  const { user, error } = await requireUser();
+  const { user, error } = await requireUser('translate-ui');
   if (error) return error;
   try {
     const { strings, targetLanguage } = await req.json();

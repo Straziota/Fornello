@@ -9,7 +9,7 @@ export const maxDuration = 60;
 // Drops a disliked ingredient from a recipe outright — no substitute — and saves
 // the result as the user's override, mirroring how a substitution is applied.
 export async function POST(req: Request) {
-  const { user, error } = await requireUser();
+  const { user, error } = await requireUser('menu:ingredient:remove');
   if (error) return error;
   try {
     const { meal, ingredient } = await req.json();

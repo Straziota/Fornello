@@ -1,18 +1,18 @@
+import { anthropicClient } from '@/lib/anthropic';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUser, getAnthropicKey } from '@/lib/auth';
-import Anthropic from '@anthropic-ai/sdk';
 
 export const maxDuration = 15;
 
 export async function POST(req: NextRequest) {
-  const { user, error } = await requireUser();
+  const { user, error } = await requireUser('traditions:suggestions');
   if (error) return error;
 
   const { culture } = await req.json();
   if (!culture?.trim()) return NextResponse.json({ suggestions: [] });
 
   const apiKey = getAnthropicKey();
-  const client = new Anthropic({ apiKey });
+  const client = anthropicClient({ apiKey });
 
   const prompt = `List 8 specific culinary traditions, festivals, or occasions from ${culture} culture where food plays a central role. Be specific and authentic — include both everyday traditions and special occasions.
 

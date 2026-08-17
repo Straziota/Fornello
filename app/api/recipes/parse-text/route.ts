@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseRecipeFromText } from '@/lib/claude';
+import { requireUser } from '@/lib/auth';
 
-// No auth — used by the browser extension. Pattern matches /api/translate-recipe.
+// Called by the browser extension, which sends the session cookie — middleware
+// already 401s anonymous callers, and requireUser() resolves the same session so
+// the Claude spend is metered against whoever's extension made the request.
 export async function POST(req: NextRequest) {
+  const { error: authError } = await requireUser('recipes:parse-text');
+  if (authError) return authError;
   try {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) return NextResponse.json({ error: 'API key not configured' }, { status: 500 });

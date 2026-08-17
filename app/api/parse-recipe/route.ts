@@ -1,11 +1,11 @@
+import { anthropicClient } from '@/lib/anthropic';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUser, getAnthropicKey } from '@/lib/auth';
-import Anthropic from '@anthropic-ai/sdk';
 
 export const maxDuration = 30;
 
 export async function POST(req: NextRequest) {
-  const { user, error } = await requireUser();
+  const { user, error } = await requireUser('parse-recipe');
   if (error) return error;
 
   const { text } = await req.json();
@@ -53,7 +53,7 @@ Rules:
 - Strip out cruft like blog headers, ads, "Print this recipe", author bylines — just the actual recipe.`;
 
   try {
-    const client = new Anthropic({ apiKey: getAnthropicKey() });
+    const client = anthropicClient({ apiKey: getAnthropicKey() });
     const message = await client.messages.create({
       model: 'claude-haiku-4-5',
       max_tokens: 3000,

@@ -7,7 +7,7 @@ import { generateOccasionDishRecipe } from '@/lib/claude';
 export const maxDuration = 30;
 
 export async function POST(req: NextRequest) {
-  const { user, error } = await requireUser();
+  const { user, error } = await requireUser('special-occasion:recipe');
   if (error) return error;
 
   const { dish, course, occasion, guests, cuisineTheme } = await req.json();

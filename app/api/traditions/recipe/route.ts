@@ -1,9 +1,9 @@
+import { anthropicClient } from '@/lib/anthropic';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUser, getAnthropicKey } from '@/lib/auth';
 import { getSettings, saveGlobalRecipeIfNew, getGlobalRecipe } from '@/lib/db';
 import { unitsInstruction } from '@/lib/claude';
 import { normalizeRecipeUnits } from '@/lib/unit-convert';
-import Anthropic from '@anthropic-ai/sdk';
 
 export const maxDuration = 30;
 
@@ -13,7 +13,7 @@ function langInstruction(language?: string): string {
 }
 
 export async function POST(req: NextRequest) {
-  const { user, error } = await requireUser();
+  const { user, error } = await requireUser('traditions:recipe');
   if (error) return error;
 
   const { name, cuisine, culturalContext, occasion, difficulty, serves, total_time } = await req.json();
@@ -69,7 +69,7 @@ Rules:
 - Scale quantities for ${portionSize} servings
 - Stay faithful to the authentic method while being accessible to home cooks`;
 
-  const client = new Anthropic({ apiKey });
+  const client = anthropicClient({ apiKey });
   const message = await client.messages.create({
     model: 'claude-haiku-4-5',
     max_tokens: 2000,

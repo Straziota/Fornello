@@ -13,7 +13,7 @@ const MAX_SIZE = 10 * 1024 * 1024; // 10MB — scans of full recipe cards can be
 // succeeds independently of transcription, so an illegible card still keeps
 // its scan and can be typed in by hand.
 export async function POST(req: NextRequest) {
-  const { user, error } = await requireUser();
+  const { user, error } = await requireUser('heritage:scan');
   if (error) return error;
 
   let scanUrl: string;
