@@ -3,18 +3,54 @@ import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 // Note: middleware cannot use next/headers, so we use createServerClient directly here
 
-const PUBLIC_PATHS = ['/login', '/signup', '/api/auth', '/api/client-error', '/privacy', '/reset-password'];
+// '/manifest.webmanifest' and '/sw.js' must be reachable while logged out:
+// iOS fetches the manifest before there is any session, and a service worker
+// redirected to /login registers the login page as the app shell.
+const PUBLIC_PATHS = [
+  '/login', '/signup', '/api/auth', '/api/client-error', '/privacy', '/reset-password',
+  // Randlehub's read-only menu feed. It carries no Supabase session — it authenticates with a
+  // shared token the route handler checks itself, and refuses to serve at all without one.
+  '/api/hub-feed',
+  '/manifest.webmanifest', '/sw.js',
+  // Precached at install time, before any session exists — and it must render
+  // rather than redirect when the network is gone.
+  '/offline',
+];
+
+// Origins belonging to our own first-party clients. The browser extension has
+// used this path for a while; the iOS shell joins it — a Capacitor WKWebView
+// serves the bundled UI from capacitor://localhost (ionic:// on older shells,
+// http://localhost when run in the simulator against a dev server).
+function isFirstPartyAppOrigin(origin: string): boolean {
+  return (
+    origin.startsWith('chrome-extension://') ||
+    origin.startsWith('moz-extension://') ||
+    origin === 'capacitor://localhost' ||
+    origin === 'ionic://localhost' ||
+    origin === 'http://localhost' ||
+    /^http:\/\/localhost:\d+$/.test(origin)
+  );
+}
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const origin = req.headers.get('origin') || '';
-  const isExtension = origin.startsWith('chrome-extension://') || origin.startsWith('moz-extension://');
+  const isExtension = isFirstPartyAppOrigin(origin);
+
+  // The iOS app authenticates with `Authorization: Bearer <supabase jwt>`,
+  // not cookies — cross-site cookies are never sent from capacitor://localhost.
+  // Middleware can't cheaply verify a JWT signature at the edge, so it defers:
+  // bearer-bearing API requests skip the cookie gate and the route handler's
+  // requireUser() does the real verification. Nothing is trusted here, only
+  // postponed to where it can be checked properly.
+  const hasBearerToken = (req.headers.get('authorization') || '').startsWith('Bearer ');
 
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     const headers: Record<string, string> = {
       'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      // Authorization is what the iOS app sends its Supabase session in.
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     };
     if (isExtension) {
       headers['Access-Control-Allow-Origin'] = origin;
@@ -46,7 +82,8 @@ export async function middleware(req: NextRequest) {
 
   // Redirect unauthenticated users to login (except public paths)
   const isPublic = PUBLIC_PATHS.some(p => pathname.startsWith(p));
-  if (!user && !isPublic) {
+  const deferredToRouteHandler = hasBearerToken && pathname.startsWith('/api/');
+  if (!user && !isPublic && !deferredToRouteHandler) {
     // For API requests, return 401 instead of redirecting (extensions can't follow redirects to HTML)
     if (pathname.startsWith('/api/')) {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
