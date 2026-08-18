@@ -12,7 +12,9 @@
     "dist": "npm run build && electron-builder --mac --dir",
     "test": "playwright test",
     "test:ui": "playwright test --ui",
-    "test:report": "playwright show-report"
+    "test:report": "playwright show-report",
+    "build:app": "node scripts/build-app.mjs",
+    "sync:app": "npm run build:app && npx cap sync ios"
   },
   "build": {
     "appId": "com.fornello.app",
@@ -42,6 +44,9 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",
+    "@capacitor/cli": "^8.5.0",
+    "@capacitor/core": "^8.5.0",
+    "@capacitor/ios": "^8.5.0",
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.104.0",
     "@types/nodemailer": "^8.0.0",
