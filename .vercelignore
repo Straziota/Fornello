@@ -5,3 +5,11 @@ data
 *.db
 *.db-shm
 *.db-wal
+
+# Flag artwork Fornello doesn't use: every country in SVG/PDF/JPG plus the
+# unreferenced PNGs. Kept in git (assets/flags-unused/) so nothing is lost,
+# but excluded from the deploy — it was ~1.3GB of upload on every push.
+assets/
+
+# The Capacitor static export. Built locally for the iOS shell, never served.
+app-build
