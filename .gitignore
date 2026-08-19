@@ -50,3 +50,6 @@ next-env.d.ts
 
 # Capacitor app build output
 app-build/
+
+# Xcode derived data from -derivedDataPath ios/build
+ios/build/

@@ -7,6 +7,7 @@ import { LanguageProvider } from '@/components/LanguageProvider';
 import PageTourFloating from '@/components/PageTourFloating';
 import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar';
 import NativeBridge from '@/components/NativeBridge';
+import NativeAuthGate from '@/components/NativeAuthGate';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 const lora = Lora({ subsets: ['latin'], variable: '--font-lora' });
@@ -43,6 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${inter.variable} ${lora.variable} ${dancing.variable} min-h-screen`}
             style={{ color: 'var(--text)', fontFamily: 'Georgia, ui-serif, serif' }}>
         <NativeBridge />
+        <NativeAuthGate />
         <ServiceWorkerRegistrar />
         <LanguageProvider>
           <TourWrapper>
