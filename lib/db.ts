@@ -357,10 +357,18 @@ export async function deleteUserRecipe(userId: string, id: number) {
 
 // One-shot helper for the backfill admin endpoint. Pulls every user_recipes row
 // across all users with the fields needed to push into global_recipes.
+//
+// user_recipes is a mixed bag — recipes the app generated, recipes a user
+// imported from someone else's website, and heirloom recipes copied out of a
+// Family Kitchen. Only the first may be promoted, so the same provenance rule
+// that guards saveGlobalRecipeIfNew is applied here too: this endpoint pushes in
+// bulk, and should not even offer up rows the gate would refuse.
 export async function getAllUserRecipesForBackfill() {
   const { data, error } = await adminClient.from('user_recipes').select('*');
   if (error) throw new Error(error.message);
-  return (data || []).map((r: any) => ({
+  return (data || [])
+    .filter((r: any) => mayEnterGlobalLibrary({ source_site: r.source || '' }))
+    .map((r: any) => ({
     name: r.name, cuisine: r.cuisine || '', mealType: r.meal_type || '',
     serves: r.serves || 4, total_time: r.total_time || '',
     prep_time: r.prep_time || '', cook_time: r.cook_time || '',
@@ -465,6 +473,36 @@ export async function getGlobalRecipeSummaries() {
   }));
 }
 
+// Source labels the app sets itself when it saves a recipe it just generated.
+// Anything else — a domain, a URL, a family-recipe marker — means the recipe did
+// not originate as fresh model output for this household, and must not enter the
+// shared library.
+const APP_GENERATED_SOURCES = new Set([
+  '', 'Special Occasion', 'Something Sweet', 'Traditions', 'Find a Recipe', 'On the Fly',
+]);
+
+/**
+ * May this recipe be promoted into the cross-household library?
+ *
+ * The library is sampled into other families' weekly menus, so anything that
+ * isn't ours to redistribute has to be refused here. Two things reached it
+ * before this gate existed: recipes a user imported from a third-party site
+ * (verified: an 18-ingredient Serious Eats recipe, byte-identical), and family
+ * heirloom recipes, one carrying a real person's name.
+ *
+ * The menu writers pass `meal.source_site` straight through, and that value can
+ * be either a model's stylistic attribution ("in the style of seriouseats.com")
+ * or a genuine import from that site. Nothing downstream can tell those apart,
+ * so both are refused. The cost is that stylistically-attributed recipes stop
+ * being promoted; the alternative is redistributing other people's work.
+ */
+export function mayEnterGlobalLibrary(recipe: { source_site?: string; origin?: string }): boolean {
+  if (recipe.origin && recipe.origin !== 'generated' && recipe.origin !== 'admin') return false;
+  const src = (recipe.source_site || '').trim();
+  if (APP_GENERATED_SOURCES.has(src)) return true;
+  return false;   // domains, URLs, 'familyrecipes', contributor names — all refused
+}
+
 export async function saveGlobalRecipeIfNew(recipe: {
   name: string; cuisine: string; mealType: string; serves: number;
   total_time: string; prep_time: string; cook_time: string; difficulty: string;
@@ -474,6 +512,11 @@ export async function saveGlobalRecipeIfNew(recipe: {
   category?: 'dinner' | 'side' | 'dessert' | 'special' | 'tradition';
   origin?: 'generated' | 'imported' | 'admin' | 'heritage' | 'special';
 }) {
+  // Provenance gate — see mayEnterGlobalLibrary. Silently skipping is correct:
+  // the caller's own save (user_recipes / the menu) has already succeeded, and
+  // only the cross-household promotion is being declined.
+  if (!mayEnterGlobalLibrary(recipe)) return false;
+
   const { data: existing } = await adminClient.from('global_recipes')
     .select('id').ilike('name', recipe.name).maybeSingle();
   if (existing) return false;
