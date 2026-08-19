@@ -5,6 +5,7 @@ import RecipeCardModal from '@/components/RecipeCardModal';
 import Toast from '@/components/Toast';
 import PageBackground from '@/components/PageBackground';
 import { T } from '@/components/T';
+import { heritageKitchenHref } from '@/lib/routes';
 interface KitchenCard {
   slug: string;
   contributor: string;
@@ -116,7 +117,7 @@ export default function HeritageKitchenPage() {
         </p>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
           {kitchens.map(k => (
-            <Link key={k.slug} href={k.href || `/heritage-kitchen/${k.slug}`}
+            <Link key={k.slug} href={k.href || heritageKitchenHref(k.slug)}
                   className="block group transition-transform hover:-translate-y-1">
               <div className="rounded-[22px] overflow-hidden ring-1"
                    style={{ background: 'var(--white)', boxShadow: '0 6px 24px rgba(47,58,50,0.08)' }}>

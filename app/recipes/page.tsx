@@ -6,6 +6,7 @@ import Link from 'next/link';
 import ShareButton from '@/components/ShareButton';
 import RecipeCardModal from '@/components/RecipeCardModal';
 import PageBackground from '@/components/PageBackground';
+import { recipeEditHref } from '@/lib/routes';
 
 const MEAL_TYPES = ['Any','🥩 Meat','🍗 Chicken','🦞 Seafood','🍝 Pasta','🥗 Vegetarian','🍜 Soup / Stew','🌮 Mexican','🍣 Asian','🫘 Legumes'];
 
@@ -139,7 +140,7 @@ export default function RecipesPage() {
                     style={{ background: 'var(--green-lt)', color: 'var(--green)' }}>
                     View
                   </button>
-                  <Link href={`/recipes/${r.id}`}
+                  <Link href={recipeEditHref(r.id)}
                     className="flex-1 text-center py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
                     style={{ background: 'var(--cream)', color: 'var(--text-2)', border: '1px solid var(--border)' }}>
                     Edit

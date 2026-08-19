@@ -4,6 +4,7 @@ import Link from 'next/link';
 import PageBackground from '@/components/PageBackground';
 import { T } from '@/components/T';
 import type { HeritageProfile } from '@/lib/types';
+import { familyKitchenHref } from '@/lib/routes';
 
 export default function FamilyKitchensPage() {
   const [profiles, setProfiles] = useState<HeritageProfile[]>([]);
@@ -68,7 +69,7 @@ export default function FamilyKitchensPage() {
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
           {profiles.map(p => (
-            <Link key={p.id} href={`/family-kitchens/${p.slug}`}
+            <Link key={p.id} href={familyKitchenHref(p.slug)}
                   className="block group transition-transform hover:-translate-y-1">
               <div className="rounded-[22px] overflow-hidden ring-1 relative"
                    style={{ background: 'var(--white)', boxShadow: '0 6px 24px rgba(47,58,50,0.08)' }}>

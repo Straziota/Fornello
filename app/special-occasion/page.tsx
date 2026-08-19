@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import PageBackground from '@/components/PageBackground';
 import LoadingMessage from '@/components/LoadingMessage';
 import { SpecialOccasionResult, DaySchedule } from '@/lib/claude';
+import { printOccasionHref } from '@/lib/routes';
 
 function Divider({ label }: { label?: string }) {
   return (
@@ -1101,7 +1102,7 @@ export default function SpecialOccasionPage() {
               && activeEvent.result.recipesServeGuests !== (activeEvent.guests || 0)}
             onBack={() => { fetchEvents(); setView('list'); }}
             onEdit={editDetails}
-            onPrint={() => window.open(`/print/occasion/${activeEvent.id}`, '_blank')}
+            onPrint={() => window.open(printOccasionHref(activeEvent.id), '_blank')}
             onDishClick={handleDishClick}
             onToggleSelect={toggleSelect}
             onSwap={swapDish}

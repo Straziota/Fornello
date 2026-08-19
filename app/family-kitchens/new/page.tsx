@@ -5,6 +5,7 @@ import Link from 'next/link';
 import PageBackground from '@/components/PageBackground';
 import Toast from '@/components/Toast';
 import { T } from '@/components/T';
+import { familyKitchenHref } from '@/lib/routes';
 
 const RELATIONSHIPS = ['Myself', 'Mother', 'Grandmother', 'Auntie', 'Father', 'Grandfather', 'Uncle', 'Other'];
 
@@ -50,7 +51,7 @@ export default function NewProfilePage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Could not create profile');
-      router.push(`/family-kitchens/${data.profile.slug}`);
+      router.push(familyKitchenHref(data.profile.slug));
     } catch (e: any) {
       setToast({ msg: e.message, type: 'error' });
       setSaving(false);

@@ -7,6 +7,7 @@ import { useLanguage } from './LanguageProvider';
 import { translateRecipeContent, getCachedTranslation } from '@/lib/translation-cache';
 import { convertText, convertIngredient } from '@/lib/unit-convert';
 import ShareButton from './ShareButton';
+import { recipeEditHref } from '@/lib/routes';
 
 interface Props {
   recipe: UserRecipe;
@@ -412,7 +413,7 @@ export default function RecipeCardModal({ recipe, onClose, readOnly, onSave, sav
             </div>
             {!readOnly && <ShareButton recipe={recipe} size="sm" />}
             {!readOnly && (
-              <Link href={`/recipes/${recipe.id}`}
+              <Link href={recipeEditHref(recipe.id)}
                 className="rounded-full px-4 py-2 text-xs uppercase tracking-[0.18em] transition-opacity hover:opacity-70"
                 style={{ border: '1px solid #C4A265', color: '#8B6A42', background: 'transparent' }}>
                 Edit
