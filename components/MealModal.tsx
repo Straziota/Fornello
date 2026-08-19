@@ -664,7 +664,7 @@ export default function MealModal({ meal: initialMeal, menuId, dislikedIngredien
         </div>
 
         {/* Tabs */}
-        <div className="flex items-center gap-1 mb-5 border-b" style={{ borderColor: 'var(--border)' }}>
+        <div className="flex items-center flex-wrap gap-x-1 gap-y-2 mb-5 border-b" style={{ borderColor: 'var(--border)' }}>
           {(['recipe', 'prep'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className="px-5 py-2.5 text-sm font-semibold -mb-px border-b-2 transition-colors"
@@ -688,7 +688,7 @@ export default function MealModal({ meal: initialMeal, menuId, dislikedIngredien
             </button>
           )}
           {!recipeLoading && (
-            <div className="flex gap-2 ml-auto pb-1">
+            <div className="flex flex-wrap gap-2 sm:ml-auto pb-1">
               <button
                 onClick={() => setUnitMode(m => m === 'original' ? 'metric' : 'original')}
                 className="text-xs px-3 py-1.5 rounded-lg transition-opacity hover:opacity-70"
