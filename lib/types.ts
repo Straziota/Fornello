@@ -39,7 +39,6 @@ export interface Meal {
   isLeftover?: boolean;
   leftoverFrom?: string[];
   imageKeyword?: string;
-  source_url?: string;
   photo_url?: string;
   sides?: Side[];
   cooking_notes?: string;

@@ -54,6 +54,12 @@ function normalizeSide(raw: unknown): Side | null {
 export function normalizeMeal(raw: unknown): Meal | null {
   if (raw == null || typeof raw !== 'object') return null;
   const m = { ...(raw as Record<string, unknown>) } as Record<string, unknown>;
+  // A model asked for "the URL of the actual recipe page" will happily invent a
+  // plausible one pointing at a real publisher. The prompt no longer asks, but a
+  // model may still volunteer it, so drop it on the way in — every menu write
+  // passes through here, and a fabricated link must never reach storage where a
+  // share, export or print sheet could later publish it as real.
+  delete m.source_url;
   m.name = typeof m.name === 'string' ? m.name : m.name == null ? '' : String(m.name);
   m.day = typeof m.day === 'string' ? m.day : m.day == null ? '' : String(m.day);
   if (m.ingredients != null) {

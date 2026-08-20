@@ -255,7 +255,6 @@ Return ONLY valid JSON — no markdown, no extra text:
       "name": "Full Meal Name",
       "cuisine": "Italian",
       "source_site": "seriouseats.com",
-      "source_url": "https://www.seriouseats.com/full-recipe-url-here",
       "serves": ${settings.familySize},
       "total_time": "45 min",
       "prep_time": "15 min",
@@ -282,7 +281,6 @@ Return ONLY valid JSON — no markdown, no extra text:
 Rules:
 - 🔁 EVERY meal name in this 7-day plan must be UNIQUE. Never repeat the same recipe on multiple days. Each "name" field must be different from every other "name" in the week.
 - 🌱 FRESHNESS — at least 5 of the 7 meals must be fresh inspirations from the sites above, NOT from the familiar favorites pool. Surprise the family — they'd rather try something new than see the same dishes recycled.
-- source_url must be the full URL to the actual recipe page on source_site (e.g. "https://www.seriouseats.com/chicken-piccata-recipe"). Provide your best known URL — it will be used to fetch the recipe photo.
 - Only include days that have cooking enabled OR leftover ideas enabled
 - Respect the meal type and max cooking time per day — choose recipes that GENUINELY fit; pick simpler preparations rather than misrepresenting time
 - Vary cuisines across the week — span at least 4 different cuisine origins or culinary styles in any 7-day plan
@@ -408,7 +406,6 @@ Return ONLY valid JSON — no markdown:
   "name": "Full Meal Name",
   "cuisine": "Italian",
   "source_site": "seriouseats.com",
-  "source_url": "https://www.seriouseats.com/recipe-url",
   "serves": ${settings.familySize},
   "total_time": "45 min",
   "prep_time": "15 min",
