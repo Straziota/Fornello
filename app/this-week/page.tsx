@@ -90,7 +90,18 @@ export default function HomePage() {
   const [showVacationPicker, setShowVacationPicker] = useState(false);
 
   useEffect(() => {
-    fetch('/api/menu').then(r => r.json()).then(d => { if (d?.meals) setMenu(d); });
+    fetch('/api/menu').then(r => r.json()).then(d => {
+      if (d?.meals) { setMenu(d); return; }
+      // Straight out of onboarding: generate the first week rather than landing
+      // them on "No menu yet — set up your preferences in Settings", which is
+      // both wrong (they just did) and one more click before any value.
+      // sessionStorage rather than a query param so the static app build doesn't
+      // need a useSearchParams Suspense boundary.
+      if (typeof window !== 'undefined' && sessionStorage.getItem('fornello:firstRun')) {
+        sessionStorage.removeItem('fornello:firstRun');
+        generate();
+      }
+    });
     fetch('/api/settings').then(r => r.json()).then(d => setSkipIngredients(d.skipIngredients || []));
     fetch('/api/admin/check').then(r => r.json()).then(d => setIsAdmin(d.isAdmin)).catch(() => {});
   }, []);

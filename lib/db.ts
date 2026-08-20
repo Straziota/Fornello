@@ -56,6 +56,7 @@ export async function getSettings(userId: string) {
       schedule: {}, randomizeMealTypes: false,
       randomizePool: [], prepSchedule: { type: 'daily' as const },
       prioritizeMyRecipes: false, fromEmail: '', emailFromName: 'Fornello',
+      onboardedAt: null,
     };
   }
 
@@ -76,6 +77,7 @@ export async function getSettings(userId: string) {
     avoidedSides: data.avoided_sides ?? [],
     skipIngredients: [...new Set([...(data.skip_ingredients ?? []), ...(data.disliked_ingredients ?? [])])],
     hasSeenTour: data.has_seen_tour ?? false,
+    onboardedAt: data.onboarded_at ?? null,
     language: data.language ?? 'English',
     units: data.units ?? 'us',
     weekStartDay: data.week_start_day ?? 1,

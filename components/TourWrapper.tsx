@@ -1,16 +1,17 @@
 'use client';
 import { useState, useEffect, createContext, useContext } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Tour from './Tour';
 
 const TourContext = createContext<{ startTour: () => void }>({ startTour: () => {} });
 export const useTour = () => useContext(TourContext);
 
 // Tour should never appear on these (unauthenticated) pages
-const PUBLIC_PATHS = ['/login', '/signup', '/privacy', '/reset-password'];
+const PUBLIC_PATHS = ['/login', '/signup', '/privacy', '/reset-password', '/welcome', '/offline'];
 
 export default function TourWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [showTour, setShowTour] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const [checked, setChecked] = useState(false);
@@ -26,6 +27,15 @@ export default function TourWrapper({ children }: { children: React.ReactNode })
       const s = await r.json();
       // Only show welcome to authenticated users who haven't seen the tour
       // (familySize check guards against malformed responses)
+      // First-run questionnaire takes precedence over everything else. A user
+      // who has never answered it is sent there instead of being dropped into an
+      // unconfigured product with a "want a tour?" modal on top — that was three
+      // gates before anyone saw a dinner.
+      if (s && !s.onboardedAt) {
+        router.replace('/welcome');
+        setChecked(true);
+        return;
+      }
       if (s && typeof s.familySize === 'number' && !s.hasSeenTour) {
         setShowWelcome(true);
       }

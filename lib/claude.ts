@@ -1,5 +1,6 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import { anthropicClient } from './anthropic';
+import { EXPLORATION_THEMES } from './themes';
 import { Settings, WeeklyMenu, WeekSchedule, Meal, Ingredient, SubstituteResult } from './types';
 import { normalizeRecipeUnits } from './unit-convert';
 
@@ -151,28 +152,8 @@ export async function generateMenu(
   const schedText = scheduleText(settings.schedule || {});
   const leftoverDaysList = leftoverDays(settings.schedule || {});
 
-  // Exploration themes with metadata so we can filter against the user's restrictions/preferences.
-  // tags: keywords that, if present in restrictions or skipIngredients, disqualify the theme.
-  const EXPLORATION_THEMES: { label: string; conflictsWith?: RegExp; requiresPreference?: RegExp }[] = [
-    { label: 'Mediterranean / North African' },
-    { label: 'East Asian', conflictsWith: /\b(soy|sesame|shellfish)\b/i },
-    { label: 'Southeast Asian', conflictsWith: /\b(peanut|shellfish|fish sauce)\b/i },
-    { label: 'Latin American' },
-    { label: 'Caribbean', conflictsWith: /\b(seafood|shellfish)\b/i },
-    { label: 'South Asian / Indian subcontinent' },
-    { label: 'Middle Eastern' },
-    { label: 'Italian regional (pick a region — Sicilian, Tuscan, Pugliese, etc.)' },
-    { label: 'French bistro / home cooking' },
-    { label: 'Eastern European' },
-    { label: 'Spanish / Portuguese' },
-    { label: 'Vegetable-forward / lighter cooking' },
-    { label: 'Slow-cooked, hearty, comforting' },
-    { label: 'Seafood-focused / coastal', conflictsWith: /\b(seafood|fish|shellfish|pescatarian)\b/i },
-    { label: 'Smoky, grilled, or pan-seared' },
-    { label: 'Braises, stews, or one-pot dishes' },
-    { label: 'Rustic peasant cooking (any culture)' },
-  ];
-
+  // Exploration themes live in lib/themes.ts so onboarding filters the same
+  // list the generator does — see themesExcludedBy().
   // Filter out themes that conflict with the user's settings
   const restrictBlob = [
     ...(settings.restrictions || []),
@@ -180,6 +161,7 @@ export async function generateMenu(
     ...((settings as any).avoidedSides || []),
   ].join(' ').toLowerCase();
   const isVegetarianOnly = /\b(vegetarian|vegan|plant.?based|meatless)\b/.test(restrictBlob);
+
   const filteredThemes = EXPLORATION_THEMES.filter(t => {
     if (t.conflictsWith && t.conflictsWith.test(restrictBlob)) return false;
     if (isVegetarianOnly && /seafood|coastal|smoky|grilled|pan-seared|hearty|braises|stews/i.test(t.label)) return false;
