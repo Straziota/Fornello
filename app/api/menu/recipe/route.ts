@@ -43,7 +43,9 @@ export async function POST(req: Request) {
     const recipe = await generateMealRecipe(getAnthropicKey(), meal, settings.familySize, settings.prepSchedule, language, units);
     await Promise.all([
       updateMealRecipe(user!.id, menuId, meal.day, recipe),
-      saveGlobalRecipeIfNew({ ...meal, ...recipe, mealType: meal.tags?.[0] || '', source_site: meal.source_site || '' }),
+      saveGlobalRecipeIfNew({ ...meal, ...recipe, mealType: meal.tags?.[0] || '',
+        // Stylistic nod, not provenance — see app/api/menu/generate/route.ts.
+        source_site: '', inspired_by: meal.source_site || '' }),
     ]);
     return NextResponse.json({ ...recipe, recipeLoaded: true });
   } catch (e: any) {

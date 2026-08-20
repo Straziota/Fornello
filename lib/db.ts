@@ -301,7 +301,8 @@ function rowToRecipe(r: any) {
     cook_time: r.cook_time, difficulty: r.difficulty, description: r.description,
     tags: r.tags ?? [], ingredients: r.ingredients ?? [],
     instructions: r.instructions ?? [], prep_ahead: r.prep_ahead ?? [],
-    source: r.source, photo_url: r.photo_url || '', createdAt: r.created_at,
+    source: r.source, inspired_by: r.inspired_by || undefined,
+    photo_url: r.photo_url || '', createdAt: r.created_at,
   };
 }
 
@@ -319,7 +320,7 @@ export async function saveUserRecipe(userId: string, recipe: {
   name: string; cuisine: string; mealType: string; serves: number;
   total_time: string; prep_time: string; cook_time: string; difficulty: string;
   description: string; tags: string[]; ingredients: object[];
-  instructions: string[]; prep_ahead: string[]; source: string; photo_url?: string;
+  instructions: string[]; prep_ahead: string[]; source: string; inspired_by?: string; photo_url?: string;
 }) {
   const { data } = await adminClient.from('user_recipes').insert({
     user_id: userId, name: recipe.name, cuisine: recipe.cuisine,
@@ -328,7 +329,8 @@ export async function saveUserRecipe(userId: string, recipe: {
     cook_time: recipe.cook_time, difficulty: recipe.difficulty,
     description: recipe.description, tags: recipe.tags,
     ingredients: recipe.ingredients, instructions: recipe.instructions,
-    prep_ahead: recipe.prep_ahead, source: recipe.source, photo_url: recipe.photo_url || '',
+    prep_ahead: recipe.prep_ahead, source: recipe.source,
+    inspired_by: recipe.inspired_by || null, photo_url: recipe.photo_url || '',
   }).select('id').single();
   // NOTE: user recipes intentionally do NOT flow into the global library — that's reserved
   // for Fornello-generated recipes to keep the library consistent across families.
@@ -339,7 +341,7 @@ export async function updateUserRecipe(userId: string, id: number, recipe: {
   name: string; cuisine: string; mealType: string; serves: number;
   total_time: string; prep_time: string; cook_time: string; difficulty: string;
   description: string; tags: string[]; ingredients: object[];
-  instructions: string[]; prep_ahead: string[]; source: string; photo_url?: string;
+  instructions: string[]; prep_ahead: string[]; source: string; inspired_by?: string; photo_url?: string;
 }) {
   await adminClient.from('user_recipes').update({
     name: recipe.name, cuisine: recipe.cuisine, meal_type: recipe.mealType,
@@ -347,7 +349,8 @@ export async function updateUserRecipe(userId: string, id: number, recipe: {
     cook_time: recipe.cook_time, difficulty: recipe.difficulty,
     description: recipe.description, tags: recipe.tags,
     ingredients: recipe.ingredients, instructions: recipe.instructions,
-    prep_ahead: recipe.prep_ahead, source: recipe.source, photo_url: recipe.photo_url || '',
+    prep_ahead: recipe.prep_ahead, source: recipe.source,
+    inspired_by: recipe.inspired_by || null, photo_url: recipe.photo_url || '',
   }).eq('id', id).eq('user_id', userId);
 }
 
@@ -490,11 +493,11 @@ const APP_GENERATED_SOURCES = new Set([
  * (verified: an 18-ingredient Serious Eats recipe, byte-identical), and family
  * heirloom recipes, one carrying a real person's name.
  *
- * The menu writers pass `meal.source_site` straight through, and that value can
- * be either a model's stylistic attribution ("in the style of seriouseats.com")
- * or a genuine import from that site. Nothing downstream can tell those apart,
- * so both are refused. The cost is that stylistically-attributed recipes stop
- * being promoted; the alternative is redistributing other people's work.
+ * `source_site` now means provenance only. A recipe merely written in the style
+ * of a site carries that in `inspired_by`, which this ignores — so Fornello's own
+ * output is promoted normally even when it nods at a site. Earlier this gate
+ * refused those too, because one field carried both meanings and nothing could
+ * tell them apart; sql/2026-08-19-inspired-by.sql split them.
  */
 export function mayEnterGlobalLibrary(recipe: { source_site?: string; origin?: string }): boolean {
   if (recipe.origin && recipe.origin !== 'generated' && recipe.origin !== 'admin') return false;
@@ -508,7 +511,7 @@ export async function saveGlobalRecipeIfNew(recipe: {
   total_time: string; prep_time: string; cook_time: string; difficulty: string;
   description: string; tags: string[]; ingredients: object[];
   instructions: string[]; prep_ahead: string[]; sides?: object[];
-  photo_url?: string; source_site?: string;
+  photo_url?: string; source_site?: string; inspired_by?: string;
   category?: 'dinner' | 'side' | 'dessert' | 'special' | 'tradition';
   origin?: 'generated' | 'imported' | 'admin' | 'heritage' | 'special';
 }) {
@@ -528,6 +531,7 @@ export async function saveGlobalRecipeIfNew(recipe: {
     ingredients: recipe.ingredients, instructions: recipe.instructions,
     prep_ahead: recipe.prep_ahead, sides: recipe.sides ?? [],
     photo_url: recipe.photo_url || '', source_site: recipe.source_site || '',
+    inspired_by: recipe.inspired_by || null,
     category: recipe.category ?? 'dinner',
     origin: recipe.origin ?? 'generated',
   });

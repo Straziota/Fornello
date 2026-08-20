@@ -198,7 +198,10 @@ export async function POST(req: Request) {
             const recipe = await generateMealRecipe(apiKey, meal, settings.familySize, settings.prepSchedule, (settings as any).language, (settings as any).units);
             await Promise.all([
               updateMealRecipe(user!.id, id, meal.day, recipe),
-              saveGlobalRecipeIfNew({ ...meal, ...recipe, mealType: meal.tags?.[0] || '', source_site: meal.source_site || '' }),
+              saveGlobalRecipeIfNew({ ...meal, ...recipe, mealType: meal.tags?.[0] || '',
+                // The model writes 'in the style of' the family's favourite sites.
+                // That is a nod, not provenance — it must not read as authorship.
+                source_site: '', inspired_by: meal.source_site || '' }),
             ]);
             return { ...meal, ...recipe, recipeLoaded: true };
           } catch { return meal; }

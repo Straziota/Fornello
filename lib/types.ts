@@ -137,6 +137,8 @@ export interface UserRecipe {
   nonna_wisdom?: string[];
   variants?: RecipeVariant[];
   createdAt?: string;
+  // A stylistic reference the model made. Never implies authorship.
+  inspired_by?: string;
 }
 
 export interface PantryItem {

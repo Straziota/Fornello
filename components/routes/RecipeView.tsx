@@ -103,6 +103,10 @@ export default function ViewRecipePage({ id }: { id: string }) {
         {recipe.source && (
           <p className="text-xs" style={{ color: 'var(--text-3)' }}>Source: {recipe.source}</p>
         )}
+        {/* A style reference, never authorship — Fornello wrote this one. */}
+        {!recipe.source && recipe.inspired_by && (
+          <p className="text-xs" style={{ color: 'var(--text-3)' }}>Inspired by {recipe.inspired_by}</p>
+        )}
       </div>
 
       {/* Meta strip */}

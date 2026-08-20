@@ -345,7 +345,8 @@ export default function MealModal({ meal: initialMeal, menuId, dislikedIngredien
             difficulty: meal.difficulty || 'Easy', description: meal.description || '',
             tags: meal.tags || [], ingredients: editIngredients,
             instructions: editInstructions, prep_ahead: editPrepAhead,
-            source: meal.source_site || '', photo_url: meal.photo_url || '',
+            // A generated meal's site is a stylistic nod, not where it came from.
+            source: '', inspired_by: meal.source_site || '', photo_url: meal.photo_url || '',
           }),
         });
       }
@@ -1185,7 +1186,7 @@ export default function MealModal({ meal: initialMeal, menuId, dislikedIngredien
                               cook_time: meal.cook_time || '', difficulty: meal.difficulty || 'Easy',
                               description: meal.description || '', tags: meal.tags || [],
                               ingredients: meal.ingredients || [], instructions: meal.instructions || [],
-                              prep_ahead: meal.prep_ahead || [], source: meal.source_site || '',
+                              prep_ahead: meal.prep_ahead || [], source: '', inspired_by: meal.source_site || '',
                               photo_url: pendingPhotoUrl,
                             }),
                           });

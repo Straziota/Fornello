@@ -348,9 +348,9 @@ export default function RecipeCardModal({ recipe, onClose, readOnly, onSave, sav
           <Divider />
 
           {/* Source */}
-          {recipe.source && (
+          {(recipe.source || recipe.inspired_by) && (
             <p style={{ textAlign: 'center', fontSize: '11px', color: '#8B6A42', fontStyle: 'italic', marginBottom: '16px' }}>
-              {recipe.source}
+              {recipe.source ? recipe.source : `Inspired by ${recipe.inspired_by}`}
             </p>
           )}
 
