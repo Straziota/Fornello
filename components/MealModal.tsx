@@ -7,6 +7,7 @@ import { translateRecipeContent, getCachedTranslation } from '@/lib/translation-
 import { convertText, convertIngredient } from '@/lib/unit-convert';
 import ShareButton from './ShareButton';
 import LoadingMessage from './LoadingMessage';
+import WhyThisMeal from '@/components/WhyThisMeal';
 
 interface Props {
   meal: Meal;
@@ -542,6 +543,40 @@ export default function MealModal({ meal: initialMeal, menuId, dislikedIngredien
             ))}
           </div>
         ) : null}
+
+        {/* ── Quick feedback ──
+             The full feedback section lives at the bottom of the modal, past the
+             whole recipe. That is the right place to ask "how did it turn out?"
+             after cooking, and the wrong place for the loop that teaches Fornello
+             a family's taste — nobody scrolls a thousand lines to find it. These
+             two are the ones that matter before anyone has cooked anything. */}
+        {!meal.isLeftover && (
+          <div className="mb-5 flex flex-wrap items-center gap-2">
+            <button onClick={() => saveFeedback('liked', adjustments)}
+              className="rounded-full px-4 py-2 text-xs font-semibold transition-opacity hover:opacity-80"
+              style={{
+                background: feedback === 'liked' ? 'var(--green)' : 'var(--green-lt)',
+                color: feedback === 'liked' ? '#fff' : 'var(--green)',
+                border: '1px solid var(--green)',
+              }}>
+              {feedback === 'liked' ? '✓ Loved it' : '👍 We love this'}
+            </button>
+            <button onClick={() => saveFeedback('disliked', adjustments)}
+              className="rounded-full px-4 py-2 text-xs font-semibold transition-opacity hover:opacity-80"
+              style={{
+                background: feedback === 'disliked' ? '#C0392B' : 'transparent',
+                color: feedback === 'disliked' ? '#fff' : '#C0392B',
+                border: '1px solid #C0392B',
+              }}>
+              {feedback === 'disliked' ? '✓ Never again' : '👎 Never again'}
+            </button>
+            <span className="text-xs italic" style={{ color: 'var(--text-3)' }}>
+              — this is how I learn your family
+            </span>
+          </div>
+        )}
+
+        <WhyThisMeal meal={meal} />
 
         {/* ── Ingredient conflict warnings ── */}
         {conflicts.length > 0 && (
