@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 /**
- * "or have it arrive on Sundays" — a secondary line under Generate.
+ * "or have it in your inbox every Sunday" — a secondary action under Generate.
  *
  * Placed here because pressing Generate IS the manual act this replaces.
  * Someone who came back to plan a second week has just demonstrated the
@@ -64,7 +64,7 @@ export default function AutoPlanInline() {
         border: '1px solid var(--green)',
         whiteSpace: 'nowrap',
       }}>
-      {saving ? 'setting up…' : <>✉ or have it arrive on {day}s</>}
+      {saving ? 'setting up…' : <>✉ or have it in your inbox every {day}</>}
     </button>
   );
 }
