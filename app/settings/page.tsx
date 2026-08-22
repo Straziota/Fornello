@@ -10,6 +10,7 @@ import { BUILTIN_CATEGORIES, categorizeStaple, stapleCategory } from '@/lib/cate
 import { normalizeLanguage } from '@/lib/translations';
 import { T } from '@/components/T';
 import { createBrowser } from '@/lib/supabase';
+import WeeklyEmailSetting from '@/components/WeeklyEmailSetting';
 
 const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 const TIME_OPTIONS = [
@@ -388,6 +389,12 @@ export default function SettingsPage() {
             <option value="us">US — °F, cups, tablespoons, oz &amp; lb</option>
             <option value="metric">Metric — °C, grams &amp; millilitres</option>
           </select>
+        </Section>
+
+        {/* Weekly email — the prompt on the grocery list is asked once, so this
+            is the way back for anyone who declined it then. */}
+        <Section tour="set-weekly-email" icon="/icons/Email and Share.png" title="Your Week by Email">
+          <WeeklyEmailSetting />
         </Section>
 
         {/* Family size */}
