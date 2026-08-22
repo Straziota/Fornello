@@ -23,6 +23,12 @@ export async function GET(req: NextRequest) {
   }
 
   const dryRun = req.nextUrl.searchParams.get('send') !== '1';
+  // Deliverability testing (mail-tester and friends): send ONE real email to a
+  // given address instead of to households. Behind CRON_SECRET, and it stops
+  // after the first, so this can never fan out. Vercel's `env pull` returns ""
+  // for encrypted values, so the Resend key is only usable from inside a
+  // deployment — which is why this hook exists rather than a local script.
+  const overrideTo = req.nextUrl.searchParams.get('to');
   const apiKey = process.env.RESEND_API_KEY;
   const fromEmail = process.env.INVITE_FROM_EMAIL;
   const appUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.fornello.app';
@@ -84,7 +90,7 @@ export async function GET(req: NextRequest) {
       }))
       .filter(g => g.items.length);
 
-    if (dryRun) {
+    if (dryRun && !overrideTo) {
       results.push({ email, status: 'would send', detail: `${meals.length} meals, ${groceries.length} aisles` });
       continue;
     }
@@ -92,7 +98,7 @@ export async function GET(req: NextRequest) {
     try {
       await sendWeeklyMenuEmail(
         { resendApiKey: apiKey, fromEmail, fromName: process.env.INVITE_FROM_NAME || 'Fornello' },
-        email,
+        overrideTo || email,
         {
           meals,
           groceries,
@@ -101,7 +107,8 @@ export async function GET(req: NextRequest) {
           appUrl: `${appUrl}/this-week`,
         },
       );
-      results.push({ email, status: 'sent' });
+      results.push({ email: overrideTo || email, status: overrideTo ? 'test sent' : 'sent' });
+      if (overrideTo) break;   // one only, never a fan-out
     } catch (e: any) {
       results.push({ email, status: 'failed', detail: e.message });
     }
