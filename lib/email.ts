@@ -213,6 +213,8 @@ export async function sendWeeklyMenuEmail(
     shopUrl?: string;
     /** Base for opening one dinner's full recipe, token already attached. */
     mealUrl?: string;
+    /** The groceries page in the app, for the heading link. */
+    groceriesUrl?: string;
   },
 ) {
   const resend = new Resend(settings.resendApiKey);
@@ -242,7 +244,7 @@ export async function sendWeeklyMenuEmail(
     </tr>`).join('');
 
   const prepBlock = prepNights.length ? `
-    <h2 style="font-family:Georgia,serif;font-size:15px;color:#3D2714;margin:32px 0 10px">The night before</h2>
+    <h2 style="font-family:Georgia,serif;font-size:15px;color:#3D2714;margin:32px 0 10px">Prep ahead</h2>
     ${prepNights.map(m => `
       <div style="margin-bottom:10px">
         <div style="font-size:12px;color:#8B6A42">${esc(m.day)} — ${esc(m.name)}</div>
@@ -254,7 +256,11 @@ export async function sendWeeklyMenuEmail(
   // An empty "Your shopping list" heading reads as broken. Three of six
   // households in the first dry run had a menu but no generated grocery list.
   const groceryBlock = data.groceries.length ? `
-    <h2 style="font-family:Georgia,serif;font-size:15px;color:#3D2714;margin:32px 0 10px">Your shopping list</h2>
+    <h2 style="font-family:Georgia,serif;font-size:15px;margin:32px 0 10px">${
+      data.groceriesUrl
+        ? `<a href="${data.groceriesUrl}" style="color:#3D2714;text-decoration:none;border-bottom:1px solid #EDE3D4">Your shopping list</a>`
+        : `<span style="color:#3D2714">Your shopping list</span>`
+    }</h2>
     ${data.groceries.map(g => `
       <div style="margin-bottom:12px">
         <div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#8B6A42;margin-bottom:4px">${esc(g.category)}</div>
