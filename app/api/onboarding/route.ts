@@ -43,6 +43,17 @@ export async function POST(req: NextRequest) {
     hasSeenTour: true,
   } as any);
 
+  // Only ever written when explicitly ticked — an unticked box must leave the
+  // household exactly where it was, which is off.
+  if (body.autoPlan === true) {
+    await adminClient.from('settings').update({
+      auto_plan: true,
+      auto_plan_paused: false,
+      auto_plan_ignored: 0,
+      auto_plan_offer_answered_at: new Date().toISOString(),
+    }).eq('user_id', user!.id);
+  }
+
   const { error: stampError } = await adminClient
     .from('settings')
     .update({ onboarded_at: new Date().toISOString() })

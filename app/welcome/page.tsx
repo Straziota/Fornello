@@ -47,6 +47,7 @@ export default function WelcomePage() {
   const [preferences, setPreferences] = useState<string[]>([]);
   const [skipIngredients, setSkipIngredients] = useState('');
   const [websites, setWebsites] = useState('');
+  const [autoPlan, setAutoPlan] = useState(false);
 
   const toggle = (list: string[], set: (v: string[]) => void, v: string) =>
     set(list.includes(v) ? list.filter(x => x !== v) : [...list, v]);
@@ -67,6 +68,7 @@ export default function WelcomePage() {
           cookNights, weeknightMinutes, preferences,
           skipIngredients: skipIngredients.split(',').map(s => s.trim()).filter(Boolean),
           websites: websites.split(',').map(s => s.trim()).filter(Boolean),
+          autoPlan,
         }),
       });
       if (!res.ok) throw new Error((await res.json()).error || 'Could not save');
@@ -235,6 +237,20 @@ export default function WelcomePage() {
               and by week four I&apos;ll know your family. There&apos;s more to tune whenever you want it —
               sides, pantry, units, holidays — all in <Link href="/settings" style={{ color: 'var(--green)', textDecoration: 'underline' }}>Settings</Link>.
             </p>
+
+            {/* The offer under Generate only reaches households who come back —
+                and the ones this feature exists for are precisely those who
+                don't. This catches them in the first session. Unticked: it must
+                be chosen, never assumed. */}
+            <label className="flex items-start gap-3 mt-5 pt-5 cursor-pointer"
+                   style={{ borderTop: '1px solid var(--border)' }}>
+              <input type="checkbox" checked={autoPlan} onChange={e => setAutoPlan(e.target.checked)}
+                     className="mt-1" style={{ accentColor: 'var(--green)', width: 16, height: 16 }} />
+              <span className="text-sm leading-relaxed" style={{ color: 'var(--text-2)' }}>
+                <strong>Email me my week</strong> — sent the day before it starts, with the
+                shopping list. You won&apos;t have to come back for it.
+              </span>
+            </label>
           </div>
         )}
       </div>

@@ -14,9 +14,18 @@ export async function POST(req: NextRequest) {
   }
   if (!token) return NextResponse.json({ error: 'Missing token' }, { status: 400 });
 
+  // Unsubscribe must stop EVERYTHING, not one mailer. It previously cleared
+  // only weekly_email — the route that no longer exists — so clicking it would
+  // have left the auto-planned weekly email still arriving, which is the only
+  // one that actually sends. An unsubscribe that doesn't unsubscribe is worse
+  // than no link at all.
   const { error, count } = await adminClient
     .from('settings')
-    .update({ weekly_email: false }, { count: 'exact' })
+    .update({
+      auto_plan: false,
+      auto_plan_paused: true,
+      auto_plan_offer_answered_at: new Date().toISOString(),
+    }, { count: 'exact' })
     .eq('email_token', token);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

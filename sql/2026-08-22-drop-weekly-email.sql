@@ -1,0 +1,12 @@
+-- Remove the second emailer's flag.
+--
+-- /api/cron/weekly-email is deleted. It could only send a menu that already
+-- existed, so the households who would most benefit from having their week
+-- emailed — the ones who stopped making menus — had nothing to send, and anyone
+-- who had just made a menu was sitting there looking at it.
+--
+-- Run AFTER deploying the code that no longer reads this column: unsubscribe now
+-- clears auto_plan instead, which is the only mailer left.
+--
+-- Safe to re-run.
+ALTER TABLE settings DROP COLUMN IF EXISTS weekly_email;
