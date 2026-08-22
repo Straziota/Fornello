@@ -209,6 +209,8 @@ export async function sendWeeklyMenuEmail(
     appUrl: string;
     /** Base for one-click rating, already carrying the household token. */
     rateUrl?: string;
+    /** The week's list, openable on a phone in the shop without logging in. */
+    shopUrl?: string;
   },
 ) {
   const resend = new Resend(settings.resendApiKey);
@@ -271,9 +273,12 @@ export async function sendWeeklyMenuEmail(
       ${groceryBlock}
 
       <div style="text-align:center;margin-top:34px">
-        <a href="${data.appUrl}" style="display:inline-block;background:#4A7859;color:#fff;text-decoration:none;padding:13px 28px;border-radius:999px;font-size:13px">
-          Change something, or plan next week
-        </a>
+        ${data.shopUrl ? `<a href="${data.shopUrl}" style="display:inline-block;background:#4A7859;color:#fff;text-decoration:none;padding:14px 30px;border-radius:999px;font-size:14px">
+          Open my list on my phone
+        </a><div style="font-size:12px;color:#9A8B7B;margin-top:9px">Tick things off as you shop — no login needed</div>` : ''}
+        <div style="margin-top:${data.shopUrl ? '16' : '0'}px">
+          <a href="${data.appUrl}" style="font-size:13px;color:#8B6A42">Change something, or plan next week</a>
+        </div>
       </div>
 
       <p style="font-size:12px;color:#9A8B7B;line-height:1.6;margin:26px 0 0;text-align:center">
@@ -294,6 +299,62 @@ export async function sendWeeklyMenuEmail(
     html,
     headers: {
       // One-click unsubscribe, honoured by Gmail and Apple Mail without opening.
+      'List-Unsubscribe': `<${data.unsubscribeUrl}>`,
+      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+    },
+  });
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * "Still want these?" — one question, two buttons, nothing else.
+ *
+ * Sent after several weeks with no click, instead of silently pausing. Pausing
+ * is a guess about someone's behaviour; this is an answer from them. Someone who
+ * reads the email every Sunday and cooks from it without ever tapping will
+ * happily tap once when asked directly — and a tracking pixel could never have
+ * told us apart from someone who stopped caring, because Apple Mail Privacy
+ * Protection pre-fetches images and would have reported them both as engaged.
+ */
+export async function sendCheckInEmail(
+  settings: { resendApiKey: string; fromEmail: string; fromName: string },
+  toEmail: string,
+  data: { weeksSent: number; yesUrl: string; noUrl: string; unsubscribeUrl: string },
+) {
+  const resend = new Resend(settings.resendApiKey);
+
+  const html = `
+  <div style="background:#FBF7F0;padding:28px 0;font-family:Georgia,'Times New Roman',serif">
+    <div style="max-width:520px;margin:0 auto;background:#fff;border-radius:18px;padding:40px;text-align:center">
+      <div style="font-family:Georgia,serif;font-size:24px;color:#3D2714;margin-bottom:18px">Still want these?</div>
+      <p style="font-size:15px;color:#6B5B4B;line-height:1.65;margin:0 0 26px">
+        I've planned and sent your last ${data.weeksSent} weeks. I can't tell whether they've been
+        useful or whether they're just arriving — so rather than guess, I'd rather ask.
+      </p>
+      <div>
+        <a href="${data.yesUrl}" style="display:inline-block;background:#4A7859;color:#fff;text-decoration:none;padding:13px 30px;border-radius:999px;font-size:14px;margin:0 6px 10px">
+          Yes, keep them coming
+        </a>
+        <a href="${data.noUrl}" style="display:inline-block;color:#8B6A42;text-decoration:none;padding:13px 24px;border:1px solid #EDE3D4;border-radius:999px;font-size:14px;margin:0 6px 10px">
+          No, stop for now
+        </a>
+      </div>
+      <p style="font-size:12px;color:#9A8B7B;margin:24px 0 0">
+        Either answer is genuinely fine. Nothing else changes — your recipes and kitchens stay as they are.
+      </p>
+    </div>
+    <div style="max-width:520px;margin:14px auto 0;text-align:center">
+      <a href="${data.unsubscribeUrl}" style="font-size:11px;color:#9A8B7B">Stop all Fornello email</a>
+    </div>
+  </div>`;
+
+  const { error } = await resend.emails.send({
+    from: `${settings.fromName || 'Fornello'} <${settings.fromEmail}>`,
+    replyTo: REPLY_TO_EMAIL,
+    to: [toEmail],
+    subject: 'Still want your week on Sundays?',
+    html,
+    headers: {
       'List-Unsubscribe': `<${data.unsubscribeUrl}>`,
       'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
     },

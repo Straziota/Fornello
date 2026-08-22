@@ -21,6 +21,7 @@ const PUBLIC_PATHS = [
   // that demands a login is a rating that never happens, and an unsubscribe that
   // demands a login is not an unsubscribe.
   '/api/rate', '/rated', '/api/unsubscribe', '/unsubscribe',
+  '/api/auto-plan/answer', '/answered', '/api/shop', '/shop',
 ];
 
 // Origins belonging to our own first-party clients. The browser extension has

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminClient } from '@/lib/supabase-admin';
-import { sendWeeklyMenuEmail } from '@/lib/email';
+import { sendWeeklyMenuEmail, sendCheckInEmail } from '@/lib/email';
 import {
   getSettings, getRecentMealNames, getDislikedMealNames, getPantryNames,
   getUserRecipeSummaries, getFeedbackAdjustments, getLovedMealNames,
@@ -19,7 +19,14 @@ export const maxDuration = 300;
 // guard every other food surface carries (via generateMenu).
 //
 // Runs daily; each household is picked up the day before ITS week starts.
-const IGNORED_LIMIT = 3;   // consecutive unmet weeks before we pause and ask
+// Consecutive weeks with no click before we ASK. We do not pause on a count:
+// pausing is a guess about someone's behaviour, and the guess is unreliable in
+// the one direction that matters — Apple Mail Privacy Protection pre-fetches
+// images, so a tracking pixel would report every household as engaged, always.
+// Someone who reads the email each Sunday and cooks from it without ever tapping
+// looks identical to someone who stopped caring. So we ask them, once, and let
+// the answer decide.
+const ASK_AFTER = 5;
 
 export async function GET(req: NextRequest) {
   const secret = process.env.CRON_SECRET;
@@ -44,7 +51,7 @@ export async function GET(req: NextRequest) {
 
   const { data: subs } = await adminClient
     .from('settings')
-    .select('user_id, email_token, week_start_day, auto_plan_ignored, auto_plan_paused')
+    .select('user_id, email_token, week_start_day, auto_plan_ignored, auto_plan_paused, auto_plan_asked_at')
     .eq('auto_plan', true)
     .eq('auto_plan_paused', false);
 
@@ -58,14 +65,36 @@ export async function GET(req: NextRequest) {
     const email = authUser?.user?.email;
     if (!email) { results.push({ email: '(none)', status: 'skipped', detail: 'no address' }); continue; }
 
-    // Stop condition. Mailing forever into an empty room costs money and
-    // goodwill; ask once, then go quiet until they say otherwise.
-    if ((s.auto_plan_ignored ?? 0) >= IGNORED_LIMIT) {
-      if (!dryRun) {
-        await adminClient.from('settings')
-          .update({ auto_plan_paused: true }).eq('user_id', s.user_id);
+    // Enough quiet weeks — ask, don't decide. Asked only once; we then wait for
+    // an answer rather than sending this every week too.
+    if ((s.auto_plan_ignored ?? 0) >= ASK_AFTER && !s.auto_plan_asked_at) {
+      if (dryRun) {
+        results.push({ email, status: 'would ask "still want these?"', detail: `${s.auto_plan_ignored} quiet weeks` });
+        continue;
       }
-      results.push({ email, status: 'paused', detail: `${s.auto_plan_ignored} weeks unopened` });
+      try {
+        await sendCheckInEmail(
+          { resendApiKey: resendKey, fromEmail, fromName: process.env.INVITE_FROM_NAME || 'Fornello' },
+          email,
+          {
+            weeksSent: s.auto_plan_ignored ?? 0,
+            yesUrl: `${appUrl}/api/auto-plan/answer?t=${s.email_token}&a=yes`,
+            noUrl: `${appUrl}/api/auto-plan/answer?t=${s.email_token}&a=no`,
+            unsubscribeUrl: `${appUrl}/unsubscribe?t=${s.email_token}`,
+          },
+        );
+        await adminClient.from('settings')
+          .update({ auto_plan_asked_at: new Date().toISOString() }).eq('user_id', s.user_id);
+        results.push({ email, status: 'asked "still want these?"' });
+      } catch (e: any) {
+        results.push({ email, status: 'ask failed', detail: e.message });
+      }
+      continue;
+    }
+
+    // Asked and not yet answered — go quiet rather than keep planning.
+    if (s.auto_plan_asked_at && (s.auto_plan_ignored ?? 0) >= ASK_AFTER) {
+      results.push({ email, status: 'waiting on their answer' });
       continue;
     }
 
@@ -117,6 +146,7 @@ export async function GET(req: NextRequest) {
           unsubscribeUrl: `${appUrl}/unsubscribe?t=${s.email_token}`,
           appUrl: `${appUrl}/this-week`,
           rateUrl: `${appUrl}/api/rate?t=${s.email_token}`,
+          shopUrl: `${appUrl}/shop?t=${s.email_token}`,
         },
       );
       results.push({ email, status: 'planned + sent', detail: `${meals.length} meals` });
