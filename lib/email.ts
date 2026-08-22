@@ -178,3 +178,117 @@ export async function sendRecipeEmail(
 
   if (error) throw new Error(error.message);
 }
+
+// ── Weekly menu email ──────────────────────────────────────────────────────
+
+interface WeekEmailMeal {
+  day: string;
+  name: string;
+  description?: string;
+  total_time?: string;
+  prep_ahead?: string[];
+  isLeftover?: boolean;
+}
+
+/**
+ * The week itself, not an invitation to come and get it.
+ *
+ * A "your new week is ready!" nudge asks something of someone who hasn't
+ * returned. This delivers the thing instead: the dinners, what to do the night
+ * before, and the shopping list — useful in the inbox whether or not they ever
+ * open the app. The single link is an offer, not the point.
+ */
+export async function sendWeeklyMenuEmail(
+  settings: { resendApiKey: string; fromEmail: string; fromName: string },
+  toEmail: string,
+  data: {
+    meals: WeekEmailMeal[];
+    groceries: { category: string; items: string[] }[];
+    weekLabel: string;
+    unsubscribeUrl: string;
+    appUrl: string;
+  },
+) {
+  const resend = new Resend(settings.resendApiKey);
+  const esc = (s = '') => s.replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c] || c));
+
+  const cooking = data.meals.filter(m => !m.isLeftover);
+  const prepNights = cooking.filter(m => (m.prep_ahead || []).length);
+
+  const mealRows = cooking.map(m => `
+    <tr>
+      <td style="padding:14px 0;border-bottom:1px solid #EDE3D4;vertical-align:top;width:96px">
+        <div style="font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#8B6A42">${esc(m.day)}</div>
+      </td>
+      <td style="padding:14px 0;border-bottom:1px solid #EDE3D4">
+        <div style="font-family:Georgia,serif;font-size:17px;color:#3D2714">${esc(m.name)}</div>
+        ${m.description ? `<div style="font-size:13px;color:#6B5B4B;margin-top:3px">${esc(m.description)}</div>` : ''}
+        ${m.total_time ? `<div style="font-size:12px;color:#8B6A42;margin-top:4px">${esc(m.total_time)}</div>` : ''}
+      </td>
+    </tr>`).join('');
+
+  const prepBlock = prepNights.length ? `
+    <h2 style="font-family:Georgia,serif;font-size:15px;color:#3D2714;margin:32px 0 10px">The night before</h2>
+    ${prepNights.map(m => `
+      <div style="margin-bottom:10px">
+        <div style="font-size:12px;color:#8B6A42">${esc(m.day)} — ${esc(m.name)}</div>
+        <ul style="margin:4px 0 0;padding-left:18px;color:#6B5B4B;font-size:13px">
+          ${(m.prep_ahead || []).map(p => `<li style="margin-bottom:2px">${esc(p)}</li>`).join('')}
+        </ul>
+      </div>`).join('')}` : '';
+
+  const groceryBlock = data.groceries.length ? `
+    <h2 style="font-family:Georgia,serif;font-size:15px;color:#3D2714;margin:32px 0 10px">Your shopping list</h2>
+    ${data.groceries.map(g => `
+      <div style="margin-bottom:12px">
+        <div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#8B6A42;margin-bottom:4px">${esc(g.category)}</div>
+        <div style="font-size:13px;color:#6B5B4B;line-height:1.7">${g.items.map(esc).join(' · ')}</div>
+      </div>`).join('')}` : '';
+
+  const html = `
+  <div style="background:#FBF7F0;padding:28px 0;font-family:Georgia,'Times New Roman',serif">
+    <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:18px;padding:36px">
+      <div style="text-align:center;margin-bottom:26px">
+        <div style="font-family:Georgia,serif;font-size:26px;color:#3D2714">Fornello</div>
+        <div style="font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:#8B6A42;margin-top:4px">${esc(data.weekLabel)}</div>
+      </div>
+
+      <p style="font-size:14px;color:#6B5B4B;line-height:1.6;margin:0 0 18px">
+        Here's what you're cooking this week — ${cooking.length} ${cooking.length === 1 ? 'dinner' : 'dinners'}.
+        Everything you need is below, so you don't have to open anything.
+      </p>
+
+      <table style="width:100%;border-collapse:collapse">${mealRows}</table>
+      ${prepBlock}
+      ${groceryBlock}
+
+      <div style="text-align:center;margin-top:34px">
+        <a href="${data.appUrl}" style="display:inline-block;background:#4A7859;color:#fff;text-decoration:none;padding:13px 28px;border-radius:999px;font-size:13px">
+          Change something, or plan next week
+        </a>
+      </div>
+
+      <p style="font-size:12px;color:#9A8B7B;line-height:1.6;margin:26px 0 0;text-align:center">
+        Tell Fornello what you loved and what you'd change — that's how the plans get closer to your family each week.
+      </p>
+    </div>
+
+    <div style="max-width:600px;margin:14px auto 0;text-align:center">
+      <a href="${data.unsubscribeUrl}" style="font-size:11px;color:#9A8B7B">Stop sending me this</a>
+    </div>
+  </div>`;
+
+  const { error } = await resend.emails.send({
+    from: `${settings.fromName || 'Fornello'} <${settings.fromEmail}>`,
+    replyTo: REPLY_TO_EMAIL,
+    to: [toEmail],
+    subject: `This week: ${cooking.slice(0, 3).map(m => m.name).join(', ')}${cooking.length > 3 ? '…' : ''}`,
+    html,
+    headers: {
+      // One-click unsubscribe, honoured by Gmail and Apple Mail without opening.
+      'List-Unsubscribe': `<${data.unsubscribeUrl}>`,
+      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+    },
+  });
+  if (error) throw new Error(error.message);
+}
