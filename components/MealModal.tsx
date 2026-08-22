@@ -16,6 +16,7 @@ interface Props {
   onClose: () => void;
   onRecipeLoaded?: (day: string, recipe: { ingredients: Ingredient[]; instructions: string[]; prep_ahead: string[]; sides?: Side[] }) => void;
   isAdmin?: boolean;
+  initialTab?: 'recipe' | 'prep';
 }
 
 const DIFF_STYLE: Record<string, React.CSSProperties> = {
@@ -33,10 +34,12 @@ function findConflicts(meal: Meal, disliked: string[]): string[] {
   );
 }
 
-export default function MealModal({ meal: initialMeal, menuId, dislikedIngredients, onClose, onRecipeLoaded, isAdmin }: Props) {
+export default function MealModal({ meal: initialMeal, menuId, dislikedIngredients, onClose, onRecipeLoaded, isAdmin, initialTab }: Props) {
   const [meal, setMeal] = useState<Meal>(initialMeal);
   const [recipeLoading, setRecipeLoading] = useState(false);
-  const [tab, setTab] = useState<'recipe' | 'prep'>('recipe');
+  // Deep links from the Sunday email land on the tab they asked for: a prep
+  // link opens the prep plan, not the recipe.
+  const [tab, setTab] = useState<'recipe' | 'prep'>(initialTab || 'recipe');
   const [feedback, setFeedback] = useState<FeedbackRating | null>(null);
   const [adjustments, setAdjustments] = useState('');
   const [feedbackSaved, setFeedbackSaved] = useState(false);

@@ -247,7 +247,11 @@ export async function sendWeeklyMenuEmail(
     <h2 style="font-family:Georgia,serif;font-size:15px;color:#3D2714;margin:32px 0 10px">Prep ahead</h2>
     ${prepNights.map(m => `
       <div style="margin-bottom:10px">
-        <div style="font-size:12px;color:#8B6A42">${esc(m.day)} — ${esc(m.name)}</div>
+        <div style="font-size:12px;color:#8B6A42">${esc(m.day)} — ${
+          data.mealUrl
+            ? `<a href="${data.mealUrl}${encodeURIComponent(m.day)}&tab=prep" style="color:#8B6A42;text-decoration:none;border-bottom:1px solid #EDE3D4">${esc(m.name)}</a>`
+            : esc(m.name)
+        }</div>
         <ul style="margin:4px 0 0;padding-left:18px;color:#6B5B4B;font-size:13px">
           ${(m.prep_ahead || []).map(p => `<li style="margin-bottom:2px">${esc(p)}</li>`).join('')}
         </ul>

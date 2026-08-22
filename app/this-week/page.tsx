@@ -80,6 +80,7 @@ export default function HomePage() {
   const [menu, setMenu] = useState<WeeklyMenu | null>(null);
   const [loading, setLoading] = useState(false);
   const [openMeal, setOpenMeal] = useState<Meal | null>(null);
+  const [openMealTab, setOpenMealTab] = useState<'recipe' | 'prep'>('recipe');
   const [replacingMeal, setReplacingMeal] = useState<Meal | null>(null);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
   const [skipIngredients, setSkipIngredients] = useState<string[]>([]);
@@ -97,10 +98,14 @@ export default function HomePage() {
         // Deep link from the Sunday email: open that dinner's card straight
         // away, so tapping a meal in the inbox lands exactly where tapping it
         // in the app would.
-        const want = new URLSearchParams(window.location.search).get('meal');
+        const params = new URLSearchParams(window.location.search);
+        const want = params.get('meal');
         if (want) {
           const meal = d.meals.find((m: Meal) => (m.day || '').toLowerCase() === want.toLowerCase());
-          if (meal) setOpenMeal(meal);
+          if (meal) {
+            setOpenMeal(meal);
+            if (params.get('tab') === 'prep') setOpenMealTab('prep');
+          }
         }
         return;
       }
@@ -225,7 +230,8 @@ export default function HomePage() {
         menuId={menu?.id}
         dislikedIngredients={skipIngredients}
         isAdmin={isAdmin}
-        onClose={() => setOpenMeal(null)}
+        initialTab={openMealTab}
+        onClose={() => { setOpenMeal(null); setOpenMealTab('recipe'); }}
         onRecipeLoaded={(day, recipe) => {
           setMenu(prev => prev ? {
             ...prev,
