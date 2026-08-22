@@ -15,6 +15,12 @@ const PUBLIC_PATHS = [
   // Precached at install time, before any session exists — and it must render
   // rather than redirect when the network is gone.
   '/offline',
+  // Reached from the weekly email by someone who is not logged in — that is the
+  // entire point. Each authenticates itself with the household's email token,
+  // which the route handler verifies; none will serve without one. A rating link
+  // that demands a login is a rating that never happens, and an unsubscribe that
+  // demands a login is not an unsubscribe.
+  '/api/rate', '/rated', '/api/unsubscribe', '/unsubscribe',
 ];
 
 // Origins belonging to our own first-party clients. The browser extension has
