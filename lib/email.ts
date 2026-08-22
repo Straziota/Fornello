@@ -211,6 +211,8 @@ export async function sendWeeklyMenuEmail(
     rateUrl?: string;
     /** The week's list, openable on a phone in the shop without logging in. */
     shopUrl?: string;
+    /** Base for opening one dinner's full recipe, token already attached. */
+    mealUrl?: string;
   },
 ) {
   const resend = new Resend(settings.resendApiKey);
@@ -225,7 +227,11 @@ export async function sendWeeklyMenuEmail(
         <div style="font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#8B6A42">${esc(m.day)}</div>
       </td>
       <td style="padding:14px 0;border-bottom:1px solid #EDE3D4">
-        <div style="font-family:Georgia,serif;font-size:17px;color:#3D2714">${esc(m.name)}</div>
+        <div style="font-family:Georgia,serif;font-size:17px">${
+          data.mealUrl
+            ? `<a href="${data.mealUrl}&d=${encodeURIComponent(m.day)}" style="color:#3D2714;text-decoration:none;border-bottom:1px solid #EDE3D4">${esc(m.name)}</a>`
+            : `<span style="color:#3D2714">${esc(m.name)}</span>`
+        }</div>
         ${m.description ? `<div style="font-size:13px;color:#6B5B4B;margin-top:3px">${esc(m.description)}</div>` : ''}
         ${m.total_time ? `<div style="font-size:12px;color:#8B6A42;margin-top:4px">${esc(m.total_time)}</div>` : ''}
         ${data.rateUrl ? `<div style="margin-top:7px">

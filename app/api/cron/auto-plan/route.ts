@@ -4,9 +4,10 @@ import { sendWeeklyMenuEmail, sendCheckInEmail } from '@/lib/email';
 import {
   getSettings, getRecentMealNames, getDislikedMealNames, getPantryNames,
   getUserRecipeSummaries, getFeedbackAdjustments, getLovedMealNames,
-  getNextWeekPicks, getGlobalRecipeSummaries, saveMenu,
+  getNextWeekPicks, getGlobalRecipeSummaries, saveMenu, getGlobalRecipe,
+  updateMealRecipe, updateMenuData, saveGlobalRecipeIfNew,
 } from '@/lib/db';
-import { generateMenu } from '@/lib/claude';
+import { generateMenu, generateMealRecipe, generateGroceryList } from '@/lib/claude';
 
 export const maxDuration = 300;
 
@@ -148,6 +149,50 @@ export async function GET(req: NextRequest) {
       );
 
       const menuId = await saveMenu(s.user_id, menu as any);
+
+      // generateMenu returns names and descriptions only — the recipes and the
+      // grocery list are separate steps that the app runs in the background
+      // after a person presses Generate. Nobody is present here, so this must do
+      // them itself: without it the email ships a list of dish names with no
+      // ingredients, no method, no night-before prep and an empty shopping list,
+      // which is the opposite of "everything you need is below".
+      const loaded = await Promise.all(
+        (menu.meals || []).filter((m: any) => !m.isLeftover).map(async (m: any) => {
+          try {
+            // Reuse a library recipe when we already have one — faster, cheaper,
+            // and identical to what the app would serve.
+            const existing = await getGlobalRecipe(m.name);
+            if (existing) {
+              await updateMealRecipe(s.user_id, menuId, m.day, existing);
+              return { ...m, ...existing, recipeLoaded: true };
+            }
+            const recipe = await generateMealRecipe(
+              apiKey, m, settings.familySize, (settings as any).prepSchedule,
+              (settings as any).language, (settings as any).units,
+              settings.restrictions || [], (settings as any).skipIngredients || [],
+            );
+            await updateMealRecipe(s.user_id, menuId, m.day, recipe);
+            await saveGlobalRecipeIfNew({
+              ...m, ...recipe, mealType: m.tags?.[0] || '',
+              source_site: '', inspired_by: m.source_site || '',
+            });
+            return { ...m, ...recipe, recipeLoaded: true };
+          } catch {
+            return m;   // one failed recipe must not lose the week
+          }
+        }),
+      );
+
+      const fullMeals = (menu.meals || []).map((m: any) =>
+        loaded.find((l: any) => l.day === m.day) || m,
+      );
+      let grocery_list: any = {};
+      try {
+        grocery_list = await generateGroceryList(apiKey, fullMeals, settings.familySize);
+      } catch { /* a missing list is worth less than a missing week */ }
+      await updateMenuData(s.user_id, menuId, { ...(menu as any), meals: fullMeals, grocery_list });
+      (menu as any).meals = fullMeals;
+      (menu as any).grocery_list = grocery_list;
       // Mark it as Fornello's work, and deliberately NOT engaged: whether a
       // human meets this week is exactly what we must not assume.
       await adminClient.from('menus')
@@ -171,6 +216,7 @@ export async function GET(req: NextRequest) {
           appUrl: `${appUrl}/this-week`,
           rateUrl: `${appUrl}/api/rate?t=${s.email_token}`,
           shopUrl: `${appUrl}/shop?t=${s.email_token}`,
+          mealUrl: `${appUrl}/meal?t=${s.email_token}`,
         },
       );
       results.push({ email, status: 'planned + sent', detail: `${meals.length} meals` });
