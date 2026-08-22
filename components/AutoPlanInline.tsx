@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 /**
- * "or have it in your inbox every Sunday" — a secondary action under Generate.
+ * "have it in your inbox every Sunday" — sits beside Generate.
  *
  * Placed here because pressing Generate IS the manual act this replaces.
  * Someone who came back to plan a second week has just demonstrated the
@@ -46,9 +46,10 @@ export default function AutoPlanInline() {
   if (on === null || (on && !done)) return null;
 
   if (done) return (
-    <p className="text-xs mt-2 text-right" style={{ color: 'var(--green)' }}>
-      ✓ Your week will arrive on {day}s
-    </p>
+    <span className="inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-xs"
+          style={{ color: 'var(--green)', border: '1px solid var(--green)', background: 'var(--green-lt)', whiteSpace: 'nowrap' }}>
+      ✓ In your inbox every {day}
+    </span>
   );
 
   // Secondary to Generate, but not invisible: it was 11px in the faintest grey
@@ -57,14 +58,15 @@ export default function AutoPlanInline() {
   // choices.
   return (
     <button onClick={enable} disabled={saving}
-      className="block ml-auto mt-2 rounded-full px-4 py-2 text-xs transition-opacity hover:opacity-80 disabled:opacity-50"
+      className="inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-xs transition-opacity hover:opacity-80 disabled:opacity-50"
       style={{
         background: 'var(--green-lt)',
         color: 'var(--green)',
         border: '1px solid var(--green)',
         whiteSpace: 'nowrap',
       }}>
-      {saving ? 'setting up…' : <>✉ or have it in your inbox every {day}</>}
+      <img src="/icons/Email.png" alt="" style={{ width: 18, height: 18, objectFit: 'contain' }} />
+      {saving ? 'setting up…' : <>have it in your inbox every {day}</>}
     </button>
   );
 }
