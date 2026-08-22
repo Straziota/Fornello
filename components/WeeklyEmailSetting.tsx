@@ -16,6 +16,7 @@ export default function WeeklyEmailSetting() {
   // null until known — see AutoPlanInline. Naming the wrong day, even for a
   // moment, undermines the one thing this line is for.
   const [day, setDay] = useState<string | null>(null);
+  const [pinned, setPinned] = useState(false);
   const [saving, setSaving] = useState(false);
   const [note, setNote] = useState('');
 
@@ -24,7 +25,10 @@ export default function WeeklyEmailSetting() {
       .then(s => {
         setOn(!!s?.autoPlan);
         const start = typeof s?.weekStartDay === 'number' ? s.weekStartDay : 1;
-        setDay(DAYS[(start + 6) % 7]);
+        // An explicitly chosen day wins over the derived one.
+        const idx = typeof s?.autoPlanDay === 'number' ? s.autoPlanDay : (start + 6) % 7;
+        setDay(DAYS[idx]);
+        setPinned(typeof s?.autoPlanDay === 'number');
       })
       .catch(() => { setOn(false); setDay(DAYS[0]); });
   }, []);
@@ -60,7 +64,8 @@ export default function WeeklyEmailSetting() {
       <p className="text-xs mb-4 italic" style={{ color: 'var(--text-3)' }}>
         {/* Not a separate setting: it follows the week start above, so there is
             one place to change when the week begins, not two that can disagree. */}
-        Arrives on <strong>{day}s</strong> — the day before the week you chose above.
+        Arrives on <strong>{day}s</strong>
+        {pinned ? ' — the day you chose.' : ' — the day before the week you chose above.'}
       </p>
       <button onClick={() => toggle(!on)} disabled={saving}
         className="rounded-full px-5 py-2.5 text-xs uppercase tracking-[0.18em] transition-opacity hover:opacity-80 disabled:opacity-50"

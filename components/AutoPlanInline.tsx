@@ -4,70 +4,138 @@ import { useState, useEffect } from 'react';
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 /**
- * "have it in your inbox every Sunday" — sits beside Generate.
+ * "Weekly email" — a peer of Print week, Days off and Regenerate.
  *
- * Placed here because pressing Generate IS the manual act this replaces.
- * Someone who came back to plan a second week has just demonstrated the
- * behaviour the feature removes, which makes them the highest-intent audience
- * it will ever have — and they are standing right there.
+ * Placed beside Generate because pressing Generate is the manual act this
+ * replaces: anyone who came back to plan another week has just demonstrated the
+ * behaviour the feature removes.
  *
- * Deliberately permanent rather than dismissible: a returning user should meet
- * it every time until they act on it. It disappears only once auto-planning is
- * actually on. Settings is where this is managed afterwards; nobody browses
- * settings looking for a feature they don't know exists.
+ * The button explains nothing; the dialog does. Turning on a recurring email
+ * deserves more than a single tap on a line of small print — someone should know
+ * what arrives, when, and how to stop it before they agree to it.
  */
 export default function AutoPlanInline() {
   const [on, setOn] = useState<boolean | null>(null);
-  // null until the household's own week start is known. Seeding this with a day
-  // would flash "Sunday" at a Saturday-week family before correcting itself, and
-  // the whole point of the label is that it names THEIR day.
-  const [day, setDay] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [done, setDone] = useState(false);
+  // null until the household's own week start is known — naming the wrong day,
+  // even briefly, undermines the one thing the label is for.
+  const [defaultDay, setDefaultDay] = useState<number | null>(null);
+  const [chosen, setChosen] = useState<number | null>(null);
 
-  useEffect(() => {
+  const load = () =>
     fetch('/api/settings').then(r => r.json()).then(s => {
       setOn(!!s?.autoPlan);
-      // The email lands the day before their week starts, so name that day
-      // rather than assuming everyone's week begins on Monday.
       const start = typeof s?.weekStartDay === 'number' ? s.weekStartDay : 1;
-      setDay(DAYS[(start + 6) % 7]);
-    }).catch(() => { setOn(false); setDay(DAYS[0]); });
-  }, []);
+      const derived = (start + 6) % 7;
+      setDefaultDay(derived);
+      setChosen(typeof s?.autoPlanDay === 'number' ? s.autoPlanDay : derived);
+    }).catch(() => { setOn(false); setDefaultDay(0); setChosen(0); });
 
-  const enable = async () => {
+  useEffect(() => { load(); }, []);
+
+  const save = async (enabled: boolean) => {
     setSaving(true);
     try {
-      const res = await fetch('/api/auto-plan', {
+      await fetch('/api/auto-plan', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled: true }),
+        // Sending null when they've kept the default keeps the email FOLLOWING
+        // the week start, so changing the week later moves it too. Only a
+        // deliberate difference pins a specific day.
+        body: JSON.stringify({ enabled, day: chosen === defaultDay ? null : chosen }),
       });
-      if (res.ok) { setOn(true); setDone(true); }
+      setOn(enabled);
+      setOpen(false);
     } finally { setSaving(false); }
   };
 
-  // Render nothing until BOTH are known — no flash of the wrong day.
-  if (on === null || day === null || (on && !done)) return null;
+  if (on === null || defaultDay === null || chosen === null) return null;
 
-  if (done) return (
-    <span className="inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-xs uppercase tracking-[0.18em]" style={{ color: 'var(--green)', whiteSpace: 'nowrap' }}>
-      <img src="/icons/Email.png" alt="" style={{ width: 18, height: 18, objectFit: 'contain' }} />
-      ✓ In your inbox every {day}
-    </span>
-  );
-
-  // Same pill metrics as Print week and Regenerate, so the row keeps a single
-  // height. A navbar-sized icon (112px) cannot live in a row of 40px pills — it
-  // stretched the row and pushed the other controls onto a second line. No fill
-  // or border: it reads as the quieter option beside Generate without being
-  // invisible, which the 11px grey caption version was.
   return (
-    <button onClick={enable} disabled={saving}
-      title={`Have your week in your inbox every ${day}`}
-      className="inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-xs uppercase tracking-[0.18em] transition-opacity hover:opacity-80 disabled:opacity-50"
-      style={{ color: 'var(--text-2)', whiteSpace: 'nowrap' }}>
-      <img src="/icons/Email.png" alt="" style={{ width: 18, height: 18, objectFit: 'contain' }} />
-      {saving ? 'setting up…' : <>have it in your inbox every {day}</>}
-    </button>
+    <>
+      <button onClick={() => { load(); setOpen(true); }}
+        className="rounded-full px-5 py-2.5 text-xs uppercase tracking-[0.18em] backdrop-blur-sm transition-opacity hover:opacity-80"
+        style={{
+          border: `1px solid ${on ? 'var(--green)' : 'var(--border)'}`,
+          background: on ? 'var(--green-lt)' : 'rgba(255,255,255,0.7)',
+          color: on ? 'var(--green)' : 'var(--text-2)',
+          boxShadow: '0 2px 8px rgba(47,58,50,0.06)',
+        }}>
+        <img src="/icons/Email.png" alt="" style={{ width: '18px', height: '18px', objectFit: 'contain', display: 'inline', verticalAlign: 'middle', marginRight: '6px' }} />
+        Weekly email
+      </button>
+
+      {open && (
+        <div className="fixed inset-0 z-[9998] flex items-center justify-center p-4"
+             style={{ background: 'rgba(0,0,0,0.45)' }}
+             onClick={() => setOpen(false)}>
+          <div onClick={e => e.stopPropagation()}
+               className="rounded-[22px] p-8 max-w-sm w-full animate-slide-up"
+               style={{ background: 'var(--white)', boxShadow: '0 16px 48px rgba(0,0,0,0.2)', maxHeight: '90vh', overflowY: 'auto' }}>
+
+            <div className="text-center mb-5">
+              <img src="/icons/Email.png" alt="" style={{ width: 96, height: 96, objectFit: 'contain', margin: '0 auto 10px' }} />
+              <h2 className="text-2xl" style={{ fontFamily: 'AbramoSerif, serif' }}>
+                Your week, in your inbox
+              </h2>
+            </div>
+
+            <p className="text-sm leading-relaxed mb-5" style={{ color: 'var(--text-2)' }}>
+              Fornello plans the week for you and emails it — the dinners, what to prep the
+              night before, and a shopping list you can tick off in the shop. You don&apos;t
+              have to come back for it.
+            </p>
+
+            <p className="text-xs uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>
+              Send it on
+            </p>
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {DAYS.map((d, i) => (
+                <button key={d} onClick={() => setChosen(i)}
+                  className="rounded-full px-3 py-1.5 text-xs transition-all"
+                  style={{
+                    background: chosen === i ? 'var(--green)' : 'var(--cream)',
+                    color: chosen === i ? '#fff' : 'var(--text-2)',
+                    border: `1px solid ${chosen === i ? 'var(--green)' : 'var(--border)'}`,
+                  }}>
+                  {d.slice(0, 3)}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs italic mb-6" style={{ color: 'var(--text-3)' }}>
+              {chosen === defaultDay
+                ? `${DAYS[chosen]} — the day before your week starts. Change it to whatever suits your shop.`
+                : `${DAYS[chosen]}. Your week still starts ${DAYS[(defaultDay + 1) % 7]} — this only changes when the email arrives.`}
+            </p>
+
+            {on ? (
+              <>
+                <button onClick={() => save(true)} disabled={saving}
+                  className="w-full py-3 rounded-xl font-semibold text-white mb-2 transition-opacity hover:opacity-90 disabled:opacity-50"
+                  style={{ background: 'var(--green)' }}>
+                  {saving ? 'Saving…' : `Save — send on ${DAYS[chosen]}s`}
+                </button>
+                <button onClick={() => save(false)} disabled={saving}
+                  className="w-full py-2.5 text-sm transition-opacity hover:opacity-70 disabled:opacity-50"
+                  style={{ color: '#C0392B' }}>
+                  Stop sending
+                </button>
+              </>
+            ) : (
+              <button onClick={() => save(true)} disabled={saving}
+                className="w-full py-3 rounded-xl font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                style={{ background: 'var(--green)' }}>
+                {saving ? 'Setting up…' : `Send me my week on ${DAYS[chosen]}s`}
+              </button>
+            )}
+
+            <p className="text-xs mt-5 pt-4 text-center" style={{ color: 'var(--text-3)', borderTop: '1px solid var(--border)' }}>
+              You can stop it any time — here, from any email, or in{' '}
+              <strong>Settings → First Day of the Week</strong>.
+            </p>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

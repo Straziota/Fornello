@@ -8,7 +8,7 @@ import { adminClient } from '@/lib/supabase-admin';
 export async function POST(req: NextRequest) {
   const { user, error } = await requireUser();
   if (error) return error;
-  const { enabled } = await req.json();
+  const { enabled, day } = await req.json();
   const { error: e } = await adminClient.from('settings').update({
     auto_plan: !!enabled,
     auto_plan_paused: false,
@@ -17,6 +17,14 @@ export async function POST(req: NextRequest) {
     // which defaults to false — without this, "no thanks" is indistinguishable
     // from never having been asked, and we would ask again on the next device.
     auto_plan_offer_answered_at: new Date().toISOString(),
+    // Only written when a day is actually chosen. Leaving it null keeps the
+    // email following the week start, so nobody is pinned to a day they never
+    // picked.
+    // A number pins that day; an explicit null returns to following the week
+    // start. `undefined` (field absent) leaves whatever they had.
+    ...(typeof day === 'number' && day >= 0 && day <= 6
+      ? { auto_plan_day: day }
+      : day === null ? { auto_plan_day: null } : {}),
   }).eq('user_id', user!.id);
   if (e) return NextResponse.json({ error: e.message }, { status: 500 });
   return NextResponse.json({ ok: true, autoPlan: !!enabled });

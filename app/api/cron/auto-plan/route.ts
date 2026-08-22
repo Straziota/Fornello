@@ -70,15 +70,17 @@ export async function GET(req: NextRequest) {
 
   const { data: subs } = await adminClient
     .from('settings')
-    .select('user_id, email_token, week_start_day, auto_plan_ignored, auto_plan_paused, auto_plan_asked_at, auto_plan_asks_sent, last_engaged_at')
+    .select('user_id, email_token, week_start_day, auto_plan_day, auto_plan_ignored, auto_plan_paused, auto_plan_asked_at, auto_plan_asks_sent, last_engaged_at')
     .eq('auto_plan', true)
     .eq('auto_plan_paused', false);
 
   const results: { email: string; status: string; detail?: string }[] = [];
 
   for (const s of subs || []) {
+    // An explicit choice wins; otherwise the day before their week starts.
     const weekStart = typeof s.week_start_day === 'number' ? s.week_start_day : 1;
-    if (!allDays && (weekStart + 6) % 7 !== today) continue;
+    const sendDay = typeof s.auto_plan_day === 'number' ? s.auto_plan_day : (weekStart + 6) % 7;
+    if (!allDays && sendDay !== today) continue;
 
     const { data: authUser } = await adminClient.auth.admin.getUserById(s.user_id);
     const email = authUser?.user?.email;
