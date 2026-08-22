@@ -50,22 +50,23 @@ export default function AutoPlanInline() {
   if (on === null || day === null || (on && !done)) return null;
 
   if (done) return (
-    <span className="inline-flex flex-col items-center gap-1 text-xs uppercase tracking-[0.18em]" style={{ color: 'var(--green)', whiteSpace: 'nowrap' }}>
-      <img src="/icons/Email.png" alt="" style={{ width: 112, height: 112, objectFit: 'cover', borderRadius: '10px' }} />
+    <span className="inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-xs uppercase tracking-[0.18em]" style={{ color: 'var(--green)', whiteSpace: 'nowrap' }}>
+      <img src="/icons/Email.png" alt="" style={{ width: 28, height: 28, objectFit: 'contain' }} />
       ✓ In your inbox every {day}
     </span>
   );
 
-  // Secondary to Generate, but not invisible: it was 11px in the faintest grey
-  // in the palette, which is indistinguishable from a caption. Brand green on a
-  // soft tint reads as tappable while staying clearly the smaller of the two
-  // choices.
+  // Same pill metrics as Print week and Regenerate, so the row keeps a single
+  // height. A navbar-sized icon (112px) cannot live in a row of 40px pills — it
+  // stretched the row and pushed the other controls onto a second line. No fill
+  // or border: it reads as the quieter option beside Generate without being
+  // invisible, which the 11px grey caption version was.
   return (
     <button onClick={enable} disabled={saving}
       title={`Have your week in your inbox every ${day}`}
-      className="inline-flex flex-col items-center gap-1 text-xs uppercase tracking-[0.18em] transition-opacity hover:opacity-70 disabled:opacity-50"
+      className="inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-xs uppercase tracking-[0.18em] transition-opacity hover:opacity-80 disabled:opacity-50"
       style={{ color: 'var(--text-2)', whiteSpace: 'nowrap' }}>
-      <img src="/icons/Email.png" alt="" style={{ width: 112, height: 112, objectFit: 'cover', borderRadius: '10px' }} />
+      <img src="/icons/Email.png" alt="" style={{ width: 28, height: 28, objectFit: 'contain' }} />
       {saving ? 'setting up…' : <>have it in your inbox every {day}</>}
     </button>
   );
