@@ -18,7 +18,10 @@ export async function POST(req: Request) {
     }
     const settings = await getSettings(user!.id);
     const rewritten = await removeIngredient(
-      getAnthropicKey(), meal, ingredient, (settings as any).language
+      getAnthropicKey(), meal, ingredient, (settings as any).language,
+      // Removing an ingredient rewrites the recipe around the gap, so it can
+      // introduce one.
+      settings.restrictions || [], (settings as any).skipIngredients || []
     );
     await saveRecipeOverride(user!.id, meal.name, {
       ingredients: rewritten.ingredients,

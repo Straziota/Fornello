@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     const settings = await getSettings(user!.id);
     const skipIngredients = (settings as any).skipIngredients || [];
     if (!skipIngredients.length) return NextResponse.json({ canSimplify: false, essentialSkipped: [], simplifiedIngredients: [], simplifiedInstructions: [], note: '' });
-    const result = await simplifyRecipe(getAnthropicKey(), meal, skipIngredients);
+    const result = await simplifyRecipe(getAnthropicKey(), meal, skipIngredients, settings.restrictions || []);
     return NextResponse.json(result);
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });

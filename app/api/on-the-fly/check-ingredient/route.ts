@@ -1,20 +1,27 @@
 import { anthropicClient } from '@/lib/anthropic';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUser, getAnthropicKey } from '@/lib/auth';
+import { getSettings } from '@/lib/db';
+import { allergenGuard } from '@/lib/allergens';
 
 export async function POST(req: NextRequest) {
   const { user, error } = await requireUser('on-the-fly:check-ingredient');
   if (error) return error;
-  void user;
 
   const { ingredient, dish, cuisine, allIngredients } = await req.json();
   if (!ingredient || !dish) return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
 
   const client = anthropicClient({ apiKey: getAnthropicKey() });
 
+  // "What can I use instead?" is a substitution question, and substitutions are
+  // where an allergen gets handed to someone.
+  const settings = await getSettings(user!.id);
+  const guard = allergenGuard(settings.restrictions || [], (settings as any).skipIngredients || []);
+
   const prompt = `You are an expert chef. A home cook is making "${dish}" (${cuisine || 'unspecified cuisine'}) and just realised they don't have: "${ingredient}".
 
 Full ingredient list: ${allIngredients.join(', ')}
+${guard}
 
 Is "${ingredient}" a sine qua non — truly essential and irreplaceable for this dish — or can it be skipped or substituted without ruining it?
 

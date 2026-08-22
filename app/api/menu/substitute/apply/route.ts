@@ -15,7 +15,8 @@ export async function POST(req: Request) {
     }
     const settings = await getSettings(user!.id);
     const rewritten = await applySubstitute(
-      getAnthropicKey(), meal, originalIngredient, substitute, (settings as any).language
+      getAnthropicKey(), meal, originalIngredient, substitute, (settings as any).language,
+      settings.restrictions || [], (settings as any).skipIngredients || []
     );
     // Save as user's override so the customized version is used whenever this recipe appears
     await saveRecipeOverride(user!.id, meal.name, {

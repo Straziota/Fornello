@@ -40,7 +40,8 @@ export async function POST(req: Request) {
     }
 
     // 4. Generate new recipe → save to global library for everyone
-    const recipe = await generateMealRecipe(getAnthropicKey(), meal, settings.familySize, settings.prepSchedule, language, units);
+    const recipe = await generateMealRecipe(getAnthropicKey(), meal, settings.familySize, settings.prepSchedule, language, units,
+      settings.restrictions || [], (settings as any).skipIngredients || []);
     await Promise.all([
       updateMealRecipe(user!.id, menuId, meal.day, recipe),
       saveGlobalRecipeIfNew({ ...meal, ...recipe, mealType: meal.tags?.[0] || '',

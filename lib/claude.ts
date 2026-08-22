@@ -1,6 +1,7 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import { anthropicClient } from './anthropic';
 import { EXPLORATION_THEMES } from './themes';
+import { allergenGuard } from './allergens';
 import { Settings, WeeklyMenu, WeekSchedule, Meal, Ingredient, SubstituteResult } from './types';
 import { normalizeRecipeUnits } from './unit-convert';
 
@@ -695,7 +696,11 @@ export async function generateMealRecipe(
   familySize: number,
   prepSchedule?: import('./types').PrepSchedule,
   language?: string,
-  units?: string
+  units?: string,
+  // A safe meal NAME is not a safe recipe — the allergen enters at the
+  // ingredient line, which is written here.
+  restrictions: string[] = [],
+  skipIngredients: string[] = [],
 ): Promise<{ ingredients: Ingredient[]; instructions: string[]; prep_ahead: string[]; sides?: import('./types').Side[] }> {
   const client = anthropicClient({ apiKey });
 
@@ -719,6 +724,7 @@ The following sides are planned for tonight. For each, write 2–3 cooking steps
 ${meal.sides!.map(s => `- ${s.name}${s.ingredients?.length ? ` (ingredients: ${s.ingredients.map(i => `${i.amount} ${i.item}`).join(', ')})` : ''}`).join('\n')}` : '';
 
   const prompt = `You are a professional chef. Write the full recipe for:
+${allergenGuard(restrictions, skipIngredients)}
 ${langInstruction(language)}${unitsInstruction(units)}
 Dish: ${meal.name} (${meal.cuisine})
 Serves: ${familySize}
@@ -831,7 +837,9 @@ ${JSON.stringify(content)}`;
 export async function simplifyRecipe(
   apiKey: string,
   meal: Meal,
-  skipIngredients: string[]
+  skipIngredients: string[],
+  // Already had the dislike list; the allergy list was missing.
+  restrictions: string[] = [],
 ): Promise<{
   canSimplify: boolean;
   essentialSkipped: string[];
@@ -844,7 +852,8 @@ export async function simplifyRecipe(
   const ingredientList = (meal.ingredients || []).map(i => `${i.amount} ${i.item}`).join('\n');
   const skipList = skipIngredients.join(', ');
 
-  const prompt = `You are a professional chef. Analyze this recipe and determine which of the "skip" ingredients can be safely removed without fundamentally changing the dish.
+  const prompt = `You are a professional chef. Analyze this recipe and determine which of the "ski
+${allergenGuard(restrictions, skipIngredients)}p" ingredients can be safely removed without fundamentally changing the dish.
 
 Dish: ${meal.name} (${meal.cuisine})
 Ingredients:
@@ -1208,13 +1217,17 @@ ${UNIT_RULE}`;
 export async function getSubstitution(
   apiKey: string,
   meal: Meal,
-  ingredient: string
+  ingredient: string,
+  // The allergen enters at the ingredient line — this function writes one.
+  restrictions: string[] = [],
+  skipIngredients: string[] = [],
 ): Promise<SubstituteResult> {
   const client = anthropicClient({ apiKey });
 
   const ingredientList = (meal.ingredients || []).map(i => `${i.amount} ${i.item}`).join(', ');
 
-  const prompt = `You are a professional chef. A family dislikes "${ingredient}" and it appears in this recipe:
+  const prompt = `You are a professional chef. A family dislikes "${ingredient}" and it appears in
+${allergenGuard(restrictions, skipIngredients)} this recipe:
 
 Dish: ${meal.name} (${meal.cuisine})
 Ingredients: ${ingredientList}
@@ -1252,13 +1265,17 @@ export async function applySubstitute(
   originalIngredient: string,
   substitute: string,
   language?: string,
+  // The allergen enters at the ingredient line — this function writes one.
+  restrictions: string[] = [],
+  skipIngredients: string[] = [],
 ): Promise<{ ingredients: Ingredient[]; instructions: string[] }> {
   const client = anthropicClient({ apiKey });
 
   const ingredientList = (meal.ingredients || []).map(i => `${i.amount} ${i.item}`).join('\n');
   const instructionList = (meal.instructions || []).map((s, i) => `${i + 1}. ${s}`).join('\n');
 
-  const prompt = `You are a professional chef. Rewrite this recipe to swap ONE ingredient for the user's chosen replacement. Adjust amounts, timings, and cooking technique as needed for the substitution to work properly.
+  const prompt = `You are a professional chef. Rewrite this recipe to swap ONE ingredient for the 
+${allergenGuard(restrictions, skipIngredients)}user's chosen replacement. Adjust amounts, timings, and cooking technique as needed for the substitution to work properly.
 
 Dish: ${meal.name} (${meal.cuisine || 'unspecified cuisine'})
 Serves: ${meal.serves || 4}
@@ -1310,13 +1327,17 @@ export async function removeIngredient(
   meal: Meal,
   ingredient: string,
   language?: string,
+  // The allergen enters at the ingredient line — this function writes one.
+  restrictions: string[] = [],
+  skipIngredients: string[] = [],
 ): Promise<{ ingredients: Ingredient[]; instructions: string[]; note?: string }> {
   const client = anthropicClient({ apiKey });
 
   const ingredientList = (meal.ingredients || []).map(i => `${i.amount} ${i.item}`).join('\n');
   const instructionList = (meal.instructions || []).map((s, i) => `${i + 1}. ${s}`).join('\n');
 
-  const prompt = `You are a professional chef. Rewrite this recipe with ONE ingredient removed completely — the cook does not want it and does not want it replaced.
+  const prompt = `You are a professional chef. Rewrite this recipe with ONE ingredient removed com
+${allergenGuard(restrictions, skipIngredients)}pletely — the cook does not want it and does not want it replaced.
 
 Dish: ${meal.name} (${meal.cuisine || 'unspecified cuisine'})
 Serves: ${meal.serves || 4}

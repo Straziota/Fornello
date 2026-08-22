@@ -43,7 +43,8 @@ export async function POST(req: Request) {
       unloaded.map(async (meal: any) => {
         try {
           const recipe = await generateMealRecipe(
-            apiKey, meal, settings.familySize, settings.prepSchedule, language
+            apiKey, meal, settings.familySize, settings.prepSchedule, language, undefined,
+            settings.restrictions || [], (settings as any).skipIngredients || []
           );
           await updateMealRecipe(user!.id, menu.id, meal.day, recipe);
           return { ...meal, ...recipe, recipeLoaded: true };
