@@ -4,7 +4,12 @@ import { sendWeeklyMenuEmail } from '@/lib/email';
 
 export const maxDuration = 60;
 
-// Sends each household its own week. Not "your menu is ready" — the menu.
+// Sends each household its own week, the day before that household's week
+// starts — not everyone on Sunday. Most weeks start Monday, but not all, and an
+// email that arrives mid-week reads as noise rather than a plan.
+//
+// So this runs DAILY and each household is filtered on the day: a Monday
+// household is emailed on Sunday, a Saturday household on Friday.
 //
 // Defaults to a DRY RUN. ?send=1 is required to actually deliver, so a stray
 // call, a misconfigured cron or a curious browser cannot mail real people.
@@ -27,12 +32,25 @@ export async function GET(req: NextRequest) {
 
   const { data: subs } = await adminClient
     .from('settings')
-    .select('user_id, weekly_email, email_token')
+    .select('user_id, weekly_email, email_token, week_start_day')
     .eq('weekly_email', true);
+
+  // 0 = Sunday. `day` overrides today for testing a specific household's slot.
+  const dayParam = req.nextUrl.searchParams.get('day');
+  const today = dayParam !== null ? Number(dayParam) : new Date().getUTCDay();
+  // Ignore the day filter entirely when previewing everyone.
+  const allDays = req.nextUrl.searchParams.get('allDays') === '1';
+
+  // A menu older than this is a past plan resurfacing, not "this week".
+  const STALE_AFTER_DAYS = 14;
 
   const results: { email: string; status: string; detail?: string }[] = [];
 
   for (const s of subs || []) {
+    const weekStart = typeof s.week_start_day === 'number' ? s.week_start_day : 1;
+    const emailDay = (weekStart + 6) % 7;   // the day before their week begins
+    if (!allDays && emailDay !== today) continue;
+
     // Only send a week that exists. A household with no current menu gets
     // nothing — an empty email is worse than silence.
     const { data: menu } = await adminClient
@@ -47,6 +65,16 @@ export async function GET(req: NextRequest) {
 
     if (!email) { results.push({ email: '(none)', status: 'skipped', detail: 'no address' }); continue; }
     if (!meals.length) { results.push({ email, status: 'skipped', detail: 'no current menu' }); continue; }
+
+    // Don't mail someone April's dinners in August. A stale menu means they
+    // stopped planning; resurfacing it looks neglected, not helpful.
+    const ageDays = menu?.week_start
+      ? Math.floor((Date.now() - new Date(menu.week_start).getTime()) / 86_400_000)
+      : Infinity;
+    if (ageDays > STALE_AFTER_DAYS) {
+      results.push({ email, status: 'skipped', detail: `menu is ${ageDays} days old` });
+      continue;
+    }
 
     const groceryList = (menu?.data as any)?.grocery_list || {};
     const groceries = Object.entries(groceryList)

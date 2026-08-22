@@ -237,6 +237,8 @@ export async function sendWeeklyMenuEmail(
         </ul>
       </div>`).join('')}` : '';
 
+  // An empty "Your shopping list" heading reads as broken. Three of six
+  // households in the first dry run had a menu but no generated grocery list.
   const groceryBlock = data.groceries.length ? `
     <h2 style="font-family:Georgia,serif;font-size:15px;color:#3D2714;margin:32px 0 10px">Your shopping list</h2>
     ${data.groceries.map(g => `
