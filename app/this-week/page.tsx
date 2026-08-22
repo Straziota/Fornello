@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { WeeklyMenu, Meal } from '@/lib/types';
 import MealModal from '@/components/MealModal';
+import AutoPlanInline from '@/components/AutoPlanInline';
 import Toast from '@/components/Toast';
 import PageBackground from '@/components/PageBackground';
 import ReplaceMealModal from '@/components/ReplaceMealModal';
@@ -296,11 +297,16 @@ export default function HomePage() {
               </div>
             )}
           </div>
-          <button onClick={generate} data-tour="tour-generate"
-            className="rounded-full px-5 py-2.5 text-xs uppercase tracking-[0.18em] backdrop-blur-sm transition-opacity hover:opacity-80"
-            style={{ border: '1px solid var(--border)', background: 'rgba(255,255,255,0.7)', color: 'var(--green)', boxShadow: '0 2px 8px rgba(47,58,50,0.06)' }}>
-            {menu ? <T>Regenerate</T> : <T>Generate</T>}
-          </button>
+          <div>
+            <button onClick={generate} data-tour="tour-generate"
+              className="rounded-full px-5 py-2.5 text-xs uppercase tracking-[0.18em] backdrop-blur-sm transition-opacity hover:opacity-80"
+              style={{ border: '1px solid var(--border)', background: 'rgba(255,255,255,0.7)', color: 'var(--green)', boxShadow: '0 2px 8px rgba(47,58,50,0.06)' }}>
+              {menu ? <T>Regenerate</T> : <T>Generate</T>}
+            </button>
+            {/* The moment someone plans by hand is the moment to offer not
+                having to. Permanent until acted on — see AutoPlanInline. */}
+            <AutoPlanInline />
+          </div>
         </div>
       </div>
 

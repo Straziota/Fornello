@@ -9,14 +9,21 @@ import { useState, useEffect } from 'react';
  * FEATURE. Someone who says no in week one may well want it in week five, and
  * without this there was no way back: "No thanks" was effectively "never".
  */
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
 export default function WeeklyEmailSetting() {
   const [on, setOn] = useState<boolean | null>(null);
+  const [day, setDay] = useState('Sunday');
   const [saving, setSaving] = useState(false);
   const [note, setNote] = useState('');
 
   useEffect(() => {
     fetch('/api/settings').then(r => r.json())
-      .then(s => setOn(!!s?.autoPlan))
+      .then(s => {
+        setOn(!!s?.autoPlan);
+        const start = typeof s?.weekStartDay === 'number' ? s.weekStartDay : 1;
+        setDay(DAYS[(start + 6) % 7]);
+      })
       .catch(() => setOn(false));
   }, []);
 
@@ -30,8 +37,8 @@ export default function WeeklyEmailSetting() {
       if (!res.ok) throw new Error();
       setOn(next);
       setNote(next
-        ? "Your week will arrive the day before it starts."
-        : "Stopped. You can turn it back on here whenever you like.");
+        ? `Your week will arrive on ${day}s.`
+        : 'Stopped. You can turn it back on here whenever you like.');
     } catch {
       setNote('Could not save that — try again in a moment.');
     } finally { setSaving(false); }
@@ -41,10 +48,15 @@ export default function WeeklyEmailSetting() {
 
   return (
     <>
-      <p className="text-sm mb-3" style={{ color: 'var(--text-2)' }}>
-        Fornello plans your week and emails it the day before your week starts — the dinners,
-        the prep, and a shopping list you can tick off on your phone. You don&apos;t have to
-        come back for it.
+      <p className="text-sm mb-2" style={{ color: 'var(--text-2)' }}>
+        Fornello plans your week and emails it — the dinners, the prep, and a shopping list
+        you can tick off on your phone. You don&apos;t have to come back for it.
+      </p>
+      <p className="text-xs mb-4 italic" style={{ color: 'var(--text-3)' }}>
+        {/* Not a separate setting: it follows the week start above, so there is
+            one place to change when the week begins, not two that can disagree. */}
+        Arrives on <strong>{day}s</strong> — the day before your week starts.
+        Change <em>First Day of the Week</em> above to move it.
       </p>
       <button onClick={() => toggle(!on)} disabled={saving}
         className="rounded-full px-5 py-2.5 text-xs uppercase tracking-[0.18em] transition-opacity hover:opacity-80 disabled:opacity-50"
