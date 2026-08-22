@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { WeeklyMenu, GroceryItem } from '@/lib/types';
 import PageBackground from '@/components/PageBackground';
+import StaplesPrompt from '@/components/StaplesPrompt';
 import { T } from '@/components/T';
 import { SITE_URL } from '@/lib/site';
 import { categoryIcon, stapleCategory, BUILTIN_CATEGORIES } from '@/lib/categories';
@@ -348,7 +349,8 @@ export default function GroceriesPage() {
             {checked.size}/{total} items · {filterActive ? `filtered to ${[...printDays].join(', ')}` : 'based on this week'}
           </p>
         </div>
-        <div className="flex gap-2 relative">
+        <div className="flex gap-2 relative flex-wrap items-center">
+          <StaplesPrompt />
           <button onClick={() => buildGroceryList(true)} disabled={generating}
             title="Rebuild the list from this week's current recipes"
             className="rounded-full px-4 py-2 text-xs uppercase tracking-[0.18em] transition-opacity hover:opacity-80"

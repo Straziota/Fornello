@@ -45,6 +45,24 @@ const DEFAULT_SCHEDULE: WeekSchedule = {
   Sunday:    { enabled: true,  minutes: 120 },
 };
 
+// Deep links from elsewhere in the app (?section=staples) land on the right
+// card rather than the top of a long page — "it's in Settings" is only useful
+// if you arrive at the thing.
+function useSectionDeepLink(ready: boolean) {
+  useEffect(() => {
+    if (!ready) return;
+    const id = new URLSearchParams(window.location.search).get('section');
+    if (!id) return;
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    el.style.transition = 'box-shadow .4s';
+    el.style.boxShadow = '0 0 0 3px var(--green)';
+    const t = setTimeout(() => { el.style.boxShadow = ''; }, 1800);
+    return () => clearTimeout(t);
+  }, [ready]);
+}
+
 export default function SettingsPage() {
   const { startTour } = useTour();
   const { setLanguage: setContextLanguage } = useLanguage();
@@ -79,6 +97,7 @@ export default function SettingsPage() {
   const [resetSent, setResetSent] = useState(false);
 
   const loadedRef = useRef(false);
+  const [ready, setReady] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Pull the signed-in user's email so we can display it and pre-populate the input.
@@ -143,9 +162,12 @@ export default function SettingsPage() {
       }));
       // Mark loaded *after* the state-update commit so the auto-save effect doesn't
       // fire on the initial population from the server.
-      setTimeout(() => { loadedRef.current = true; }, 0);
+      setTimeout(() => { loadedRef.current = true; setReady(true); }, 0);
     });
   }, []);
+
+  // Sections only exist once settings render, so the deep link waits for them.
+  useSectionDeepLink(ready);
 
   // Debounced auto-save: anything the user changes (family size, week start, schedule
   // grid, vacations, prioritize toggle, email sharing, etc.) persists 800ms after the
@@ -447,7 +469,7 @@ export default function SettingsPage() {
         </Section>
 
         {/* Pantry Staples */}
-        <Section tour="set-staples" icon="/icons/Pantry Staples.png" title="Pantry Staples"
+        <Section id="staples" tour="set-staples" icon="/icons/Pantry Staples.png" title="Pantry Staples"
           desc="Items you always need on hand — olive oil, salt, eggs, butter, etc. These will appear on every grocery list so you can check if you're running low. Click any item to rename it. Paste a whole list at once below.">
           {((settings as any).staples || []).length > 0 && (
             <div className="space-y-2 mb-3">
@@ -916,11 +938,11 @@ export default function SettingsPage() {
   );
 }
 
-function Section({ title, desc, action, children, tour, icon }: {
-  title: string; desc?: string; action?: React.ReactNode; children: React.ReactNode; tour?: string; icon?: string;
+function Section({ title, desc, action, children, tour, icon, id }: {
+  title: string; desc?: string; action?: React.ReactNode; children: React.ReactNode; tour?: string; icon?: string; id?: string;
 }) {
   return (
-    <div data-tour={tour} className="rounded-2xl p-6 border" style={{ background: 'var(--white)', borderColor: 'var(--border)' }}>
+    <div id={id} data-tour={tour} className="rounded-2xl p-6 border" style={{ background: 'var(--white)', borderColor: 'var(--border)', scrollMarginTop: '90px' }}>
       <div className="flex items-start gap-5 mb-5">
         {icon && (() => {
           // Source images that came in darker/warmer than the rest — pull them toward the
