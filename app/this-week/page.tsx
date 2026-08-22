@@ -253,7 +253,11 @@ export default function HomePage() {
               : <T>A calm weekly rhythm of meals and simple inspiration.</T>}
           </p>
         </div>
-        <div className="flex gap-2 flex-wrap">
+        {/* items-center, not the default stretch: Days off is wrapped in a
+            relative div for its dropdown, so it sizes to its content while the
+            unwrapped buttons stretch to the tallest child — leaving them visibly
+            taller than it. */}
+        <div className="flex gap-2 flex-wrap items-center">
           {menu && (
             <a href="/print/week" target="_blank"
               className="rounded-full px-5 py-2.5 text-xs uppercase tracking-[0.18em] backdrop-blur-sm transition-opacity hover:opacity-80"

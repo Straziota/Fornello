@@ -51,7 +51,7 @@ export default function AutoPlanInline() {
 
   if (done) return (
     <span className="inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-xs uppercase tracking-[0.18em]" style={{ color: 'var(--green)', whiteSpace: 'nowrap' }}>
-      <img src="/icons/Email.png" alt="" style={{ width: 28, height: 28, objectFit: 'contain' }} />
+      <img src="/icons/Email.png" alt="" style={{ width: 18, height: 18, objectFit: 'contain' }} />
       ✓ In your inbox every {day}
     </span>
   );
@@ -66,7 +66,7 @@ export default function AutoPlanInline() {
       title={`Have your week in your inbox every ${day}`}
       className="inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-xs uppercase tracking-[0.18em] transition-opacity hover:opacity-80 disabled:opacity-50"
       style={{ color: 'var(--text-2)', whiteSpace: 'nowrap' }}>
-      <img src="/icons/Email.png" alt="" style={{ width: 28, height: 28, objectFit: 'contain' }} />
+      <img src="/icons/Email.png" alt="" style={{ width: 18, height: 18, objectFit: 'contain' }} />
       {saving ? 'setting up…' : <>have it in your inbox every {day}</>}
     </button>
   );
