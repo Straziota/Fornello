@@ -81,9 +81,8 @@ export default function AutoPlanInline() {
             </div>
 
             <p className="text-sm leading-relaxed mb-5" style={{ color: 'var(--text-2)' }}>
-              Fornello plans the week for you and emails it — the dinners, what to prep the
-              night before, and a shopping list you can tick off in the shop. You don&apos;t
-              have to come back for it.
+              Fornello plans the week for you and emails it: the dinners, what to prep ahead,
+              and your shopping list. You don&apos;t have to come back for it.
             </p>
 
             <p className="text-xs uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>
