@@ -18,7 +18,10 @@ const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 
  */
 export default function AutoPlanInline() {
   const [on, setOn] = useState<boolean | null>(null);
-  const [day, setDay] = useState('Sunday');
+  // null until the household's own week start is known. Seeding this with a day
+  // would flash "Sunday" at a Saturday-week family before correcting itself, and
+  // the whole point of the label is that it names THEIR day.
+  const [day, setDay] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
 
@@ -29,7 +32,7 @@ export default function AutoPlanInline() {
       // rather than assuming everyone's week begins on Monday.
       const start = typeof s?.weekStartDay === 'number' ? s.weekStartDay : 1;
       setDay(DAYS[(start + 6) % 7]);
-    }).catch(() => setOn(false));
+    }).catch(() => { setOn(false); setDay(DAYS[0]); });
   }, []);
 
   const enable = async () => {
@@ -43,7 +46,8 @@ export default function AutoPlanInline() {
     } finally { setSaving(false); }
   };
 
-  if (on === null || (on && !done)) return null;
+  // Render nothing until BOTH are known — no flash of the wrong day.
+  if (on === null || day === null || (on && !done)) return null;
 
   if (done) return (
     <span className="inline-flex flex-col items-center gap-1 text-xs uppercase tracking-[0.18em]" style={{ color: 'var(--green)', whiteSpace: 'nowrap' }}>

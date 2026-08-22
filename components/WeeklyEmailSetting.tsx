@@ -13,7 +13,9 @@ const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 
 
 export default function WeeklyEmailSetting() {
   const [on, setOn] = useState<boolean | null>(null);
-  const [day, setDay] = useState('Sunday');
+  // null until known — see AutoPlanInline. Naming the wrong day, even for a
+  // moment, undermines the one thing this line is for.
+  const [day, setDay] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [note, setNote] = useState('');
 
@@ -24,7 +26,7 @@ export default function WeeklyEmailSetting() {
         const start = typeof s?.weekStartDay === 'number' ? s.weekStartDay : 1;
         setDay(DAYS[(start + 6) % 7]);
       })
-      .catch(() => setOn(false));
+      .catch(() => { setOn(false); setDay(DAYS[0]); });
   }, []);
 
   const toggle = async (next: boolean) => {
@@ -44,7 +46,7 @@ export default function WeeklyEmailSetting() {
     } finally { setSaving(false); }
   };
 
-  if (on === null) return null;
+  if (on === null || day === null) return null;
 
   return (
     <>
