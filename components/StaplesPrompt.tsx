@@ -48,7 +48,13 @@ export default function StaplesPrompt() {
              onClick={() => setOpen(false)}>
           <div onClick={e => e.stopPropagation()}
                className="rounded-[22px] p-8 max-w-sm w-full animate-slide-up"
-               style={{ background: 'var(--white)', boxShadow: '0 16px 48px rgba(0,0,0,0.2)', maxHeight: '90vh', overflowY: 'auto' }}>
+               style={{ background: 'var(--white)', boxShadow: '0 16px 48px rgba(0,0,0,0.2)', maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}>
+            <button onClick={() => setOpen(false)} aria-label="Close"
+              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full transition-opacity hover:opacity-60"
+              style={{ color: 'var(--text-3)', fontSize: '18px', lineHeight: 1 }}>
+              ×
+            </button>
+
 
             <div className="text-center mb-5">
               <img src="/icons/groceries.png" alt="" style={{ width: 96, height: 96, objectFit: 'contain', margin: '0 auto 10px' }} />
