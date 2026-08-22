@@ -102,6 +102,11 @@ export async function middleware(req: NextRequest) {
     }
     const url = req.nextUrl.clone();
     url.pathname = '/login';
+    // Remember where they were going. Without this, tapping a recipe in the
+    // Sunday email while logged out dumps you on the home page having forgotten
+    // the dinner you asked for.
+    const intended = pathname + (req.nextUrl.search || '');
+    if (intended && intended !== '/') url.searchParams.set('next', intended);
     return NextResponse.redirect(url);
   }
 

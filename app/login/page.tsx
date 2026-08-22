@@ -1,12 +1,14 @@
 'use client';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createBrowser } from '@/lib/supabase';
 import { SITE_URL } from '@/lib/site';
 import Link from 'next/link';
 
-export default function LoginPage() {
+function LoginInner() {
   const router = useRouter();
+  // Set by middleware when an authenticated page was requested while logged out.
+  const nextPath = useSearchParams().get('next');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -23,7 +25,9 @@ export default function LoginPage() {
     const supabase = createBrowser();
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) { setError(error.message); setLoading(false); return; }
-    router.push('/');
+    // Only ever an in-app path — never trust it as a full URL, or the login page
+    // becomes an open redirect.
+    router.push(nextPath && nextPath.startsWith('/') && !nextPath.startsWith('//') ? nextPath : '/');
     router.refresh();
   };
 
@@ -138,4 +142,10 @@ export default function LoginPage() {
       </div>
     </div>
   );
+}
+
+// useSearchParams needs a Suspense boundary to prerender — the page is static
+// and only reads ?next= in the browser.
+export default function LoginPage() {
+  return <Suspense fallback={null}><LoginInner /></Suspense>;
 }

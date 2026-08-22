@@ -240,7 +240,10 @@ export async function GET(req: NextRequest) {
           appUrl: `${appUrl}/this-week`,
           rateUrl: `${appUrl}/api/rate?t=${s.email_token}`,
           shopUrl: `${appUrl}/shop?t=${s.email_token}`,
-          mealUrl: `${appUrl}/meal?t=${s.email_token}`,
+          // Into the app, so the recipe opens in the real card — substitutions,
+          // Chef Claude, scaling. Middleware carries a logged-out reader through
+          // login and back to this exact dinner.
+          mealUrl: `${appUrl}/this-week?meal=`,
         },
       );
       results.push({ email, status: 'planned + sent', detail: `${meals.length} meals` });

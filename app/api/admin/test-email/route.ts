@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
       appUrl: `${appUrl}/this-week`,
       rateUrl: `${appUrl}/api/rate?t=${token}`,
       shopUrl: `${appUrl}/shop?t=${token}`,
-      mealUrl: `${appUrl}/meal?t=${token}`,
+      mealUrl: `${appUrl}/this-week?meal=`,
     },
   );
 

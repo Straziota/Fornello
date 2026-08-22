@@ -229,7 +229,7 @@ export async function sendWeeklyMenuEmail(
       <td style="padding:14px 0;border-bottom:1px solid #EDE3D4">
         <div style="font-family:Georgia,serif;font-size:17px">${
           data.mealUrl
-            ? `<a href="${data.mealUrl}&d=${encodeURIComponent(m.day)}" style="color:#3D2714;text-decoration:none;border-bottom:1px solid #EDE3D4">${esc(m.name)}</a>`
+            ? `<a href="${data.mealUrl}${encodeURIComponent(m.day)}" style="color:#3D2714;text-decoration:none;border-bottom:1px solid #EDE3D4">${esc(m.name)}</a>`
             : `<span style="color:#3D2714">${esc(m.name)}</span>`
         }</div>
         ${m.description ? `<div style="font-size:13px;color:#6B5B4B;margin-top:3px">${esc(m.description)}</div>` : ''}

@@ -92,7 +92,18 @@ export default function HomePage() {
 
   useEffect(() => {
     fetch('/api/menu').then(r => r.json()).then(d => {
-      if (d?.meals) { setMenu(d); return; }
+      if (d?.meals) {
+        setMenu(d);
+        // Deep link from the Sunday email: open that dinner's card straight
+        // away, so tapping a meal in the inbox lands exactly where tapping it
+        // in the app would.
+        const want = new URLSearchParams(window.location.search).get('meal');
+        if (want) {
+          const meal = d.meals.find((m: Meal) => (m.day || '').toLowerCase() === want.toLowerCase());
+          if (meal) setOpenMeal(meal);
+        }
+        return;
+      }
       // Straight out of onboarding: generate the first week rather than landing
       // them on "No menu yet — set up your preferences in Settings", which is
       // both wrong (they just did) and one more click before any value.
