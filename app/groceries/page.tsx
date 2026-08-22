@@ -24,7 +24,7 @@ type Row = {
   meals?: string[];
   editable?: boolean;                                    // quantity is tap-to-edit
   inPantry?: boolean;
-  badge?: { text: string; bg: string; fg: string };
+  badge?: { text: string; bg: string; fg: string; icon?: string };
 };
 type Section = { cat: string; rows: Row[] };
 type Source = { key: string; label: string; hint: string; icon: string; sections: Section[] };
@@ -251,7 +251,8 @@ export default function GroceriesPage() {
   const stapleRows: Row[] = stapleCategories.flatMap(([cat, items]) =>
     items.map(item => ({
       key: `staple::${cat}::${item}`, label: item, amount: '', cat,
-      badge: { text: '🥫 staple', bg: 'rgba(232,201,122,0.25)', fg: '#7A5B10' },
+      // The mortar, matching Pantry in the nav — the same idea in both places.
+      badge: { text: 'staple', icon: '/icons/pantry-v2.png', bg: 'rgba(232,201,122,0.25)', fg: '#7A5B10' },
     }))
   );
 
@@ -656,8 +657,11 @@ export default function GroceriesPage() {
                           {/* Source badges only earn their space in the combined
                               list — in a separate section the heading says it. */}
                           {row.badge && src.key === '__combined' && (
-                            <span className="ml-2 text-xs px-2 py-0.5 rounded-full no-underline"
+                            <span className="ml-2 text-xs px-2 py-0.5 rounded-full no-underline inline-flex items-center gap-1"
                                   style={{ background: row.badge.bg, color: row.badge.fg, textDecoration: 'none', verticalAlign: 'middle' }}>
+                              {row.badge.icon && (
+                                <img src={row.badge.icon} alt="" style={{ width: 14, height: 14, objectFit: 'contain' }} />
+                              )}
                               {row.badge.text}
                             </span>
                           )}
