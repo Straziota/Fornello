@@ -78,6 +78,7 @@ export async function getSettings(userId: string) {
     skipIngredients: [...new Set([...(data.skip_ingredients ?? []), ...(data.disliked_ingredients ?? [])])],
     hasSeenTour: data.has_seen_tour ?? false,
     onboardedAt: data.onboarded_at ?? null,
+    autoPlan: data.auto_plan ?? false,
     language: data.language ?? 'English',
     units: data.units ?? 'us',
     weekStartDay: data.week_start_day ?? 1,
@@ -259,10 +260,21 @@ export async function deleteMenu(userId: string, id: number) {
   await adminClient.from('menus').delete().eq('id', id).eq('user_id', userId);
 }
 
+/**
+ * Meals to avoid repeating.
+ *
+ * Only weeks a human actually met count. Once Fornello plans weeks on its own,
+ * an unopened menu must not suppress its dishes: four ignored weeks would ban
+ * 28 meals for three months on the strength of dinners nobody ate, and the
+ * engine would quietly start avoiding its best food. `engaged_at` is set when a
+ * menu is opened, rated, shopped from, or clicked through from the email.
+ */
 export async function getRecentMealNames(userId: string, weeksBack = 2): Promise<string[]> {
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - weeksBack * 7);
-  const { data } = await adminClient.from('menus').select('data').eq('user_id', userId).gte('week_start', cutoff.toISOString().split('T')[0]);
+  const { data } = await adminClient.from('menus').select('data').eq('user_id', userId)
+    .gte('week_start', cutoff.toISOString().split('T')[0])
+    .not('engaged_at', 'is', null);
   const names: string[] = [];
   (data || []).forEach((r: any) => (r.data?.meals || []).forEach((m: any) => names.push(m.name)));
   return [...new Set(names)];
@@ -1136,4 +1148,20 @@ export async function deleteHeritageProfileRecipe(ownerId: string, id: string): 
     .eq('id', id)
     .eq('owner_id', ownerId);
   if (error) throw new Error(error.message);
+}
+
+// ── Auto-planned weeks ─────────────────────────────────────────────────────
+
+/**
+ * Record that a human met this week. Idempotent — the first sighting is the one
+ * that matters, and re-stamping would misrepresent when they actually looked.
+ */
+export async function markMenuEngaged(userId: string, menuId: number): Promise<void> {
+  await adminClient.from('menus')
+    .update({ engaged_at: new Date().toISOString() })
+    .eq('id', menuId).eq('user_id', userId).is('engaged_at', null);
+  // Any sign of life clears the ignored streak that would otherwise pause them.
+  await adminClient.from('settings')
+    .update({ auto_plan_ignored: 0 })
+    .eq('user_id', userId);
 }

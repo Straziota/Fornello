@@ -207,6 +207,8 @@ export async function sendWeeklyMenuEmail(
     weekLabel: string;
     unsubscribeUrl: string;
     appUrl: string;
+    /** Base for one-click rating, already carrying the household token. */
+    rateUrl?: string;
   },
 ) {
   const resend = new Resend(settings.resendApiKey);
@@ -224,6 +226,10 @@ export async function sendWeeklyMenuEmail(
         <div style="font-family:Georgia,serif;font-size:17px;color:#3D2714">${esc(m.name)}</div>
         ${m.description ? `<div style="font-size:13px;color:#6B5B4B;margin-top:3px">${esc(m.description)}</div>` : ''}
         ${m.total_time ? `<div style="font-size:12px;color:#8B6A42;margin-top:4px">${esc(m.total_time)}</div>` : ''}
+        ${data.rateUrl ? `<div style="margin-top:7px">
+          <a href="${data.rateUrl}&m=${encodeURIComponent(m.name)}&r=liked" style="font-size:12px;color:#4A7859;text-decoration:none;margin-right:14px">👍 We loved this</a>
+          <a href="${data.rateUrl}&m=${encodeURIComponent(m.name)}&r=disliked" style="font-size:12px;color:#B4796A;text-decoration:none">👎 Never again</a>
+        </div>` : ''}
       </td>
     </tr>`).join('');
 
