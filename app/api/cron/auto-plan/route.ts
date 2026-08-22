@@ -244,7 +244,6 @@ export async function GET(req: NextRequest) {
           // Chef Claude, scaling. Middleware carries a logged-out reader through
           // login and back to this exact dinner.
           mealUrl: `${appUrl}/this-week?meal=`,
-          groceriesUrl: `${appUrl}/groceries`,
         },
       );
       results.push({ email, status: 'planned + sent', detail: `${meals.length} meals` });
