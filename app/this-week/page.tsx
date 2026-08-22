@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import { WeeklyMenu, Meal } from '@/lib/types';
 import MealModal from '@/components/MealModal';
-import AutoPlanOffer from '@/components/AutoPlanOffer';
 import Toast from '@/components/Toast';
 import PageBackground from '@/components/PageBackground';
 import ReplaceMealModal from '@/components/ReplaceMealModal';
@@ -237,7 +236,6 @@ export default function HomePage() {
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          {menu && <AutoPlanOffer />}
           {menu && (
             <a href="/print/week" target="_blank"
               className="rounded-full px-5 py-2.5 text-xs uppercase tracking-[0.18em] backdrop-blur-sm transition-opacity hover:opacity-80"

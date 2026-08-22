@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { WeeklyMenu, GroceryItem } from '@/lib/types';
 import PageBackground from '@/components/PageBackground';
+import AutoPlanOffer from '@/components/AutoPlanOffer';
 import { T } from '@/components/T';
 import { SITE_URL } from '@/lib/site';
 import { categoryIcon, stapleCategory, BUILTIN_CATEGORIES } from '@/lib/categories';
@@ -341,6 +342,14 @@ export default function GroceriesPage() {
   return (
     <>
       <PageBackground src="/backgrounds/groceries-page.png" />
+      {/* Offered here rather than on the menu. The menu reveal is the payoff
+          onboarding was building to and nothing should stand in front of it —
+          but the offer still has to reach the first session, because the people
+          this feature exists for are the ones who never come back. The list is
+          the second thing she opens, it's short enough that the top is visible
+          rather than arrived at, and she is holding the exact thing she would be
+          receiving. */}
+      <AutoPlanOffer />
       <div className="flex items-start justify-between gap-4 flex-wrap mb-2">
         <div>
           <h1 className="text-[36px] md:text-[56px] leading-[1.05] tracking-[-0.02em]" style={{ fontFamily: 'AbramoSerif, serif' }}><T>From the market</T></h1>
