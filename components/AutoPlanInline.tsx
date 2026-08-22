@@ -46,16 +46,25 @@ export default function AutoPlanInline() {
   if (on === null || (on && !done)) return null;
 
   if (done) return (
-    <p className="text-[11px] mt-2 text-right" style={{ color: 'var(--green)' }}>
+    <p className="text-xs mt-2 text-right" style={{ color: 'var(--green)' }}>
       ✓ Your week will arrive on {day}s
     </p>
   );
 
+  // Secondary to Generate, but not invisible: it was 11px in the faintest grey
+  // in the palette, which is indistinguishable from a caption. Brand green on a
+  // soft tint reads as tappable while staying clearly the smaller of the two
+  // choices.
   return (
     <button onClick={enable} disabled={saving}
-      className="block ml-auto mt-2 text-[11px] transition-opacity hover:opacity-70 disabled:opacity-50"
-      style={{ color: 'var(--text-3)' }}>
-      {saving ? 'setting up…' : <>or have it arrive on {day}s →</>}
+      className="block ml-auto mt-2 rounded-full px-4 py-2 text-xs transition-opacity hover:opacity-80 disabled:opacity-50"
+      style={{
+        background: 'var(--green-lt)',
+        color: 'var(--green)',
+        border: '1px solid var(--green)',
+        whiteSpace: 'nowrap',
+      }}>
+      {saving ? 'setting up…' : <>✉ or have it arrive on {day}s</>}
     </button>
   );
 }
