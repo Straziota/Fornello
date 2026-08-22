@@ -5,10 +5,11 @@ import Link from 'next/link';
 /**
  * "Weekly staples" — a peer of the other controls on the grocery list.
  *
- * Staples are the things a household always has in: olive oil, salt, the coffee.
- * Fornello keeps them out of the weekly list so the list is only what actually
- * needs buying — but nobody discovers that by browsing Settings, and until it is
- * set up the list carries items you already own.
+ * Staples are the things a household buys every week regardless of what is
+ * cooking: milk, coffee, bread. They are a SOURCE that feeds the list — each one
+ * appears as its own row with a staple badge — so the weekly shop is complete
+ * rather than only covering the recipes. (They are de-duplicated against recipe
+ * ingredients so nothing is listed twice.)
  *
  * Same shape as the weekly-email button: the button says what it is, the dialog
  * explains why it matters, and the link lands on the exact section rather than
@@ -52,19 +53,19 @@ export default function StaplesPrompt() {
             <div className="text-center mb-5">
               <img src="/icons/groceries.png" alt="" style={{ width: 96, height: 96, objectFit: 'contain', margin: '0 auto 10px' }} />
               <h2 className="text-2xl" style={{ fontFamily: 'AbramoSerif, serif' }}>
-                The things you always have
+                The things you buy every week
               </h2>
             </div>
 
             <p className="text-sm leading-relaxed mb-4" style={{ color: 'var(--text-2)' }}>
-              Olive oil, salt, the coffee, whatever your kitchen is never without. Tell Fornello
-              once and they stop appearing on your weekly list — so the list is only what you
-              actually need to buy.
+              Milk, coffee, bread — the things you pick up every week whatever you&apos;re
+              cooking. Add them once and they&apos;ll be on every shopping list from now on,
+              so the list is your whole shop, not just the recipes.
             </p>
             <p className="text-sm leading-relaxed mb-6" style={{ color: 'var(--text-2)' }}>
               {has
-                ? `You have ${count} staple${count === 1 ? '' : 's'} set up. They're kept off this list and grouped separately.`
-                : 'You haven’t set any yet, so everything a recipe calls for is on the list — including things already in your cupboard.'}
+                ? `You have ${count} staple${count === 1 ? '' : 's'}. They appear on each week's list with a staple badge, and won't be listed twice if a recipe calls for one.`
+                : 'You haven’t added any yet, so your list only covers what this week’s recipes need.'}
             </p>
 
             <Link href="/settings?section=staples"
