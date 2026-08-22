@@ -148,6 +148,30 @@ export async function GET(req: NextRequest) {
         apiKey, feedback, loved, picks, globals as any,
       );
 
+      // generateMenu can return more than one meal for the same day, and the
+      // app's own route repairs that afterwards. Auto-plan calls generateMenu
+      // directly, so it has to do the same — otherwise a week arrives with
+      // Monday listed twice.
+      //
+      // KNOWN GAP: /api/menu/generate also re-checks each meal against the
+      // 12-week no-repeat list and enforces per-day cooking techniques,
+      // regenerating where needed. That logic is inline in the route and is NOT
+      // applied here, so an auto-planned week is weaker on both counts than one
+      // generated in the app. It should be extracted and shared.
+      const byDay = new Map<string, any>();
+      for (const m of (menu.meals || [])) {
+        if (!byDay.has(m.day)) byDay.set(m.day, m);
+      }
+      const enabled = new Set(
+        Object.entries((settings as any).schedule || {})
+          .filter(([, v]: any) => v?.enabled)
+          .map(([d]) => d),
+      );
+      // Keep only days the household actually cooks; if the schedule is empty,
+      // keep everything rather than silently sending nothing.
+      (menu as any).meals = [...byDay.values()]
+        .filter((m: any) => !enabled.size || enabled.has(m.day) || m.isLeftover);
+
       const menuId = await saveMenu(s.user_id, menu as any);
 
       // generateMenu returns names and descriptions only — the recipes and the
