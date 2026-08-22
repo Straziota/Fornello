@@ -13,6 +13,10 @@ export async function POST(req: NextRequest) {
     auto_plan: !!enabled,
     auto_plan_paused: false,
     auto_plan_ignored: 0,
+    // Stamped on BOTH answers. Declining cannot be inferred from auto_plan,
+    // which defaults to false — without this, "no thanks" is indistinguishable
+    // from never having been asked, and we would ask again on the next device.
+    auto_plan_offer_answered_at: new Date().toISOString(),
   }).eq('user_id', user!.id);
   if (e) return NextResponse.json({ error: e.message }, { status: 500 });
   return NextResponse.json({ ok: true, autoPlan: !!enabled });

@@ -79,6 +79,7 @@ export async function getSettings(userId: string) {
     hasSeenTour: data.has_seen_tour ?? false,
     onboardedAt: data.onboarded_at ?? null,
     autoPlan: data.auto_plan ?? false,
+    autoPlanOfferAnsweredAt: data.auto_plan_offer_answered_at ?? null,
     language: data.language ?? 'English',
     units: data.units ?? 'us',
     weekStartDay: data.week_start_day ?? 1,

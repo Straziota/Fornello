@@ -20,14 +20,16 @@ export default function AutoPlanOffer({ onDone }: { onDone?: () => void }) {
 
   useEffect(() => {
     fetch('/api/settings').then(r => r.json()).then(s => {
-      // Only ask someone who hasn't already decided.
-      if (s && !s.autoPlan && !localStorage.getItem('fornello:autoPlanAsked')) setShow(true);
+      // Ask only someone who has never answered. The record is server-side, so
+      // a "no thanks" on one device is honoured on every other one — declining
+      // used to live only in localStorage, which meant the app remembered yes
+      // and forgot no.
+      if (s && !s.autoPlan && !s.autoPlanOfferAnsweredAt) setShow(true);
     }).catch(() => {});
   }, []);
 
   const answer = async (enabled: boolean) => {
     setSaving(true);
-    localStorage.setItem('fornello:autoPlanAsked', '1');
     try {
       await fetch('/api/auto-plan', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
