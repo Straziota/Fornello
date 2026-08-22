@@ -23,6 +23,10 @@ export async function GET(req: NextRequest) {
     // start, and no means we won't be counting anything for a while.
     auto_plan_ignored: 0,
     auto_plan_asked_at: null,
+    // Answering is the strongest engagement signal there is — they read it and
+    // acted. Recording it is what lets a future stop distinguish "silent" from
+    // "silent but present".
+    last_engaged_at: new Date().toISOString(),
   }).eq('user_id', s.user_id);
 
   return NextResponse.redirect(new URL(`/answered?a=${answer}`, url.origin));

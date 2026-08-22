@@ -32,6 +32,20 @@ export const maxDuration = 300;
 // the answer decide.
 const ASK_AFTER = 5;
 
+// How long before the same silent household is asked again.
+//
+// Gated on engagement, not the calendar: anyone who taps anything has their
+// clock reset by markMenuEngaged and never sees this. Six months rather than
+// twelve weeks, because asking a happy household four times a year whether they
+// still want you reads as insecure.
+//
+// A hard stop is NOT implemented, deliberately. When it is wanted the reason
+// will be deliverability rather than cost — a tail of never-engaging accounts
+// drags sender reputation, and the harm lands on the households who do want
+// their Sunday menu. The evidence for that decision (asks sent, last engagement
+// of any kind) is recorded from now so it can be made on data later.
+const REASK_AFTER_DAYS = 180;
+
 export async function GET(req: NextRequest) {
   const secret = process.env.CRON_SECRET;
   const auth = req.headers.get('authorization');
@@ -55,7 +69,7 @@ export async function GET(req: NextRequest) {
 
   const { data: subs } = await adminClient
     .from('settings')
-    .select('user_id, email_token, week_start_day, auto_plan_ignored, auto_plan_paused, auto_plan_asked_at')
+    .select('user_id, email_token, week_start_day, auto_plan_ignored, auto_plan_paused, auto_plan_asked_at, auto_plan_asks_sent, last_engaged_at')
     .eq('auto_plan', true)
     .eq('auto_plan_paused', false);
 
@@ -74,7 +88,13 @@ export async function GET(req: NextRequest) {
     // Enough quiet weeks — ask once. Sent ALONGSIDE this week's plan, never
     // instead of it: the email says "if it's useful, do nothing — it'll keep
     // coming", so going quiet here would make that sentence false.
-    if ((s.auto_plan_ignored ?? 0) >= ASK_AFTER && !s.auto_plan_asked_at) {
+    const askedDaysAgo = s.auto_plan_asked_at
+      ? (Date.now() - new Date(s.auto_plan_asked_at).getTime()) / 86_400_000
+      : Infinity;
+    const dueToAsk = (s.auto_plan_ignored ?? 0) >= ASK_AFTER
+      && (!s.auto_plan_asked_at || askedDaysAgo >= REASK_AFTER_DAYS);
+
+    if (dueToAsk) {
       if (dryRun) {
         results.push({ email, status: 'would ask + still plan', detail: `${s.auto_plan_ignored} quiet weeks` });
       } else {
@@ -90,7 +110,10 @@ export async function GET(req: NextRequest) {
             },
           );
           await adminClient.from('settings')
-            .update({ auto_plan_asked_at: new Date().toISOString() }).eq('user_id', s.user_id);
+            .update({
+              auto_plan_asked_at: new Date().toISOString(),
+              auto_plan_asks_sent: (s.auto_plan_asks_sent ?? 0) + 1,
+            }).eq('user_id', s.user_id);
           results.push({ email, status: 'asked, and still planning' });
         } catch (e: any) {
           // A failed question must not stop the week it was asking about.

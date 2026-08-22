@@ -1160,8 +1160,11 @@ export async function markMenuEngaged(userId: string, menuId: number): Promise<v
   await adminClient.from('menus')
     .update({ engaged_at: new Date().toISOString() })
     .eq('id', menuId).eq('user_id', userId).is('engaged_at', null);
-  // Any sign of life clears the ignored streak that would otherwise pause them.
+  // Any sign of life clears the quiet streak and stamps the household. Every
+  // engagement path — opening the week, rating from the email, opening the shop
+  // list, answering an ask — routes through here, so this is the one place that
+  // has to stay correct.
   await adminClient.from('settings')
-    .update({ auto_plan_ignored: 0 })
+    .update({ auto_plan_ignored: 0, last_engaged_at: new Date().toISOString() })
     .eq('user_id', userId);
 }
