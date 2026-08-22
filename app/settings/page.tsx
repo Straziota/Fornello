@@ -391,12 +391,6 @@ export default function SettingsPage() {
           </select>
         </Section>
 
-        {/* Weekly email — the prompt on the grocery list is asked once, so this
-            is the way back for anyone who declined it then. */}
-        <Section tour="set-weekly-email" icon="/icons/Email and Share.png" title="Your Week by Email">
-          <WeeklyEmailSetting />
-        </Section>
-
         {/* Family size */}
         <Section tour="set-family" icon="/icons/Family size.png" title="Family Size">
           <div className="flex items-center gap-3">
@@ -555,6 +549,15 @@ export default function SettingsPage() {
                 </button>
               );
             })}
+          </div>
+
+          {/* The weekly email lands the day BEFORE this, so it belongs with the
+              decision that determines it rather than in a section of its own —
+              one place to change when the week begins, not two that can
+              disagree. Live from the saved value, so it reflects what is stored
+              rather than an unsaved edit above. */}
+          <div className="mt-6 pt-5" style={{ borderTop: '1px solid var(--border)' }}>
+            <WeeklyEmailSetting />
           </div>
         </Section>
 

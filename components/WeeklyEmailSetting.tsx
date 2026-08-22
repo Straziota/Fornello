@@ -48,6 +48,9 @@ export default function WeeklyEmailSetting() {
 
   return (
     <>
+      <p className="text-xs uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>
+        Your week by email
+      </p>
       <p className="text-sm mb-2" style={{ color: 'var(--text-2)' }}>
         Fornello plans your week and emails it — the dinners, the prep, and a shopping list
         you can tick off on your phone. You don&apos;t have to come back for it.
@@ -55,8 +58,7 @@ export default function WeeklyEmailSetting() {
       <p className="text-xs mb-4 italic" style={{ color: 'var(--text-3)' }}>
         {/* Not a separate setting: it follows the week start above, so there is
             one place to change when the week begins, not two that can disagree. */}
-        Arrives on <strong>{day}s</strong> — the day before your week starts.
-        Change <em>First Day of the Week</em> above to move it.
+        Arrives on <strong>{day}s</strong> — the day before the week you chose above.
       </p>
       <button onClick={() => toggle(!on)} disabled={saving}
         className="rounded-full px-5 py-2.5 text-xs uppercase tracking-[0.18em] transition-opacity hover:opacity-80 disabled:opacity-50"
