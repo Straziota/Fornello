@@ -19,7 +19,11 @@ export const maxDuration = 300;
 // guard every other food surface carries (via generateMenu).
 //
 // Runs daily; each household is picked up the day before ITS week starts.
-// Consecutive weeks with no click before we ASK. We do not pause on a count:
+// Consecutive weeks with no click before we ASK — once. Nothing pauses on a
+// count, and silence never stops anything: the email says "if it's useful, do
+// nothing — it'll keep coming", so only an explicit tap on "Stop sending" ends
+// it. Treating silence as a no would make that sentence false, and would read
+// the one signal we know to be unreadable:
 // pausing is a guess about someone's behaviour, and the guess is unreliable in
 // the one direction that matters — Apple Mail Privacy Protection pre-fetches
 // images, so a tracking pixel would report every household as engaged, always.
@@ -67,35 +71,32 @@ export async function GET(req: NextRequest) {
 
     // Enough quiet weeks — ask, don't decide. Asked only once; we then wait for
     // an answer rather than sending this every week too.
+    // Enough quiet weeks — ask once. Sent ALONGSIDE this week's plan, never
+    // instead of it: the email says "if it's useful, do nothing — it'll keep
+    // coming", so going quiet here would make that sentence false.
     if ((s.auto_plan_ignored ?? 0) >= ASK_AFTER && !s.auto_plan_asked_at) {
       if (dryRun) {
-        results.push({ email, status: 'would ask "still want these?"', detail: `${s.auto_plan_ignored} quiet weeks` });
-        continue;
+        results.push({ email, status: 'would ask + still plan', detail: `${s.auto_plan_ignored} quiet weeks` });
+      } else {
+        try {
+          await sendCheckInEmail(
+            { resendApiKey: resendKey, fromEmail, fromName: process.env.INVITE_FROM_NAME || 'Fornello' },
+            email,
+            {
+              weeksSent: s.auto_plan_ignored ?? 0,
+              yesUrl: `${appUrl}/api/auto-plan/answer?t=${s.email_token}&a=yes`,
+              noUrl: `${appUrl}/api/auto-plan/answer?t=${s.email_token}&a=no`,
+              unsubscribeUrl: `${appUrl}/unsubscribe?t=${s.email_token}`,
+            },
+          );
+          await adminClient.from('settings')
+            .update({ auto_plan_asked_at: new Date().toISOString() }).eq('user_id', s.user_id);
+          results.push({ email, status: 'asked, and still planning' });
+        } catch (e: any) {
+          // A failed question must not stop the week it was asking about.
+          results.push({ email, status: 'ask failed', detail: e.message });
+        }
       }
-      try {
-        await sendCheckInEmail(
-          { resendApiKey: resendKey, fromEmail, fromName: process.env.INVITE_FROM_NAME || 'Fornello' },
-          email,
-          {
-            weeksSent: s.auto_plan_ignored ?? 0,
-            yesUrl: `${appUrl}/api/auto-plan/answer?t=${s.email_token}&a=yes`,
-            noUrl: `${appUrl}/api/auto-plan/answer?t=${s.email_token}&a=no`,
-            unsubscribeUrl: `${appUrl}/unsubscribe?t=${s.email_token}`,
-          },
-        );
-        await adminClient.from('settings')
-          .update({ auto_plan_asked_at: new Date().toISOString() }).eq('user_id', s.user_id);
-        results.push({ email, status: 'asked "still want these?"' });
-      } catch (e: any) {
-        results.push({ email, status: 'ask failed', detail: e.message });
-      }
-      continue;
-    }
-
-    // Asked and not yet answered — go quiet rather than keep planning.
-    if (s.auto_plan_asked_at && (s.auto_plan_ignored ?? 0) >= ASK_AFTER) {
-      results.push({ email, status: 'waiting on their answer' });
-      continue;
     }
 
     if (dryRun) {

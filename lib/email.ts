@@ -326,22 +326,23 @@ export async function sendCheckInEmail(
   const html = `
   <div style="background:#FBF7F0;padding:28px 0;font-family:Georgia,'Times New Roman',serif">
     <div style="max-width:520px;margin:0 auto;background:#fff;border-radius:18px;padding:40px;text-align:center">
-      <div style="font-family:Georgia,serif;font-size:24px;color:#3D2714;margin-bottom:18px">Still want these?</div>
-      <p style="font-size:15px;color:#6B5B4B;line-height:1.65;margin:0 0 26px">
-        I've planned and sent your last ${data.weeksSent} weeks. I can't tell whether they've been
-        useful or whether they're just arriving — so rather than guess, I'd rather ask.
+      <div style="font-family:Georgia,serif;font-size:24px;color:#3D2714;margin-bottom:20px">Still want your week on Sundays?</div>
+
+      <p style="font-size:15px;color:#6B5B4B;line-height:1.65;margin:0 0 16px">
+        Your menu's been arriving for ${data.weeksSent} weeks. If it's useful, do nothing — it'll keep coming.
       </p>
+      <p style="font-size:15px;color:#6B5B4B;line-height:1.65;margin:0 0 28px">
+        If it isn't, one tap stops it. Your recipes and family kitchens stay exactly where they are.
+      </p>
+
       <div>
         <a href="${data.yesUrl}" style="display:inline-block;background:#4A7859;color:#fff;text-decoration:none;padding:13px 30px;border-radius:999px;font-size:14px;margin:0 6px 10px">
-          Yes, keep them coming
+          Keep them coming
         </a>
-        <a href="${data.noUrl}" style="display:inline-block;color:#8B6A42;text-decoration:none;padding:13px 24px;border:1px solid #EDE3D4;border-radius:999px;font-size:14px;margin:0 6px 10px">
-          No, stop for now
+        <a href="${data.noUrl}" style="display:inline-block;color:#8B6A42;text-decoration:none;padding:13px 26px;border:1px solid #EDE3D4;border-radius:999px;font-size:14px;margin:0 6px 10px">
+          Stop sending
         </a>
       </div>
-      <p style="font-size:12px;color:#9A8B7B;margin:24px 0 0">
-        Either answer is genuinely fine. Nothing else changes — your recipes and kitchens stay as they are.
-      </p>
     </div>
     <div style="max-width:520px;margin:14px auto 0;text-align:center">
       <a href="${data.unsubscribeUrl}" style="font-size:11px;color:#9A8B7B">Stop all Fornello email</a>
