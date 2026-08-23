@@ -81,6 +81,7 @@ export async function getSettings(userId: string) {
     autoPlan: data.auto_plan ?? false,
     autoPlanDay: data.auto_plan_day ?? null,
     autoPlanOfferAnsweredAt: data.auto_plan_offer_answered_at ?? null,
+    restrictionsCorrected: data.restrictions_corrected ?? null,
     language: data.language ?? 'English',
     units: data.units ?? 'us',
     weekStartDay: data.week_start_day ?? 1,

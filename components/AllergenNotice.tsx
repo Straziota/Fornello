@@ -56,6 +56,10 @@ export default function AllergenNotice({ ingredients, name, description }: {
       You&apos;ve listed {hits.length === 1 ? 'that' : 'those'} as an allergy or
       something to always avoid. Fornello won&apos;t put this in a weekly menu on its own,
       but it will be in your recipes if you save it.
+      <span className="block mt-2 text-xs">
+        Please read the full ingredient list yourself before cooking — allergens hide in
+        stocks, sauces and condiments, and the final check has to be yours.
+      </span>
     </div>
   );
 }
