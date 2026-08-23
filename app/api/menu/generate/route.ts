@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server';
 
 export const maxDuration = 300;
-import { requireUser, getAnthropicKey, getPexelsKey } from '@/lib/auth';
-import { getSettings, getRecentMealNames, saveMenu, updateMenuData, getLatestMenu, updateMealRecipe, getDislikedMealNames, getPantryNames, getUserRecipeSummaries, getFeedbackAdjustments, getLovedMealNames, getNextWeekPicks, getGlobalRecipeSummaries, getGlobalRecipe, saveGlobalRecipeIfNew } from '@/lib/db';
+import { requireUser, getAnthropicKey } from '@/lib/auth';
+import { getSettings, getRecentMealNames, saveMenu, updateMenuData, getLatestMenu, updateMealRecipe, getDislikedMealNames, getPantryNames, getUserRecipeSummaries, getFeedbackAdjustments, getLovedMealNames, getNextWeekPicks, getGlobalRecipeSummaries, getGlobalRecipe, saveGlobalRecipeIfNew, updateMealPhoto } from '@/lib/db';
 import { generateMenu, generateGroceryList, generateMealRecipe, generateSingleMeal } from '@/lib/claude';
-import { fetchMealPhoto } from '@/lib/photos';
-import { fetchPexelsPhoto } from '@/lib/pexels';
 import { WeekSchedule } from '@/lib/types';
+import { resolveIllustration } from '@/lib/illustrate';
 
 const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 const ALL_MEAL_TYPES = ['meat','chicken','seafood','pasta','vegetarian','soup or stew','Mexican','Asian','legumes or beans'];
@@ -168,17 +167,11 @@ export async function POST(req: Request) {
       } catch { /* leave original if regen fails */ }
     }
 
-    const pexelsKey = getPexelsKey();
-    menu.meals = await Promise.all(
-      menu.meals.map(async (meal) => {
-        if (meal.isLeftover) return meal;
-        const keyword = meal.imageKeyword || meal.name;
-        const photo_url = pexelsKey
-          ? (await fetchPexelsPhoto(keyword, pexelsKey)) ?? (await fetchMealPhoto(meal.name, meal.imageKeyword))
-          : await fetchMealPhoto(meal.name, meal.imageKeyword);
-        return photo_url ? { ...meal, photo_url } : meal;
-      })
-    );
+    // Images are NOT fetched here. The Pexels flow this replaces awaited a
+    // photo for every meal before saving, so the menu waited on seven network
+    // calls — free and fast enough that nobody noticed, and exactly the wrong
+    // shape for a paid image API. Onboarding was deliberately built to produce a
+    // menu immediately; illustrations are filled in afterwards, below.
 
     const language = (settings as any).language ?? 'English';
     (menu as any).language = language;
@@ -193,10 +186,18 @@ export async function POST(req: Request) {
             const global = await getGlobalRecipe(meal.name);
             if (global) {
               await updateMealRecipe(user!.id, id, meal.day, global);
+              if ((global as any).photo_url) {
+                await updateMealPhoto(user!.id, id, meal.day, (global as any).photo_url);
+              }
               return { ...meal, ...global, recipeLoaded: true };
             }
             const recipe = await generateMealRecipe(apiKey, meal, settings.familySize, settings.prepSchedule, (settings as any).language, (settings as any).units,
               settings.restrictions || [], (settings as any).skipIngredients || []);
+            // Reuse before generating: one illustration per recipe, shared by
+            // every household that ever cooks it.
+            const art = await resolveIllustration(apiKey, { ...meal, ...recipe } as any)
+              .catch(() => ({ url: '', source: 'skipped' as const }));
+            if (art.url) await updateMealPhoto(user!.id, id, meal.day, art.url);
             await Promise.all([
               updateMealRecipe(user!.id, id, meal.day, recipe),
               saveGlobalRecipeIfNew({ ...meal, ...recipe, mealType: meal.tags?.[0] || '',

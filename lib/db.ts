@@ -1171,3 +1171,20 @@ export async function markMenuEngaged(userId: string, menuId: number): Promise<v
     .update({ auto_plan_ignored: 0, last_engaged_at: new Date().toISOString() })
     .eq('user_id', userId);
 }
+
+/**
+ * Attach an illustration to one meal in a saved menu.
+ *
+ * Separate from updateMealRecipe because the image resolves later than the
+ * recipe — the menu is saved and shown before either exists, so each arrives on
+ * its own.
+ */
+export async function updateMealPhoto(userId: string, menuId: number, mealDay: string, photoUrl: string) {
+  const { data } = await adminClient.from('menus').select('data').eq('id', menuId).eq('user_id', userId).maybeSingle();
+  if (!data) return;
+  const menu = data.data as any;
+  const idx = (menu.meals || []).findIndex((m: any) => m.day === mealDay);
+  if (idx === -1) return;
+  menu.meals[idx] = { ...menu.meals[idx], photo_url: photoUrl };
+  await adminClient.from('menus').update({ data: normalizeMenu(menu) }).eq('id', menuId);
+}

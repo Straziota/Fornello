@@ -1,4 +1,6 @@
 import { vesselFor } from './vessel';
+import { sameDishForPhoto } from './photo-match';
+import { recordUnitCost } from './usage';
 import { adminClient } from './supabase-admin';
 
 /**
@@ -228,4 +230,67 @@ export async function generateIllustration(
 
   const { data } = adminClient.storage.from('recipe-photos').getPublicUrl(path);
   return { url: data.publicUrl, prompt, vessel, finish, reason, bytes: bytes.length };
+}
+
+// ── Resolution: reuse before generating ───────────────────────────────────
+
+/** Roughly what one image costs. Adjust when the provider's pricing changes. */
+const COST_PER_IMAGE_USD = 0.04;
+
+export interface ResolvedIllustration {
+  url: string;
+  /** 'library' when reused, 'generated' when new, 'skipped' when not wanted. */
+  source: 'library' | 'generated' | 'skipped';
+  matchedName?: string;
+}
+
+/**
+ * The illustration for a dish, generating one only if the library has none.
+ *
+ * Reuse is the entire economic argument: one image per recipe, shared by every
+ * household that ever cooks it. The lookup therefore has to come FIRST — the
+ * Pexels flow it replaces fetched a photo for every meal on every menu, which
+ * nobody noticed because it was free and would be the difference between paying
+ * once and paying weekly.
+ */
+export async function resolveIllustration(
+  apiKey: string,
+  meal: { name?: string; description?: string; appearance?: string; technique?: string; tags?: string[]; category?: string },
+): Promise<ResolvedIllustration> {
+  const name = (meal.name || '').trim();
+  if (!name) return { url: '', source: 'skipped' };
+
+  // Sides are never illustrated: they render as text nested inside a meal, never
+  // as their own card. Measured — 15 side rows in the library, none with a
+  // photo. Not generating also dissolves the inheritance bug where "Warm
+  // Flatbread" would match the shakshuka that names it.
+  if (meal.category === 'side') return { url: '', source: 'skipped' };
+
+  const { data: candidates } = await adminClient
+    .from('global_recipes')
+    .select('name, photo_url')
+    .not('photo_url', 'is', null)
+    .neq('photo_url', '')
+    .neq('category', 'side');
+
+  const hit = (candidates || []).find(c => sameDishForPhoto(name, c.name));
+  if (hit?.photo_url) {
+    return { url: hit.photo_url, source: 'library', matchedName: hit.name };
+  }
+
+  const out = await generateIllustration(apiKey, meal);
+
+  // A company cost, not a household one — see docs/illustrations.md. It must not
+  // count against anyone's monthly ceiling: the first family to cook an unusual
+  // dish would otherwise pay for a picture the next hundred use free.
+  await recordUnitCost({
+    model: MODEL, feature: 'illustration', unit: 'image', units: 1,
+    costUsd: COST_PER_IMAGE_USD, payer: 'company',
+  });
+
+  await adminClient.from('global_recipes')
+    .update({ photo_url: out.url })
+    .ilike('name', name);
+
+  return { url: out.url, source: 'generated' };
 }

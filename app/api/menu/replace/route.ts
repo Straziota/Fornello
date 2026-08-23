@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireUser, getAnthropicKey, getPexelsKey } from '@/lib/auth';
+import { requireUser, getAnthropicKey } from '@/lib/auth';
 import { getSettings, getLatestMenu, updateMenuData, getDislikedMealNames, getRecentMealNames } from '@/lib/db';
 import { generateSingleMeal, generateSidesOnly } from '@/lib/claude';
+import { resolveIllustration } from '@/lib/illustrate';
 import { fetchMealPhoto } from '@/lib/photos';
-import { fetchPexelsPhoto } from '@/lib/pexels';
 import { Meal } from '@/lib/types';
 
 export async function POST(req: NextRequest) {
@@ -39,12 +39,13 @@ export async function POST(req: NextRequest) {
       let newMeal: Meal;
       if (type === 'generate') {
         newMeal = await generateSingleMeal(getAnthropicKey(), settings, day, mealType, existingNames, technique);
-        const pexelsKey = getPexelsKey();
-        const keyword = newMeal.imageKeyword || newMeal.name;
-        const photo_url = pexelsKey
-          ? (await fetchPexelsPhoto(keyword, pexelsKey)) ?? (await fetchMealPhoto(newMeal.name, newMeal.imageKeyword))
-          : await fetchMealPhoto(newMeal.name, newMeal.imageKeyword);
-        if (photo_url) newMeal.photo_url = photo_url;
+        // Same illustration path as generation. A replaced meal arriving as a
+        // stock photograph among illustrations is precisely the mixed-media
+        // menu the all-or-nothing rule exists to prevent — and it would happen
+        // intermittently, which is worse than consistently.
+        const art = await resolveIllustration(getAnthropicKey(), newMeal as any)
+          .catch(() => ({ url: '', source: 'skipped' as const }));
+        if (art.url) newMeal.photo_url = art.url;
       } else {
         newMeal = { ...replacementMeal, day, recipeLoaded: !!(replacementMeal.ingredients?.length) };
       }
@@ -54,12 +55,9 @@ export async function POST(req: NextRequest) {
       // Replace whole meal (main + sides)
       if (type === 'generate') {
         updatedMeal = await generateSingleMeal(getAnthropicKey(), settings, day, mealType, existingNames, technique);
-        const pexelsKey = getPexelsKey();
-        const keyword = updatedMeal.imageKeyword || updatedMeal.name;
-        const photo_url = pexelsKey
-          ? (await fetchPexelsPhoto(keyword, pexelsKey)) ?? (await fetchMealPhoto(updatedMeal.name, updatedMeal.imageKeyword))
-          : await fetchMealPhoto(updatedMeal.name, updatedMeal.imageKeyword);
-        if (photo_url) updatedMeal.photo_url = photo_url;
+        const art = await resolveIllustration(getAnthropicKey(), updatedMeal as any)
+          .catch(() => ({ url: '', source: 'skipped' as const }));
+        if (art.url) updatedMeal.photo_url = art.url;
       } else {
         updatedMeal = { ...replacementMeal, day, recipeLoaded: !!(replacementMeal.ingredients?.length) };
       }

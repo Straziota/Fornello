@@ -69,6 +69,43 @@ type AnthropicUsage = {
  * surface as under-counting, which the next quota check will simply miss —
  * the cap is a guardrail, not an accounting ledger.
  */
+/**
+ * Record a non-token cost — an image, or anything else priced per unit.
+ *
+ * `payer: 'company'` keeps it out of the household's monthly ceiling. An
+ * illustration is generated once and reused by every household that cooks that
+ * dish, so charging whoever triggered it would make the first family pay for a
+ * picture the next hundred use free.
+ */
+export async function recordUnitCost(opts: {
+  model: string;
+  feature: string;
+  unit: string;
+  units: number;
+  costUsd: number;
+  payer?: 'household' | 'company';
+  userId?: string | null;
+}): Promise<void> {
+  const payer = opts.payer ?? 'company';
+  const userId = opts.userId ?? requestUsageContext().userId ?? null;
+  // A household row needs someone to bill; a company row does not.
+  if (payer === 'household' && !userId) return;
+  try {
+    const { error } = await adminClient.from('ai_usage').insert({
+      user_id: userId,
+      feature: opts.feature,
+      model: opts.model,
+      unit: opts.unit,
+      units: opts.units,
+      cost_usd: opts.costUsd,
+      payer,
+    });
+    if (error) console.error('[usage] unit cost not recorded:', error.message);
+  } catch (e) {
+    console.error('[usage] unit cost not recorded:', e);
+  }
+}
+
 export async function recordUsage(model: string, usage: AnthropicUsage | undefined): Promise<void> {
   const ctx = requestUsageContext();
   if (!ctx.userId || !usage) return;
@@ -92,6 +129,9 @@ export async function recordUsage(model: string, usage: AnthropicUsage | undefin
       output_tokens: tokens.outputTokens,
       cache_read_tokens: tokens.cacheReadTokens,
       cache_creation_tokens: tokens.cacheCreationTokens,
+      unit: 'tokens',
+      units: tokens.inputTokens + tokens.outputTokens,
+      payer: 'household',
       cost_usd: costOf(model, tokens),
     });
     if (error) console.error('[usage] insert failed:', error.message);
@@ -110,6 +150,9 @@ export async function monthToDateCost(userId: string): Promise<number> {
     .from('ai_usage')
     .select('cost_usd')
     .eq('user_id', userId)
+    // Company-paid rows — illustrations — must not count against a household's
+    // ceiling. They are generated once and reused by everyone.
+    .eq('payer', 'household')
     .gte('created_at', currentPeriodStart().toISOString());
 
   if (error) {
