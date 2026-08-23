@@ -93,7 +93,7 @@ deliberately made to produce a menu immediately; making that path wait on seven
 image calls would undo it. Render the menu at once with an in-style placeholder
 and fill images in as they land.
 
-### It must go through the usage ledger
+### It must go through the usage ledger, attributed to the right payer
 Every Claude call is costed and capped via `lib/anthropic.ts`. An image API is a
 new cost path, and a cost path outside the meter is the same class of gap as the
 seventeen routes that never saw the household's allergies — nothing looks
@@ -102,6 +102,19 @@ the ledger's purpose is a dollar ceiling, and tokens were only ever a proxy for
 cost. Generalise it to record cost with a unit label, letting tokens become one
 input rather than the schema — which also covers whatever non-token API comes
 next.
+
+**Attribution is not obvious here and must be decided, not defaulted.** Every
+other AI cost belongs to the household that caused it: `requireUser('feature')`
+puts them in the ambient context and `recordUsage` bills them. An illustration
+is different — it is generated once and then reused by every household that ever
+cooks that dish. Billing it to whoever happened to trigger the generation is
+arbitrary: the first household pays for a picture the next hundred use free, and
+a heavy user's cap could be consumed by generating images for the shared library.
+
+So an illustration is a COMPANY cost, not a household one. The ledger needs an
+attribution field distinguishing the two, and illustration spend must not count
+against a household's monthly ceiling. Without that, the first family to cook an
+unusual dish is quietly charged for enriching the shared library.
 
 ### Remove Pexels, do not demote it to a fallback
 A quiet fallback on generation failure produces the mixed-media menu the
@@ -120,3 +133,37 @@ so it does not cover this.
 ~92 library recipes to backfill. Per-image pricing NOT verified — check current
 rates before committing to an estimate. Whatever it is, the shape holds: one
 cost per recipe, amortised across every household that ever cooks it.
+
+## Later, once illustrations exist
+
+### Regenerate button
+An illustration is generated once and reused everywhere, which is the whole
+economic argument — and also means one bad image is permanent for every
+household that ever cooks that dish. There has to be a way to say "this one is
+wrong" and produce a new one.
+
+Consequences to handle rather than discover:
+- Regeneration replaces the library image, so it changes the picture for
+  everyone, not just the person who asked. That is correct — a wrong picture is
+  wrong for all of them — but it means the control belongs in admin, or is at
+  least rate-limited, or the cost is unbounded.
+- The old image should be replaced at the same storage key, or every stale
+  `photo_url` in a saved menu keeps pointing at the rejected one.
+
+### User photo replaces the illustration, for that household only
+If illustrations are the default, then every photograph in Fornello is someone's
+actual dinner. That is a coherent thing to be, and it makes the user-photo
+feature meaningful rather than decorative — a photo becomes evidence that
+somebody cooked this.
+
+**The visibility rule is the load-bearing part.** An illustration lives on
+`global_recipes` and is shared. A user's photo lives on that household's row and
+must never be promoted to the library, no matter how good it is. Same object
+type, opposite direction of travel.
+
+`mayEnterGlobalLibrary` does NOT cover this: it reasons about recipes, not
+images, so a household photo could ride into the shared library attached to a
+recipe that is itself legitimately promotable. That needs its own check.
+
+Rendering order, per household: their own photo → the shared illustration → an
+in-style placeholder. Never a stock photograph.
