@@ -57,8 +57,7 @@ export default function AllergenNotice({ ingredients, name, description }: {
       something to always avoid. Fornello won&apos;t put this in a weekly menu on its own,
       but it will be in your recipes if you save it.
       <span className="block mt-2 text-xs">
-        Please read the full ingredient list yourself before cooking — allergens hide in
-        stocks, sauces and condiments, and the final check has to be yours.
+        Recipes are AI-generated and avoid the ingredients you&apos;ve listed, but you must also check every ingredient and label before you cook.
       </span>
     </div>
   );

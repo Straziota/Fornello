@@ -52,10 +52,7 @@ export default function RestrictionCorrectionNotice({
           sauces and condiments, and a household living with a serious allergy
           needs to hear that the last check is theirs. */}
       <p className="text-xs mb-3 px-3 py-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.6)', color: '#8B2E22' }}>
-        <strong>Please still read every ingredient before you cook.</strong> Fornello
-        does its best to keep these out, but recipes are generated automatically and
-        allergens hide in stocks, sauces and condiments. For a serious allergy, the
-        final check has to be yours.
+        Recipes are AI-generated and avoid the ingredients you&apos;ve listed, but you must also check every ingredient and label before you cook.
       </p>
       <div className="flex gap-2 flex-wrap">
         <button onClick={dismiss}
