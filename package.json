@@ -15,8 +15,8 @@
     "test:report": "playwright show-report",
     "build:app": "node scripts/build-app.mjs",
     "sync:app": "npm run build:app && npx cap sync ios",
-    "test:safety": "tsx scripts/safety-suite.mjs",
-    "test:photo-match": "tsx scripts/photo-match-test.mjs"
+    "test:safety": "npx --yes tsx scripts/safety-suite.mjs",
+    "test:photo-match": "npx --yes tsx scripts/photo-match-test.mjs"
   },
   "build": {
     "appId": "com.fornello.app",
