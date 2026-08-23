@@ -50,8 +50,28 @@ tokens ("Sole Meunière with Haricots Verts" vs "Steamed Haricots Verts";
 ones share 3 ("Lemon Bars with Candied Lemon Zest" vs "…Peel"). So: require ≥3,
 not ≥2.
 
-**Sides are their own library rows**, so a side matches the main that names it.
-Exclude `category='side'` from photo matching entirely.
+**Same-preparation-different-protein is the class ≥3 cannot see.** "Roasted
+Lemon Herb Chicken" vs "Roasted Lemon Herb Salmon" shares 3 tokens at 75%
+overlap — matches cleanly and serves salmon a picture of chicken. Guard: if both
+names contain a protein token and they differ, refuse regardless of score.
+List: chicken, beef, pork, lamb, salmon, shrimp, prawn, fish, tofu, duck,
+turkey, veal.
+
+Verified: the guard blocks Chicken-vs-Salmon and does NOT block "Lemon Bars with
+Candied Lemon Zest" vs "…Peel", which has no protein and should share. It fires
+zero times against the current 77 non-side recipes — the class does not exist in
+a library this small, which is precisely why it must be built before the library
+grows and the backfill becomes expensive to redo.
+
+Note: "Slow Cooker Beef Stew" vs "Slow Cooker Chicken Stew" does not reach the
+threshold at all, because "slow" and "cooker" are stopwords — so that pair is
+safe by accident, not by design. Do not rely on the stopword list for this.
+
+**Sides never render an image, so do not generate one for them.** Measured: 15
+side rows in the library, 0 with a photo, and sides appear only nested inside a
+meal modal as text — never as their own card. This dissolves the inheritance bug
+("Warm Flatbread" inheriting shakshuka's picture) rather than guarding against
+it, and removes the cost.
 
 ### Generation must not block the menu
 The Pexels fetch is currently awaited before `saveMenu`. Onboarding was
@@ -63,8 +83,11 @@ and fill images in as they land.
 Every Claude call is costed and capped via `lib/anthropic.ts`. An image API is a
 new cost path, and a cost path outside the meter is the same class of gap as the
 seventeen routes that never saw the household's allergies — nothing looks
-broken, it simply isn't covered. `recordUsage` is currently token-shaped and
-will need a per-image unit.
+broken, it simply isn't covered. `recordUsage` is currently token-shaped. Do NOT bend images into that shape:
+the ledger's purpose is a dollar ceiling, and tokens were only ever a proxy for
+cost. Generalise it to record cost with a unit label, letting tokens become one
+input rather than the schema — which also covers whatever non-token API comes
+next.
 
 ### Remove Pexels, do not demote it to a fallback
 A quiet fallback on generation failure produces the mixed-media menu the
