@@ -45,41 +45,52 @@ const MODEL = 'gpt-image-1';
  * when cropped.
  */
 const STYLE = [
-  'Rendered as a refined hand-painted culinary illustration in loose but controlled transparent watercolour.',
-  'Warm, understated European vintage-cookbook aesthetic. Confident brushwork with visible watercolour pigment granulation,',
-  'subtle blooms, irregular washes, slight colour variation, and visible cold-pressed paper texture.',
-  'Edges are softly defined rather than photographic, with occasional gentle pigment bleed,',
-  'while the food remains clearly recognizable and appetizing.',
-  'Detailed enough to identify the ingredients, but simplified enough to read immediately at small thumbnail size.',
+  'Create an elegant, highly finished food illustration painted entirely in watercolour on warm cream cold-pressed paper.',
+  'The style is rich, dimensional and intricately rendered while remaining unmistakably hand-painted watercolour —',
+  'not flat, minimal, graphic, cartoon-like, or photographic.',
 
-  'Use a restrained, harmonious palette of warm cream, parchment, muted sage and forest green, soft grey-green,',
-  'ochre, golden brown, terracotta, burnt sienna, and natural food colours.',
-  'Avoid excessively bright, saturated, modern, or photographic colours.',
-  'Highlights should come primarily from unpainted or lightly washed paper rather than hard white reflections.',
+  'Use layered translucent watercolour washes, dense pigment granulation, delicate mottling, subtle blooms,',
+  'irregular pigment pooling, tiny broken variations of colour, and visible natural paper grain throughout the food and vessel.',
+  'Every surface should contain nuanced tonal variation rather than broad areas of uniform colour.',
 
-  'Landscape 3:2 composition. Show the entire vessel, fully contained within the image and never cropped.',
-  'Centre it precisely in the frame, occupying approximately two-thirds of the total frame width,',
-  'with generous, visually even negative space on all four sides.',
-  'View consistently from a three-quarter angle, slightly above, showing both the food surface and the front/side wall of the vessel.',
-  'Do not use a straight overhead view and do not use a low side angle.',
+  'The food should be especially appetizing and dimensional, with luminous warm highlights,',
+  'deep localized shadows between ingredients, richly browned edges, translucent glazed areas where appropriate,',
+  'and finely articulated surface texture. Ingredients should remain individually recognizable and naturally irregular.',
+  'Avoid simplified geometric food shapes, flat colour fills, heavy outlines, or smooth digital-looking surfaces.',
 
-  'Place the vessel alone against a plain warm cream parchment background with subtle natural paper texture.',
-  'Allow only a very soft, diffuse watercolour grounding shadow beneath the vessel.',
-  'No tabletop, kitchen environment, marble, linen, wood grain, decorative setting, or surrounding scene.',
+  'Use a sophisticated muted culinary palette built around warm parchment, ivory, muted sage, deep forest green,',
+  'ochre, amber, golden brown, burnt sienna, terracotta and deep natural browns,',
+  'supplemented only by the natural colours required by the recipe.',
+  'Colours should feel warm, harmonious and slightly desaturated rather than bright or synthetic.',
 
-  'The food should look abundant but naturally arranged rather than meticulously styled.',
-  'Preserve the defining visual characteristics of the recipe — its ingredients, cooking method, browning, texture,',
-  'sauce consistency, and characteristic colour.',
-  'Sauces should have the correct opacity, thickness, gloss, and amount for the particular dish;',
-  'do not invent excess pooled sauce. Roasted or fried dishes should remain visibly dry and crisp where appropriate.',
+  'Render the vessel with the same richly layered watercolour treatment: subtle pigment variation,',
+  'softly weathered tonal changes, delicate highlights and natural irregularity.',
+  'It should feel elegant and handmade rather than perfectly manufactured.',
 
-  'Maintain the appearance of an actual traditional watercolour painting rather than digital illustration,',
-  'ink drawing, colored-pencil rendering, photorealism, or hyper-detailed food photography.',
-  'Avoid hard outlines, excessive micro-detail, artificial shine, uniform textures, perfect geometry, and overly crisp digital edges.',
+  'Landscape 3:2. The complete vessel is visible and precisely centred, occupying approximately two-thirds of the frame width,',
+  'with generous and visually even cream negative space on every side.',
+  'Nothing may be cropped by the image boundaries.',
 
-  'No text, no lettering, no labels, no hands, no people, no cutlery, no napkins,',
-  'no ingredients scattered around the vessel, no garnish placed outside the dish, and no decorative props.',
-  'One vessel, one recipe, plain cream background.',
+  'View the dish from a consistent three-quarter angle from slightly above,',
+  'clearly showing the surface of the food as well as the front and side of the vessel.',
+  'Maintain a natural, gently dimensional perspective rather than a straight overhead view.',
+
+  'Background is only warm cream parchment with visible fine paper texture, fading naturally into the painting.',
+  'Add a restrained, diffuse watercolour shadow directly beneath the vessel to ground it,',
+  'with soft irregular edges and pigment bleed.',
+
+  'Preserve the recipe\'s actual culinary character precisely: correct ingredients, shapes, browning, moisture,',
+  'sauce colour, sauce quantity, sauce opacity and cooking texture.',
+  'Do not add ingredients, garnishes or accompaniments that are not specified.',
+  'Do not make dry dishes saucy. Do not create a sauce pool unless specifically described.',
+
+  'The finished image should resemble a beautifully preserved original watercolour plate from an exceptionally',
+  'illustrated European culinary book, rendered with unusually rich pigment, intricate food detail',
+  'and sophisticated painterly craftsmanship.',
+
+  'No text, lettering, labels, hands, people, cutlery, napkins, tableware beyond the single specified vessel,',
+  'scattered ingredients, decorative garnishes outside the dish, kitchen environment, marble, wood, linen or props.',
+  'One dish. One vessel. Cream parchment only.',
 ].join(' ')
 
 export function illustrationPrompt(meal: {
@@ -96,13 +107,12 @@ export function illustrationPrompt(meal: {
   const detail = (meal.appearance || meal.description || '')
     .replace(/\s+/g, ' ').trim().slice(0, 320);
   const prompt = [
-    `Vintage cookbook watercolour food illustration of ${dish}.`,
+    `A richly detailed hand-painted culinary watercolour illustration of ${dish}.`,
     // The vessel is ASSIGNED, not left to the model to pick from a list: two
     // dishes in the same week sharing a silhouette is the failure this exists
     // to prevent, and an image model converges on the same pale oval given the
     // choice. See lib/vessel.ts.
-    `Present the finished recipe inside one ${finish} ${vessel}.`,
-    'The vessel should have a simple vintage character, with no elaborate decoration or patterns.',
+    `Present the food in one beautiful, simple ${finish} ${vessel}.`,
     // Stated BEFORE the recipe blurb: the description mentions every component,
     // so left to itself the model paints whichever it saw last. Poulet à la
     // Normande came out ivory because "crème fraîche" won over "cider".
