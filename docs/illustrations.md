@@ -128,6 +128,44 @@ household's row and must never be promoted to the library. Same object type,
 opposite visibility; the existing provenance gate is about recipes, not images,
 so it does not cover this.
 
+## Serving the images
+
+Stored once at full size (1536x1024 PNG, ~3.4MB) and resized by Supabase Storage
+on request. The master is never destroyed: regenerating 92 illustrations is
+expensive and irreversible, storage is neither, and a print run or a larger
+render later stays possible. Two representations, one file.
+
+Measured on a real illustration, master 3,371KB PNG:
+
+| request | size | format |
+|---|---|---|
+| `?width=384&quality=80` | 95KB | webp |
+| `?width=576` | 140KB | webp |
+| `?width=768` | 182KB | webp |
+| `?width=1536` | 269KB | webp |
+| master, untransformed | 3,371KB | png |
+
+Note 1536 is 12x smaller than the master at identical dimensions — that is
+format alone. WebP is negotiated from the browser's Accept header, so older
+clients get PNG with no branching.
+
+`lib/image.ts`:
+
+- **A fixed ladder — 384, 768, 1536 — never computed from the viewport.** Each
+  distinct width is a separately cached CDN object; deriving widths from screen
+  size would produce hundreds of near-identical variants and destroy the hit
+  rate.
+- **srcset, not a single width.** 384 suits a 192pt card at 2x, but a 3x phone
+  wants 576 and would upscale 384 into something soft.
+- **Falls back to the master on error.** Transformation is a paid Supabase
+  feature; if the plan lapses every request fails, and failing silently would
+  empty the app of pictures with nothing to explain why. The fallback costs a
+  phone 3.4MB instead of 95KB — bad, but the app still shows food. Slow beats
+  broken.
+
+The concern is per-image weight, not library size: 276MB of storage is nothing,
+3MB for a thumbnail on a phone is not.
+
 ## Cost
 
 ~92 library recipes to backfill. Per-image pricing NOT verified — check current
