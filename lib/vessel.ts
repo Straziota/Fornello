@@ -92,6 +92,27 @@ const DEFAULT_SHAPE = 'shallow round braiser';
 // Ordered: the first match wins, so put the specific before the generic.
 // Keyed on dish NAME, which is the only field reliably populated.
 const BY_NAME: [RegExp, string][] = [
+  // ── Baked and sweet, FIRST ────────────────────────────────────────────────
+  // Every one of these previously fell through to the default and was drawn in
+  // a savoury braising pan. Ordered before the savoury rules so a "tart" is a
+  // tart and not caught by something else.
+  //
+  // Small individual items are finger food: they are arranged on something flat
+  // and shared, never plated in a cooking vessel.
+  [/\bmadeleines?\b|\bcookies?\b|\bbiscuits?\b|\bmacarons?\b|\bscones?\b|\bshortbread\b|\bpanallets\b|\bpetits? fours?\b|\btruffles?\b|\bbites\b|\btartlets?\b|\bcanap[eé]s?\b|\bcrisps?\b|\btartines?\b/i,
+                                                    'pale ceramic serving platter'],
+  // A whole cake is presented, not cooked, in what it sits on.
+  [/\bcakes?\b|\bgateau\b|\btorta\b|\bloaf\b|\bpavlova\b|\bcheesecake\b/i,
+                                                    'simple footed cake stand'],
+  // Cut from a tray and served as squares — a board reads better than a dish.
+  [/\bbars?\b|\bbrownies?\b|\bblondies?\b|\bflapjacks?\b|\bslices?\b|\bsquares?\b|\bfudge\b/i,
+                                                    'flat wooden serving board'],
+  // Baked in their dish and served from it.
+  [/\bcrumbles?\b|\bcobblers?\b|\bcrisps? \(dessert\)|\bbread pudding\b|\bclafoutis\b|\btiramis[uù]\b|\btrifle\b/i,
+                                                    'oval enamelled baking dish'],
+  [/\btarts?\b|\bpies?\b|\bgalettes?\b|\bquiche\b|\bflan\b/i,
+                                                    'fluted ceramic tart dish'],
+  [/\bmuffins?\b|\bcupcakes?\b/i,                 'pale ceramic serving platter'],
   [/\bpaella\b/i,                                   'wide flat two-handled paella pan'],
   [/\btacos?\b|\btostadas?\b|\bquesadillas?\b/i,    'flat oval platter'],
   // Noodle dishes are plated, not served in the wok — and two Thai dishes in
@@ -135,6 +156,8 @@ const BY_TECHNIQUE: Record<string, string> = {
 
 export function vesselFor(meal: {
   name?: string; technique?: string; tags?: string[]; description?: string;
+  /** 'dinner' | 'side' | 'dessert' | 'special' | 'tradition' */
+  category?: string;
 }): Vessel {
   // Value is judged from name AND description — "creamy" rarely appears in a
   // title but almost always in the blurb.
@@ -169,6 +192,10 @@ export function vesselFor(meal: {
   for (const [re, vessel] of BY_NAME) {
     if (re.test(name)) return done(vessel, `name matched ${re.source.slice(0, 24)}…`);
   }
+
+  // A sweet dish whose name matched nothing savoury should still not land in a
+  // braising pan — the default exists for dinners.
+  if (meal.category === 'dessert') return done('pale ceramic serving platter', 'category: dessert');
 
   return done(DEFAULT_SHAPE, 'default');
 }
