@@ -336,7 +336,7 @@ export async function saveUserRecipe(userId: string, recipe: {
   name: string; cuisine: string; mealType: string; serves: number;
   total_time: string; prep_time: string; cook_time: string; difficulty: string;
   description: string; tags: string[]; ingredients: object[];
-  instructions: string[]; prep_ahead: string[]; source: string; inspired_by?: string; photo_url?: string;
+  instructions: string[]; prep_ahead: string[]; source: string; inspired_by?: string; appearance?: string; photo_url?: string;
 }) {
   const { data } = await adminClient.from('user_recipes').insert({
     user_id: userId, name: recipe.name, cuisine: recipe.cuisine,
@@ -346,7 +346,8 @@ export async function saveUserRecipe(userId: string, recipe: {
     description: recipe.description, tags: recipe.tags,
     ingredients: recipe.ingredients, instructions: recipe.instructions,
     prep_ahead: recipe.prep_ahead, source: recipe.source,
-    inspired_by: recipe.inspired_by || null, photo_url: recipe.photo_url || '',
+    inspired_by: recipe.inspired_by || null,
+    appearance: recipe.appearance || null, photo_url: recipe.photo_url || '',
   }).select('id').single();
   // NOTE: user recipes intentionally do NOT flow into the global library — that's reserved
   // for Fornello-generated recipes to keep the library consistent across families.
@@ -527,7 +528,7 @@ export async function saveGlobalRecipeIfNew(recipe: {
   total_time: string; prep_time: string; cook_time: string; difficulty: string;
   description: string; tags: string[]; ingredients: object[];
   instructions: string[]; prep_ahead: string[]; sides?: object[];
-  photo_url?: string; source_site?: string; inspired_by?: string;
+  photo_url?: string; source_site?: string; inspired_by?: string; appearance?: string;
   category?: 'dinner' | 'side' | 'dessert' | 'special' | 'tradition';
   origin?: 'generated' | 'imported' | 'admin' | 'heritage' | 'special';
 }) {

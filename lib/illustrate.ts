@@ -62,14 +62,18 @@ const STYLE = [
 ].join(' ')
 
 export function illustrationPrompt(meal: {
-  name?: string; description?: string; technique?: string; tags?: string[];
+  name?: string; description?: string; appearance?: string; technique?: string; tags?: string[];
 }): { prompt: string; vessel: string; finish: string; foodColour: string; reason: string } {
   const { vessel, finish, foodColour, reason } = vesselFor(meal);
   const dish = (meal.name || 'a dish').replace(/\s*\([^)]*\)\s*/g, ' ').trim();
   // The dish's own description matters: without it the model gets a name and a
   // bowl and invents the rest, which is how "Amatriciana" became generic red
   // pasta with no guanciale. Trimmed, because a long blurb crowds out the style.
-  const detail = (meal.description || '').replace(/\s+/g, ' ').trim().slice(0, 200);
+  // `appearance` is written to describe how the dish LOOKS. The description is
+  // marketing copy about how it tastes, which is why it produced generic pork
+  // and the wrong sauce colour. Prefer the former; fall back only when absent.
+  const detail = (meal.appearance || meal.description || '')
+    .replace(/\s+/g, ' ').trim().slice(0, 320);
   const prompt = [
     `A hand-painted vintage cookbook watercolour illustration of ${dish},`,
     `served in a ${finish} ${vessel}.`,

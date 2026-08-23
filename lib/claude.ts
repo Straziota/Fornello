@@ -701,7 +701,7 @@ export async function generateMealRecipe(
   // ingredient line, which is written here.
   restrictions: string[] = [],
   skipIngredients: string[] = [],
-): Promise<{ ingredients: Ingredient[]; instructions: string[]; prep_ahead: string[]; sides?: import('./types').Side[] }> {
+): Promise<{ ingredients: Ingredient[]; instructions: string[]; prep_ahead: string[]; appearance?: string; sides?: import('./types').Side[] }> {
   const client = anthropicClient({ apiKey });
 
   function prepContext(ps?: import('./types').PrepSchedule): string {
@@ -737,6 +737,7 @@ ${sidesSection}
 
 Return ONLY valid JSON:
 {
+  "appearance": "One sentence describing what this looks like in the pan — the shape and colour of the main component, the colour and consistency of any sauce, and how the key ingredients appear and are distributed. Describe APPEARANCE, never ingredient names alone: not 'guanciale' but 'irregular strips of crisped cured pork, deeply browned at the edges, fat rendered translucent'. This is used to illustrate the dish, so a specialist ingredient name is useless — say what it looks like.",
   "ingredients": [
     {"amount": "2 lbs", "item": "chicken thighs, boneless skinless"}
   ],
