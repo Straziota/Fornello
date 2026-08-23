@@ -100,9 +100,14 @@ export async function recordUnitCost(opts: {
       cost_usd: opts.costUsd,
       payer,
     });
-    if (error) console.error('[usage] unit cost not recorded:', error.message);
+    if (error) {
+      // Loud on purpose. This failed silently for 77 illustrations because
+      // user_id was NOT NULL and nothing downstream reads company rows yet — so
+      // unmetered spend looked exactly like no spend.
+      console.error(`[usage] UNMETERED ${opts.unit} — $${opts.costUsd} for ${opts.feature} was NOT recorded: ${error.message}`);
+    }
   } catch (e) {
-    console.error('[usage] unit cost not recorded:', e);
+    console.error(`[usage] UNMETERED ${opts.unit} — $${opts.costUsd} for ${opts.feature} was NOT recorded:`, e);
   }
 }
 
