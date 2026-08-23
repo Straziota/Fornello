@@ -25,9 +25,11 @@ export async function GET(req: NextRequest) {
   // Use the real library row where one exists, so vessel and finish are derived
   // from the same description a household would see.
   const { data: recipe } = await adminClient
-    .from('global_recipes').select('name, description, tags')
+    .from('global_recipes')// `appearance` must be selected or illustrationPrompt silently falls back to
+    // `description`, which is copy about how the dish tastes.
+    .select('name, description, appearance, tags')
     .ilike('name', name).maybeSingle();
-  const meal = recipe || { name, description: '', tags: [] };
+  const meal = recipe || { name, description: '', appearance: '', tags: [] };
 
   if (req.nextUrl.searchParams.get('dry') === '1') {
     return NextResponse.json({ dryRun: true, ...illustrationPrompt(meal) });
