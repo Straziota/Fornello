@@ -52,10 +52,17 @@ not ≥2.
 
 **Same-preparation-different-protein is the class ≥3 cannot see.** "Roasted
 Lemon Herb Chicken" vs "Roasted Lemon Herb Salmon" shares 3 tokens at 75%
-overlap — matches cleanly and serves salmon a picture of chicken. Guard: if both
-names contain a protein token and they differ, refuse regardless of score.
-List: chicken, beef, pork, lamb, salmon, shrimp, prawn, fish, tofu, duck,
-turkey, veal.
+overlap — matches cleanly and serves salmon a picture of chicken. Guard: compare the two protein SETS for
+equality and refuse any inequality, regardless of score.
+
+Set-equality, not presence-and-difference. "Roasted Lemon Herb Chicken" vs
+"Roasted Lemon Herb Vegetables" is {chicken} vs {} — one side has no protein at
+all, so a presence-and-difference test lets it through and the vegetarian dish
+inherits a picture of chicken. Worse than the wrong meat. Unequal sets block;
+equal sets (including both empty) allow.
+
+List: chicken, beef, pork, lamb, veal, duck, turkey, sausage, salmon, cod, tuna,
+fish, seafood, shrimp, prawn, tofu.
 
 Verified: the guard blocks Chicken-vs-Salmon and does NOT block "Lemon Bars with
 Candied Lemon Zest" vs "…Peel", which has no protein and should share. It fires
@@ -63,9 +70,16 @@ zero times against the current 77 non-side recipes — the class does not exist 
 a library this small, which is precisely why it must be built before the library
 grows and the backfill becomes expensive to redo.
 
-Note: "Slow Cooker Beef Stew" vs "Slow Cooker Chicken Stew" does not reach the
-threshold at all, because "slow" and "cooker" are stopwords — so that pair is
-safe by accident, not by design. Do not rely on the stopword list for this.
+**The stopword list must not be shared with repeat detection.** "Slow Cooker
+Beef Stew" vs "Slow Cooker Chicken Stew" never reaches the threshold, because
+"slow" and "cooker" are stopwords — safe by accident, not by design.
+
+That list was tuned for repeat detection and would now silently govern which
+dishes share a picture as well. Someone later removing "cooker" to tighten
+repeat-checking would loosen image-matching in the same edit, with nothing
+connecting the two decisions and no test that notices. Give photo matching its
+own stopword list, and pin its behaviour with its own tests, so a stopword edit
+fails a test rather than quietly changing pictures.
 
 **Sides never render an image, so do not generate one for them.** Measured: 15
 side rows in the library, 0 with a photo, and sides appear only nested inside a
