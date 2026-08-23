@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { UserRecipe, Ingredient } from '@/lib/types';
 import Toast from '@/components/Toast';
+import AllergenNotice from '@/components/AllergenNotice';
 
 interface KitchenOption {
   slug: string;
@@ -294,6 +295,11 @@ export default function RecipeForm({ initial, onSave, title, heritage, redirectT
               placeholder="Add tag and press Enter" className="flex-1 input" style={inputStyle} />
           </div>
         </Section>
+
+        {/* Warns when a recipe the user supplied — imported, pasted or typed —
+            contains one of their own declared allergies. Everything Fornello
+            generates is guarded; nothing brought in from outside is. */}
+        <AllergenNotice ingredients={ingredients} />
 
         {/* Ingredients */}
         <Section title="🥬 Ingredients">

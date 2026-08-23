@@ -2,6 +2,7 @@ import { anthropicClient } from '@/lib/anthropic';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUser, getAnthropicKey } from '@/lib/auth';
 import { getSettings } from '@/lib/db';
+import { adminClient } from '@/lib/supabase-admin';
 
 export const maxDuration = 30;
 
@@ -79,8 +80,19 @@ Respond in 2–5 sentences. Be specific to this recipe. Skip preamble (no "Great
       messages: [{ role: 'user', content: prompt }],
     });
     const answer = message.content[0].type === 'text' ? message.content[0].text.trim() : '';
+    // Recorded so there is a trail: which recipes get challenged, and what was
+    // said back. A dish three households all question is meaningfully less
+    // trustworthy than one nobody has. Best-effort — a logging failure must
+    // never cost the user their answer.
+    void adminClient.from('chef_questions').insert({
+      user_id: user!.id, meal_name: meal.name, question: question.trim(), answer,
+    }).then(({ error }) => { if (error) console.error('chef log:', error.message); });
     return NextResponse.json({ answer });
   } catch (e: any) {
+    void adminClient.from('chef_questions').insert({
+      user_id: user!.id, meal_name: meal.name, question: question.trim(),
+      error: String(e?.message || e).slice(0, 500),
+    }).then(() => {});
     return NextResponse.json({ error: e.message || 'Failed to get answer' }, { status: 500 });
   }
 }

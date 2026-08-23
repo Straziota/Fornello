@@ -14,7 +14,8 @@
     "test:ui": "playwright test --ui",
     "test:report": "playwright show-report",
     "build:app": "node scripts/build-app.mjs",
-    "sync:app": "npm run build:app && npx cap sync ios"
+    "sync:app": "npm run build:app && npx cap sync ios",
+    "test:safety": "tsx scripts/safety-suite.mjs"
   },
   "build": {
     "appId": "com.fornello.app",
