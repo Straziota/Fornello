@@ -86,12 +86,15 @@ export default function NavBar() {
               className="px-2 py-2 rounded-xl transition-all flex flex-col items-center"
               data-tour={(l as any).tour}
               style={{ ...linkStyle(l.href), gap: 0 }}>
-              <div style={{ height: '152px', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', width: '100%' }}>
+              {/* Fixed height so every label sits on the same line, but the icon
+                  is bottom-aligned inside it. Top-aligning left the 112px icons
+                  floating 40px above their own text. */}
+              <div style={{ height: '152px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', width: '100%' }}>
                 {l.icon
                   ? <NextImage src={l.icon} alt="" width={(l as any).sz ?? 64} height={(l as any).sz ?? 64} style={{ objectFit: 'cover', borderRadius: '10px' }} />
                   : <span style={{ fontSize: '64px', lineHeight: 1 }}>{l.label.split(' ')[0]}</span>}
               </div>
-              <span style={{ fontSize: '16px', letterSpacing: '0.06em', maxWidth: '72px', textAlign: 'center', lineHeight: '1.3', minHeight: '2.6em', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', marginTop: '-8px' }}>{formatNavLabel(l.label.replace(/^[^\s]+ /, ''))}</span>
+              <span style={{ fontSize: '16px', letterSpacing: '0.06em', maxWidth: '72px', textAlign: 'center', lineHeight: '1.3', minHeight: '2.6em', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', marginTop: '2px' }}>{formatNavLabel(l.label.replace(/^[^\s]+ /, ''))}</span>
             </Link>
           ))}
           {isAdmin && (
