@@ -102,6 +102,7 @@ export default function SettingsPage() {
   const loadedRef = useRef(false);
   const [ready, setReady] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [correctionKey, setCorrectionKey] = useState(0);
 
   // Pull the signed-in user's email so we can display it and pre-populate the input.
   useEffect(() => {
@@ -184,10 +185,20 @@ export default function SettingsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings),
-      }).catch(() => { /* silent — the explicit Save button still surfaces errors */ });
+      }).then(r => r.json()).then(adoptCorrection)
+        .catch(() => { /* silent — the explicit Save button still surfaces errors */ });
     }, 800);
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
   }, [settings]);
+
+  // The server rewrites allergies into matchable ingredient names as it stores
+  // them. The client has to take the stored version back, or the next auto-save
+  // would post the original again and normalise it a second time, forever.
+  const adoptCorrection = (res: any) => {
+    if (!res?.corrected || !Array.isArray(res.restrictions)) return;
+    setSettings(s => ({ ...s, restrictions: res.restrictions }));
+    setCorrectionKey(k => k + 1);   // re-mount the notice so it reads the new record
+  };
 
   const save = async () => {
     try {
@@ -202,6 +213,7 @@ export default function SettingsPage() {
         setToast({ msg: `Save failed: ${detail}`, type: 'error' });
         return;
       }
+      adoptCorrection(await res.json().catch(() => null));
       setToast({ msg: 'Settings saved ✓', type: 'success' });
       if ((settings as any).language) setContextLanguage((settings as any).language);
     } catch (e: any) {
@@ -458,7 +470,7 @@ export default function SettingsPage() {
         <Section tour="set-restrictions" icon="/icons/Dietary restrictions.png" title="Dietary Restrictions & Allergies"
           desc="Strictly avoided in every meal. Name the ingredient — peanuts, shellfish, dairy — rather than a phrase like 'nut allergy', so every check recognises it.">
           <AllergySafetyNotice />
-          <RestrictionCorrectionNotice
+          <RestrictionCorrectionNotice key={correctionKey}
             onRestore={prev => setSettings(s => ({ ...s, restrictions: prev }))} />
           <TagList items={settings.restrictions} onRemove={i => remove('restrictions', i)} tagStyle={tagStyle('restrict')} />
           <AddRow value={newRestrict} onChange={setNewRestrict} placeholder="e.g. peanuts, shellfish, gluten"

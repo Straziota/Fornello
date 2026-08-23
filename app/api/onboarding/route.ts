@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireUser } from '@/lib/auth';
 import { getSettings, saveSettings } from '@/lib/db';
 import { adminClient } from '@/lib/supabase-admin';
+import { getAnthropicKey } from '@/lib/auth';
+import { normalizeOnSave } from '@/lib/normalize-restrictions';
 
 // Matches the ordering used by the menu generator.
 const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
@@ -29,10 +31,17 @@ export async function POST(req: NextRequest) {
   }
 
   const existing = await getSettings(user!.id);
+
+  // The first allergy a household ever writes, typed in a hurry on a screen
+  // they have never seen. Previously it was stored exactly as typed and nothing
+  // ever looked at it again.
+  const rawRestrictions = Array.isArray(body.restrictions) ? body.restrictions : [];
+  const { restrictions, correction } = await normalizeOnSave(getAnthropicKey(), rawRestrictions, []);
+
   await saveSettings(user!.id, {
     ...existing,
     familySize: Number(body.familySize) || 4,
-    restrictions: Array.isArray(body.restrictions) ? body.restrictions : [],
+    restrictions,
     preferences: Array.isArray(body.preferences) ? body.preferences : [],
     skipIngredients: Array.isArray(body.skipIngredients) ? body.skipIngredients : [],
     websites: Array.isArray(body.websites) ? body.websites : [],
@@ -64,5 +73,10 @@ export async function POST(req: NextRequest) {
     console.error('onboarding stamp failed:', stampError.message);
   }
 
-  return NextResponse.json({ ok: true });
+  if (correction) {
+    await adminClient.from('settings')
+      .update({ restrictions_corrected: correction }).eq('user_id', user!.id);
+  }
+
+  return NextResponse.json({ ok: true, restrictions, corrected: correction });
 }

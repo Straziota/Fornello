@@ -48,6 +48,9 @@ export default function WelcomePage() {
   const [skipIngredients, setSkipIngredients] = useState('');
   const [websites, setWebsites] = useState('');
   const [autoPlan, setAutoPlan] = useState(false);
+  // Set when the server rewrote what was typed, so it can be shown before the
+  // first menu is generated rather than discovered later in Settings.
+  const [understood, setUnderstood] = useState<{ from: string[]; to: string[] } | null>(null);
 
   const toggle = (list: string[], set: (v: string[]) => void, v: string) =>
     set(list.includes(v) ? list.filter(x => x !== v) : [...list, v]);
@@ -71,13 +74,30 @@ export default function WelcomePage() {
           autoPlan,
         }),
       });
-      if (!res.ok) throw new Error((await res.json()).error || 'Could not save');
-      // Picked up by /this-week, which generates the first menu immediately.
-      sessionStorage.setItem('fornello:firstRun', '1');
-      router.push('/this-week');
+      const out = await res.json();
+      if (!res.ok) throw new Error(out.error || 'Could not save');
+      if (out.corrected) { setUnderstood(out.corrected); setSaving(false); return; }
+      go();
     } catch (e: any) {
       setErr(e.message); setSaving(false);
     }
+  };
+
+  // Picked up by /this-week, which generates the first menu immediately.
+  const go = () => {
+    sessionStorage.setItem('fornello:firstRun', '1');
+    router.push('/this-week');
+  };
+
+  // Keep exactly what they wrote, and go. Their words are the record; ours were
+  // only ever a reading of them.
+  const keepMine = async () => {
+    setSaving(true);
+    await fetch('/api/settings', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ restrictions: understood!.from }),
+    }).catch(() => {});
+    go();
   };
 
   const Nav = ({ next, disabled }: { next?: () => void; disabled?: boolean }) => (
@@ -100,7 +120,41 @@ export default function WelcomePage() {
       <PageBackground src="/backgrounds/this-week-page.png" />
       <div className="max-w-lg mx-auto py-6">
 
-        {step <= TOTAL && (
+        {/* Shown once, between the last answer and the first menu. Fornello has
+            rewritten what was typed into the ingredient names its checks match
+            on; whether that reading is right is not something it can know. */}
+        {understood && (
+          <div style={card}>
+            <h1 className="text-2xl mb-3" style={{ fontFamily: 'AbramoSerif, serif' }}>
+              Here&apos;s how I understood that
+            </h1>
+            <p className="text-sm mb-5" style={{ color: 'var(--text-2)' }}>
+              Recipes are checked by ingredient name, so I&apos;ve written your
+              allergies out as ingredients. Nothing was removed.
+            </p>
+            <div className="rounded-xl px-4 py-3 mb-5 text-sm" style={{ background: 'var(--green-lt)' }}>
+              <p className="mb-2" style={{ color: 'var(--text-3)' }}>
+                You wrote: <span style={{ color: 'var(--text-2)' }}>{understood.from.join(' · ')}</span>
+              </p>
+              <p style={{ color: 'var(--text-3)' }}>
+                Kept as: <strong style={{ color: 'var(--green)' }}>{understood.to.join(' · ')}</strong>
+              </p>
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <button onClick={go} disabled={saving}
+                className="rounded-full px-5 py-2.5 text-sm text-white disabled:opacity-50" style={{ background: 'var(--green)' }}>
+                That&apos;s right — make my week
+              </button>
+              <button onClick={keepMine} disabled={saving}
+                className="rounded-full px-5 py-2.5 text-sm disabled:opacity-50"
+                style={{ border: '1px solid var(--border)', color: 'var(--text-2)' }}>
+                Use what I wrote
+              </button>
+            </div>
+          </div>
+        )}
+
+        {!understood && step <= TOTAL && (
           <>
             <p className="text-xs uppercase tracking-[0.22em] mb-2" style={{ color: 'var(--text-3)' }}>
               Question {step} of {TOTAL}
@@ -111,7 +165,7 @@ export default function WelcomePage() {
           </>
         )}
 
-        <div style={card}>
+        {!understood && <div style={card}>
           {step === 1 && (
             <>
               <h1 className="text-3xl mb-2" style={{ fontFamily: 'AbramoSerif, serif' }}>How many are you feeding?</h1>
@@ -228,9 +282,9 @@ export default function WelcomePage() {
               <Nav next={finish} />
             </>
           )}
-        </div>
+        </div>}
 
-        {step === TOTAL && (
+        {!understood && step === TOTAL && (
           <div className="mt-6 rounded-[22px] px-6 py-5" style={{ background: 'var(--cream)' }}>
             <p className="text-sm leading-relaxed" style={{ color: 'var(--text-2)' }}>
               This first week is my best guess. Tell me what you loved and what you&apos;d change,

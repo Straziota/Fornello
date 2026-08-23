@@ -74,3 +74,48 @@ Reply with ONLY a JSON array of strings.` }],
 
   return { normalized, changed: JSON.stringify(normalized) !== JSON.stringify(input) };
 }
+
+/**
+ * The save-path wrapper. Normalises on the way into the database, not on demand.
+ *
+ * The manual "check these are understood correctly" button in Settings was the
+ * whole safeguard, and a button nobody presses protects nobody — the two
+ * households whose entries we had to repair by hand would have had to think to
+ * press it, on the same screen where they had just typed the thing they were
+ * confident about. So it runs on save instead, in both places a restriction can
+ * be written: the first-run questionnaire and Settings.
+ *
+ * Applied without asking, because an allergy the checks cannot see is a live
+ * risk and a confirm dialog is one more thing to dismiss. But never silently:
+ * the before/after is returned for the caller to store in restrictions_corrected,
+ * which surfaces the banner offering to put back exactly what they wrote.
+ *
+ * Fails open. If the model call errors, the entry is stored verbatim — which is
+ * the behaviour that existed before this, and better than blocking a save.
+ */
+export async function normalizeOnSave(
+  apiKey: string,
+  incoming: string[],
+  previous: string[],
+): Promise<{ restrictions: string[]; correction: { from: string[]; to: string[]; at: string; acknowledged: false } | null }> {
+  const input = (incoming || []).map(s => String(s).trim()).filter(Boolean);
+  if (!input.length) return { restrictions: incoming || [], correction: null };
+
+  // Only when the list actually changed. Otherwise every unrelated settings
+  // save — units, a new website, a day toggled — would pay for a model call
+  // and could re-correct an entry the household had deliberately restored.
+  const same = JSON.stringify(input) === JSON.stringify((previous || []).map(s => String(s).trim()).filter(Boolean));
+  if (same) return { restrictions: incoming, correction: null };
+
+  try {
+    const { normalized, changed } = await normalizeRestrictions(apiKey, input);
+    if (!changed) return { restrictions: normalized, correction: null };
+    return {
+      restrictions: normalized,
+      correction: { from: input, to: normalized, at: new Date().toISOString(), acknowledged: false },
+    };
+  } catch (e) {
+    console.error('normalizeOnSave failed, storing verbatim:', (e as Error).message);
+    return { restrictions: incoming, correction: null };
+  }
+}
