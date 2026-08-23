@@ -25,24 +25,57 @@ const MODEL = 'gpt-image-1';
  * when cropped. Margin is what lets one image serve the card, the email and
  * whatever layout comes next.
  */
+/**
+ * The invariant half of the prompt.
+ *
+ * This is a DESCRIPTION OF A PAINTING, not a specification. That distinction is
+ * the whole finding: an earlier version listed constraints ("watercolour, soft
+ * edges, plain background") and produced a soft, generic, airbrushed bowl. The
+ * same call with the same model at the same quality, given the passage below,
+ * produced a fine single-pass ink contour, visible granulation, paper tooth and
+ * a dish that was actually depicted rather than approximated.
+ *
+ * Quality was tested and ruled out: `quality: high` alone changed almost
+ * nothing. A chat product silently expands a short request into something like
+ * this before the image model sees it, which is why hand-made tests looked so
+ * much better than the first API results.
+ *
+ * Landscape 3:2 with the vessel whole and centred: the meal card is 128x96
+ * (4:3, object-cover), so anything filling the frame edge-to-edge loses its rim
+ * when cropped.
+ */
 const STYLE = [
-  'Loose confident watercolour brushwork with visible paper texture, on cream parchment.',
-  'Soft edges with gentle bleed.',
+  'The painting is in the style of a mid-century European cookbook plate:',
+  'transparent watercolour washes laid wet-on-wet with visible granulation and pigment settling,',
+  'delicate dry-brush texture on the rim of the vessel,',
+  'and a fine loose ink contour drawn confidently in one pass and allowed to bleed slightly into the wash.',
+  'Muted sage green, warm ochre, soft terracotta and umber on a cream laid-paper ground with visible tooth.',
+  'Restrained palette, generous negative space, nothing photographic.',
+  'Soft natural light from the upper left, no harsh highlights, no glossy specular shine on the food.',
   'The whole vessel visible and centred, occupying roughly two-thirds of the frame width,',
-  'with clear even margin on all four sides — never cropped by the frame edge.',
-  'Viewed from slightly above at a consistent three-quarter angle.',
-  'Plain cream background.',
+  'with clear even margin on all four sides, never cropped by the frame edge.',
+  'Viewed from slightly above at a three-quarter angle.',
+  'The background is flat unpainted cream paper, edge to edge:',
+  'no surface, no table, no cloth, no cast shadow, no drop shadow, no vignette, no coloured wash behind the vessel.',
   'No text, no lettering, no hands, no people, no cutlery, no props.',
-  'Simple enough to read clearly at thumbnail size.',
-].join(' ');
+  'Composition simple and legible when reduced to a small thumbnail.',
+].join(' ')
 
 export function illustrationPrompt(meal: {
   name?: string; description?: string; technique?: string; tags?: string[];
 }): { prompt: string; vessel: string; finish: string; reason: string } {
   const { vessel, finish, reason } = vesselFor(meal);
   const dish = (meal.name || 'a dish').replace(/\s*\([^)]*\)\s*/g, ' ').trim();
-  const prompt =
-    `Vintage cookbook watercolour illustration of ${dish} in a ${finish} ${vessel}. ${STYLE}`;
+  // The dish's own description matters: without it the model gets a name and a
+  // bowl and invents the rest, which is how "Amatriciana" became generic red
+  // pasta with no guanciale. Trimmed, because a long blurb crowds out the style.
+  const detail = (meal.description || '').replace(/\s+/g, ' ').trim().slice(0, 200);
+  const prompt = [
+    `A hand-painted vintage cookbook watercolour illustration of ${dish},`,
+    `served in a ${finish} ${vessel}.`,
+    detail,
+    STYLE,
+  ].filter(Boolean).join(' ');
   return { prompt, vessel, finish, reason };
 }
 
