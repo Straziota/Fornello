@@ -39,7 +39,7 @@ export default function StaplesPrompt() {
           boxShadow: '0 2px 8px rgba(47,58,50,0.06)',
         }}>
         <img src="/icons/groceries.png" alt="" style={{ width: '18px', height: '18px', objectFit: 'contain', display: 'inline', verticalAlign: 'middle', marginRight: '6px' }} />
-        Weekly staples
+        Add your household&apos;s staples
       </button>
 
       {open && (
