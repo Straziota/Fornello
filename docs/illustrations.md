@@ -128,6 +128,54 @@ household's row and must never be promoted to the library. Same object type,
 opposite visibility; the existing provenance gate is about recipes, not images,
 so it does not cover this.
 
+## The prompt — settled, and hard-won
+
+`lib/illustrate.ts`. Approved on the gricia and the bourguignon. Do not edit it
+casually: it took five rounds, and the failures were not obvious from the
+output — each intermediate version produced a perfectly plausible picture that
+was simply worse.
+
+What each round fixed, so the reasoning is not lost:
+
+1. **Specification vs description.** The first prompt LISTED constraints
+   ("watercolour, soft edges, plain background") and produced a soft, generic,
+   airbrushed bowl. Rewriting it as a description of a painting changed
+   everything. `quality: high` was tested against this and changed almost
+   nothing — it was never the cause. A chat product silently expands a short
+   request before the image model sees it, which is why hand-made tests looked
+   so much better than the first API results.
+2. **The sauce colour was never implemented.** `foodValue` computed a value only
+   to pick a contrasting VESSEL finish and emitted nothing about the food. A
+   cider braise came out ivory because "crème fraîche" appeared later in the
+   blurb than "cider". Colour now comes from named ingredients and is stated
+   BEFORE the description.
+3. **Naming is not describing.** "Guanciale" is a weak visual prior — a
+   specialist word the model has no confident picture of — so it painted generic
+   diced pork. Hence the `appearance` field: the recipe generator writes one
+   visual sentence, told explicitly to describe rather than name.
+4. **The appearance line was never being fetched.** The route selected
+   `name, description, tags` and silently fell back to `description`. Every
+   illustration for two rounds used the wrong input while looking fine.
+5. **Handling, not medium.** Words about brushwork got closest but never all the
+   way; the vessel stayed a flat wash where a hand-made reference was mottled
+   and stippled. The final prompt asks for layered translucent washes, dense
+   granulation, mottling, blooms, irregular pooling and nuanced tonal variation
+   on EVERY surface including the vessel — and protects the dish's own character
+   (correct sauce quantity and opacity, no invented pooling, dry dishes stay
+   dry).
+
+Also available and proven to work: `referenceUrl` routes to
+`/v1/images/edits` instead of `/generations`, so an approved image can carry the
+handling while the prompt carries the subject. Not needed once the prompt
+landed, but it is the escape hatch if style ever drifts, and adjectives are
+worst at exactly the qualities that were missing.
+
+**The vessel stays ASSIGNED, not chosen.** Both submitted prompt versions
+offered the model a list of vessels to pick from; that is deliberately
+overridden with the derivation from `lib/vessel.ts`. Two dishes in one week
+sharing a silhouette is the failure the whole mechanism exists to prevent, and
+given a free choice an image model converges on the same pale oval.
+
 ## Serving the images
 
 Stored once at full size (1536x1024 PNG, ~3.4MB) and resized by Supabase Storage
