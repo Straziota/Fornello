@@ -46,7 +46,8 @@ export async function GET(req: NextRequest) {
 
   try {
     const slug = `${(meal.name || 'dish').toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,50)}${variant ? '-' + variant : ''}`;
-    const out = await generateIllustration(apiKey, meal, { quality, slug });
+    const referenceUrl = req.nextUrl.searchParams.get('ref') || undefined;
+    const out = await generateIllustration(apiKey, meal, { quality, slug, referenceUrl });
     return NextResponse.json({ recipe: meal.name, quality: quality || '(default)', ...out });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });

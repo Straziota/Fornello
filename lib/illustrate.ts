@@ -45,10 +45,18 @@ const MODEL = 'gpt-image-1';
  * when cropped.
  */
 const STYLE = [
-  'The painting is in the style of a mid-century European cookbook plate:',
-  'transparent watercolour washes laid wet-on-wet with visible granulation and pigment settling,',
-  'delicate dry-brush texture on the rim of the vessel,',
-  'and a fine loose ink contour drawn confidently in one pass and allowed to bleed slightly into the wash.',
+  'Painted in the manner of a 19th-century naturalist\'s watercolour plate,',
+  'in the style of a mid-century European cookbook illustration:',
+  'worked with a fine sable brush, detail built from many small accumulated strokes and stippling',
+  'rather than broad flat washes, with visible individual brush marks throughout.',
+  'Transparent washes laid wet-on-wet with visible granulation and pigment settling.',
+  'Dry-brush texture on every surface — the vessel itself is stippled and mottled, never a flat even wash.',
+  'A fine loose ink contour drawn confidently in one pass and allowed to bleed slightly into the wash.',
+  // The single habit that most cheapens the result: shine added as explicit
+  // white marks laid on top of each piece of food, rather than emerging from
+  // the modelling underneath.
+  'NO painted white highlight strokes anywhere — no white dashes, dots or streaks laid on top of the food.',
+  'Render sheen through tonal modelling and the translucency of the wash alone.',
   'Muted sage green, warm ochre, soft terracotta and umber on a cream laid-paper ground with visible tooth.',
   'Restrained palette, generous negative space, nothing photographic.',
   'Soft natural light from the upper left, no harsh highlights, no glossy specular shine on the food.',
@@ -113,25 +121,55 @@ export async function generateIllustration(
     quality?: string;
     /** Overrides the derived prompt entirely, for A/B testing. */
     promptOverride?: string;
+    /**
+     * A style reference. Sent to /v1/images/edits rather than /generations.
+     *
+     * Adjectives are worst at exactly the qualities still missing — stippled
+     * vessel surfaces, accumulated fine brush marks, sheen from tonal modelling
+     * rather than painted white strokes. "Fine brushwork built from many small
+     * marks" is a sentence a model can nod at and not obey. An example is not.
+     */
+    referenceUrl?: string;
   } = {},
 ): Promise<IllustrationResult> {
   const derived = illustrationPrompt(meal);
   const { vessel, finish, reason } = derived;
   const prompt = opts.promptOverride || derived.prompt;
 
-  const res = await fetch('https://api.openai.com/v1/images/generations', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model: MODEL,
-      prompt,
-      // Closest landscape the model offers to the card's 4:3; the margin in the
-      // prompt is what makes the crop safe.
-      size: '1536x1024',
-      n: 1,
-      ...(opts.quality ? { quality: opts.quality } : {}),
-    }),
-  });
+  let res: Response;
+  if (opts.referenceUrl) {
+    // Style transfer: the reference carries the handling, the prompt the subject.
+    const refRes = await fetch(opts.referenceUrl);
+    if (!refRes.ok) throw new Error(`reference image ${refRes.status}`);
+    const refBytes = Buffer.from(await refRes.arrayBuffer());
+
+    const form = new FormData();
+    form.append('model', MODEL);
+    form.append('prompt', prompt);
+    form.append('size', '1536x1024');
+    if (opts.quality) form.append('quality', opts.quality);
+    form.append('image', new Blob([new Uint8Array(refBytes)], { type: 'image/png' }), 'reference.png');
+
+    res = await fetch('https://api.openai.com/v1/images/edits', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}` },
+      body: form,
+    });
+  } else {
+    res = await fetch('https://api.openai.com/v1/images/generations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: MODEL,
+        prompt,
+        // Closest landscape the model offers to the card's 4:3; the margin in
+        // the prompt is what makes the crop safe.
+        size: '1536x1024',
+        n: 1,
+        ...(opts.quality ? { quality: opts.quality } : {}),
+      }),
+    });
+  }
 
   if (!res.ok) {
     const body = await res.text();
