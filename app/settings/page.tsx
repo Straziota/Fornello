@@ -11,6 +11,7 @@ import { normalizeLanguage } from '@/lib/translations';
 import { T } from '@/components/T';
 import { createBrowser } from '@/lib/supabase';
 import WeeklyEmailSetting from '@/components/WeeklyEmailSetting';
+import RestrictionNormalizer from '@/components/RestrictionNormalizer';
 
 const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 const TIME_OPTIONS = [
@@ -453,10 +454,17 @@ export default function SettingsPage() {
 
         {/* Restrictions */}
         <Section tour="set-restrictions" icon="/icons/Dietary restrictions.png" title="Dietary Restrictions & Allergies"
-          desc="Strictly avoided in every meal (e.g. gluten-free, nut allergy, no pork, dairy-free)">
+          desc="Strictly avoided in every meal. Name the ingredient — peanuts, shellfish, dairy — rather than a phrase like 'nut allergy', so every check recognises it.">
           <TagList items={settings.restrictions} onRemove={i => remove('restrictions', i)} tagStyle={tagStyle('restrict')} />
-          <AddRow value={newRestrict} onChange={setNewRestrict} placeholder="e.g. nut allergy"
+          <AddRow value={newRestrict} onChange={setNewRestrict} placeholder="e.g. peanuts, shellfish, gluten"
             onAdd={() => { add('restrictions', newRestrict, () => setNewRestrict('')); }} />
+          {/* Allergies are matched by INGREDIENT NAME. A phrase or a typo — one
+              household had typed "Nut sllergy" — still reaches the prompt, but
+              the deterministic checks stop recognising it. This makes the
+              system's reading visible instead of assumed. */}
+          <RestrictionNormalizer
+            restrictions={settings.restrictions}
+            onApply={next => setSettings(s => ({ ...s, restrictions: next }))} />
         </Section>
 
         {/* Skip Ingredients */}
