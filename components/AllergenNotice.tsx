@@ -16,7 +16,13 @@ import type { Ingredient } from '@/lib/types';
  * that declared a peanut allergy quietly saving a satay recipe and meeting it
  * again months later with no idea why it is there.
  */
-export default function AllergenNotice({ ingredients }: { ingredients: Ingredient[] }) {
+export default function AllergenNotice({ ingredients, name, description }: {
+  ingredients: Ingredient[];
+  /** Checked too: "Peanut Butter & Jelly Sandwich" should warn before a single
+      ingredient has been typed. */
+  name?: string;
+  description?: string;
+}) {
   const [restrictions, setRestrictions] = useState<string[]>([]);
 
   useEffect(() => {
@@ -27,7 +33,11 @@ export default function AllergenNotice({ ingredients }: { ingredients: Ingredien
 
   if (!restrictions.length) return null;
 
-  const text = ingredients.map(i => `${i.amount} ${i.item}`).join(' ').toLowerCase();
+  const text = [
+    name || '',
+    description || '',
+    ...ingredients.map(i => `${i.amount} ${i.item}`),
+  ].join(' ').toLowerCase();
   const hits = restrictions.filter(r => {
     const term = String(r).toLowerCase().trim();
     if (!term) return false;

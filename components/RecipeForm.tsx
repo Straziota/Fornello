@@ -299,7 +299,7 @@ export default function RecipeForm({ initial, onSave, title, heritage, redirectT
         {/* Warns when a recipe the user supplied — imported, pasted or typed —
             contains one of their own declared allergies. Everything Fornello
             generates is guarded; nothing brought in from outside is. */}
-        <AllergenNotice ingredients={ingredients} />
+        <AllergenNotice ingredients={ingredients} name={name} description={description} />
 
         {/* Ingredients */}
         <Section title="🥬 Ingredients">
