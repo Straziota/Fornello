@@ -80,16 +80,17 @@ export default function NavBar() {
         </Link>
 
         {/* Desktop nav */}
-        <nav data-tour="tour-navbar" className="hidden md:flex items-center gap-0.5 flex-1">
+        <nav data-tour="tour-navbar" className="hidden md:flex items-end gap-0.5 flex-1">
           {links.map(l => (
             <Link key={l.href} href={l.href}
               className="px-2 py-2 rounded-xl transition-all flex flex-col items-center"
               data-tour={(l as any).tour}
               style={{ ...linkStyle(l.href), gap: 0 }}>
-              {/* Fixed height so every label sits on the same line, but the icon
-                  is bottom-aligned inside it. Top-aligning left the 112px icons
-                  floating 40px above their own text. */}
-              <div style={{ height: '152px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', width: '100%' }}>
+              {/* The well is the icon's own height, not a constant. A fixed
+                  152px well had to put its 40px of slack somewhere — above the
+                  small icons or below them — so the fix is not to have any.
+                  Labels still line up because the nav row bottom-aligns. */}
+              <div style={{ height: `${(l as any).sz ?? 64}px`, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', width: '100%' }}>
                 {l.icon
                   ? <NextImage src={l.icon} alt="" width={(l as any).sz ?? 64} height={(l as any).sz ?? 64} style={{ objectFit: 'cover', borderRadius: '10px' }} />
                   : <span style={{ fontSize: '64px', lineHeight: 1 }}>{l.label.split(' ')[0]}</span>}
