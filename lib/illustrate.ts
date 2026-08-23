@@ -65,9 +65,18 @@ export interface IllustrationResult {
 export async function generateIllustration(
   apiKey: string,
   meal: { name?: string; description?: string; technique?: string; tags?: string[] },
-  opts: { slug?: string } = {},
+  opts: {
+    slug?: string;
+    /** gpt-image-1 accepts low | medium | high | auto. Passing nothing takes
+        the default, which may be the cheap tier — invisible from the output. */
+    quality?: string;
+    /** Overrides the derived prompt entirely, for A/B testing. */
+    promptOverride?: string;
+  } = {},
 ): Promise<IllustrationResult> {
-  const { prompt, vessel, finish, reason } = illustrationPrompt(meal);
+  const derived = illustrationPrompt(meal);
+  const { vessel, finish, reason } = derived;
+  const prompt = opts.promptOverride || derived.prompt;
 
   const res = await fetch('https://api.openai.com/v1/images/generations', {
     method: 'POST',
@@ -79,6 +88,7 @@ export async function generateIllustration(
       // prompt is what makes the crop safe.
       size: '1536x1024',
       n: 1,
+      ...(opts.quality ? { quality: opts.quality } : {}),
     }),
   });
 
