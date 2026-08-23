@@ -79,7 +79,10 @@ export default function NavBar() {
             is wider than the bar, and without this the logo is one of the things
             paying for that. The source is square, so a squeezed width reads as
             obvious distortion. objectFit guards the same failure from the far
-            side — letterbox rather than stretch. */}
+            side — letterbox rather than stretch. The nav icons stay on cover:
+            with thirteen of them the row is always being squeezed, and contain
+            turns that squeeze into lost HEIGHT, which is worse than a few
+            cropped pixels at the sides. */}
         <Link href="/" className="flex items-center shrink-0">
           <img src="/Fornello Logo.png" alt="Fornello"
                style={{ height: '140px', width: '140px', objectFit: 'contain', display: 'block' }} />
@@ -98,7 +101,7 @@ export default function NavBar() {
                   Labels still line up because the nav row bottom-aligns. */}
               <div style={{ height: `${(l as any).sz ?? 64}px`, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', width: '100%' }}>
                 {l.icon
-                  ? <NextImage src={l.icon} alt="" width={(l as any).sz ?? 64} height={(l as any).sz ?? 64} style={{ objectFit: 'contain', borderRadius: '10px' }} />
+                  ? <NextImage src={l.icon} alt="" width={(l as any).sz ?? 64} height={(l as any).sz ?? 64} style={{ objectFit: 'cover', borderRadius: '10px' }} />
                   : <span style={{ fontSize: '64px', lineHeight: 1 }}>{l.label.split(' ')[0]}</span>}
               </div>
               <span style={{ fontSize: '16px', letterSpacing: '0.06em', maxWidth: '72px', textAlign: 'center', lineHeight: '1.3', minHeight: '2.6em', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', marginTop: '2px' }}>{formatNavLabel(l.label.replace(/^[^\s]+ /, ''))}</span>
