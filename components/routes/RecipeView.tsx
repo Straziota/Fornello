@@ -5,6 +5,7 @@ import { UserRecipe } from '@/lib/types';
 import ShareButton from '@/components/ShareButton';
 import { scaleIngredients } from '@/lib/scaling';
 import { recipeEditHref } from '@/lib/routes';
+import IngredientSafetyLine from '@/components/IngredientSafetyLine';
 
 const DIFF_STYLE: Record<string, React.CSSProperties> = {
   Easy:   { background: 'var(--green-lt)', color: 'var(--green)' },
@@ -163,9 +164,10 @@ export default function ViewRecipePage({ id }: { id: string }) {
         {recipe.ingredients?.length > 0 && (
           <div className="rounded-[22px] p-6 ring-1 print-break"
                style={{ background: 'var(--white)', boxShadow: '0 4px 16px rgba(47,58,50,0.05)' }}>
-            <h2 className="font-bold text-lg mb-4" style={{ fontFamily: 'var(--font-lora), serif' }}>
+            <h2 className="font-bold text-lg mb-1" style={{ fontFamily: 'var(--font-lora), serif' }}>
               Ingredients
             </h2>
+            <IngredientSafetyLine />
             <ul className="space-y-2">
               {scaleIngredients(recipe.ingredients, recipe.serves || 4, scaledServes).map((ing, i) => (
                 <li key={i} className="flex gap-3 py-2 text-sm border-b"

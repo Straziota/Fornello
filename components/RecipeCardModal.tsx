@@ -8,6 +8,7 @@ import { translateRecipeContent, getCachedTranslation } from '@/lib/translation-
 import { convertText, convertIngredient } from '@/lib/unit-convert';
 import ShareButton from './ShareButton';
 import { recipeEditHref } from '@/lib/routes';
+import IngredientSafetyLine from '@/components/IngredientSafetyLine';
 
 interface Props {
   recipe: UserRecipe;
@@ -278,7 +279,8 @@ export default function RecipeCardModal({ recipe, onClose, readOnly, onSave, sav
               )}
               {display.ingredients && display.ingredients.length > 0 && (
                 <div>
-                  <h3 style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.28em', color: '#8B6A42', marginBottom: '12px' }}>Ingredients</h3>
+                  <h3 style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.28em', color: '#8B6A42', marginBottom: '4px' }}>Ingredients</h3>
+                  <IngredientSafetyLine style={{ color: '#9A8B7B' }} />
                   <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                     {scaleIngredients(display.ingredients, recipe.serves || 4, scaledServes).map((rawIng, i) => {
                       const ing = convertIngredient(rawIng, unitMode);

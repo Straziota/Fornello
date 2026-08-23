@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import IngredientSafetyLine from '@/components/IngredientSafetyLine';
 
 function Inner() {
   const p = useSearchParams();
@@ -38,7 +39,8 @@ function Inner() {
 
       {!!(meal.ingredients || []).length && (
         <>
-          <p className="text-xs uppercase tracking-[0.18em] mb-3" style={{ color: 'var(--text-3)' }}>Ingredients</p>
+          <p className="text-xs uppercase tracking-[0.18em] mb-1" style={{ color: 'var(--text-3)' }}>Ingredients</p>
+          <IngredientSafetyLine />
           <ul className="mb-8">
             {meal.ingredients.map((i: any, n: number) => (
               <li key={n} className="flex gap-3 py-2 border-b text-sm" style={{ borderColor: 'var(--border)' }}>

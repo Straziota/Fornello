@@ -13,6 +13,7 @@ import { createBrowser } from '@/lib/supabase';
 import WeeklyEmailSetting from '@/components/WeeklyEmailSetting';
 import RestrictionNormalizer from '@/components/RestrictionNormalizer';
 import RestrictionCorrectionNotice from '@/components/RestrictionCorrectionNotice';
+import AllergySafetyNotice from '@/components/AllergySafetyNotice';
 
 const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 const TIME_OPTIONS = [
@@ -456,6 +457,7 @@ export default function SettingsPage() {
         {/* Restrictions */}
         <Section tour="set-restrictions" icon="/icons/Dietary restrictions.png" title="Dietary Restrictions & Allergies"
           desc="Strictly avoided in every meal. Name the ingredient — peanuts, shellfish, dairy — rather than a phrase like 'nut allergy', so every check recognises it.">
+          <AllergySafetyNotice />
           <RestrictionCorrectionNotice
             onRestore={prev => setSettings(s => ({ ...s, restrictions: prev }))} />
           <TagList items={settings.restrictions} onRemove={i => remove('restrictions', i)} tagStyle={tagStyle('restrict')} />

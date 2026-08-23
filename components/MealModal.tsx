@@ -8,6 +8,7 @@ import { convertText, convertIngredient } from '@/lib/unit-convert';
 import ShareButton from './ShareButton';
 import LoadingMessage from './LoadingMessage';
 import WhyThisMeal from '@/components/WhyThisMeal';
+import IngredientSafetyLine from '@/components/IngredientSafetyLine';
 
 interface Props {
   meal: Meal;
@@ -769,7 +770,8 @@ export default function MealModal({ meal: initialMeal, menuId, dislikedIngredien
             <div>
               <div className="grid md:grid-cols-2 gap-8 mb-6">
                 <div>
-                  <h3 className="font-bold text-lg mb-3" style={{ fontFamily: 'var(--font-lora), serif' }}>Ingredients</h3>
+                  <h3 className="font-bold text-lg mb-1" style={{ fontFamily: 'var(--font-lora), serif' }}>Ingredients</h3>
+                  <IngredientSafetyLine />
                   {editIngredients.map((ing, i) => (
                     <div key={i} className="flex gap-2 items-center mb-2">
                       <input value={ing.amount} onChange={e => setEditIngredients(prev => prev.map((x, j) => j === i ? { ...x, amount: e.target.value } : x))}
