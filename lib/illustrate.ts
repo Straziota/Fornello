@@ -63,8 +63,8 @@ const STYLE = [
 
 export function illustrationPrompt(meal: {
   name?: string; description?: string; technique?: string; tags?: string[];
-}): { prompt: string; vessel: string; finish: string; reason: string } {
-  const { vessel, finish, reason } = vesselFor(meal);
+}): { prompt: string; vessel: string; finish: string; foodColour: string; reason: string } {
+  const { vessel, finish, foodColour, reason } = vesselFor(meal);
   const dish = (meal.name || 'a dish').replace(/\s*\([^)]*\)\s*/g, ' ').trim();
   // The dish's own description matters: without it the model gets a name and a
   // bowl and invents the rest, which is how "Amatriciana" became generic red
@@ -73,10 +73,14 @@ export function illustrationPrompt(meal: {
   const prompt = [
     `A hand-painted vintage cookbook watercolour illustration of ${dish},`,
     `served in a ${finish} ${vessel}.`,
+    // Stated BEFORE the recipe blurb: the description mentions every component,
+    // so left to itself the model paints whichever it saw last. Poulet à la
+    // Normande came out ivory because "crème fraîche" won over "cider".
+    foodColour ? `The sauce reads ${foodColour}.` : '',
     detail,
     STYLE,
   ].filter(Boolean).join(' ');
-  return { prompt, vessel, finish, reason };
+  return { prompt, vessel, finish, foodColour, reason };
 }
 
 export interface IllustrationResult {

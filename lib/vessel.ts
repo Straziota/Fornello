@@ -17,11 +17,39 @@
  * should beat an inference.
  */
 
+/**
+ * How the food itself should read.
+ *
+ * The three-value bucket that picks a contrasting vessel is too coarse for
+ * this: "Poulet à la Normande" (cider, calvados, apples, cream) and "Coq au
+ * Blanc" (white wine, cream) both classify as pale, yet they were exactly the
+ * pair that needed colour to separate them — they share a braiser silhouette,
+ * so if both come out ivory nothing tells them apart.
+ *
+ * Colour therefore comes from named ingredients, not from the value bucket.
+ * Ordered: the first match wins, so the more specific sits above the generic.
+ */
+const FOOD_COLOUR: [RegExp, string][] = [
+  [/\bsaffron\b/i,                      'saffron-gold'],
+  [/\bcider\b|\bcalvados\b/i,           'warm amber-gold, glossy'],
+  [/\bpaprika\b|\bpaprik[aá]s\b/i,      'opaque brick-red'],
+  [/\bcurry\b|\bturmeric\b|\bmasala\b/i, 'deep golden-ochre'],
+  [/\bred wine\b|bourguignon|\bburgundy\b/i, 'deep burgundy-brown, thick'],
+  [/\bsoy\b|\bteriyaki\b|\bhoisin\b|\btamarind\b/i, 'dark soy-brown, glossy'],
+  [/\btomato|\bmarinara\b|amatriciana|arrabbiata/i, 'warm brick-red'],
+  [/\bpesto\b|\bherb\b|\bsalsa verde\b/i, 'fresh green'],
+  [/\bwhite wine\b|\bcr[eè]me fra[iî]che\b|\bcream\b|\bb[eé]chamel\b/i, 'pale ivory, thin and silky'],
+  [/\bpecorino\b|\bparmesan\b|cacio e pepe|\bgricia\b|\bcarbonara\b/i, 'pale straw, glossy and barely-there'],
+  [/\blemon\b|\bpiccata\b/i,           'pale gold'],
+];
+
 export interface Vessel {
   /** Shape phrase — the silhouette, which is what separates thumbnails. */
   vessel: string;
   /** Finish phrase, chosen to contrast with the food's value. */
   finish: string;
+  /** How the food itself should read — empty when nothing named is decisive. */
+  foodColour: string;
   /** Why this was chosen — useful when a picture looks wrong. */
   reason: string;
 }
@@ -110,10 +138,12 @@ export function vesselFor(meal: {
 }): Vessel {
   // Value is judged from name AND description — "creamy" rarely appears in a
   // title but almost always in the blurb.
-  const value = foodValue(`${meal.name || ''} ${meal.description || ''}`);
+  const blob = `${meal.name || ''} ${meal.description || ''}`;
+  const value = foodValue(blob);
   const finish = FINISH[value];
+  const foodColour = FOOD_COLOUR.find(([re]) => re.test(blob))?.[1] || '';
   const done = (vessel: string, reason: string): Vessel =>
-    ({ vessel, finish, reason: `${reason} · food reads ${value}` });
+    ({ vessel, finish, foodColour, reason: `${reason} · food reads ${value}` });
 
   const tech = (meal.technique || '').toLowerCase().trim();
   if (tech && BY_TECHNIQUE[tech]) {
