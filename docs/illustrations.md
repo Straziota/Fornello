@@ -170,6 +170,26 @@ handling while the prompt carries the subject. Not needed once the prompt
 landed, but it is the escape hatch if style ever drifts, and adjectives are
 worst at exactly the qualities that were missing.
 
+### Accepted deviations — do not "fix" these
+
+Measured across a full seven-dish week and judged acceptable. Recorded so nobody
+spends a round re-solving them:
+
+- **Vessel scale runs 80–90% of frame width, not the specified two-thirds.** It
+  overshoots consistently rather than randomly, and most on naturally wide
+  vessels — a paella pan or an oval platter fights the instruction and the model
+  resolves toward filling. Invisible at card size. If it ever needs fixing, state
+  it as negative space ("at least one-sixth of the frame empty on left and
+  right") rather than vessel width: empty space is easier for a model to verify
+  than a proportion, and it is what the 4:3 crop actually needs.
+- **A soft drop shadow appears regardless.** Forbidden four ways in an earlier
+  prompt and drawn anyway, every time. The settled prompt asks for a restrained
+  one instead, which is the honest version of the same outcome.
+- **Occasional unrequested garnish** — the fish tacos gained coriander and
+  shredded lettuce the appearance line did not mention, despite "do not add
+  garnishes". Same class as the shadow: an explicit negative the model does not
+  reliably honour.
+
 **The vessel stays ASSIGNED, not chosen.** Both submitted prompt versions
 offered the model a list of vessels to pick from; that is deliberately
 overridden with the derivation from `lib/vessel.ts`. Two dishes in one week
