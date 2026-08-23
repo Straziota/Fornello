@@ -31,7 +31,10 @@ const DEFAULT: Vessel = { vessel: 'shallow round braiser', reason: 'default' };
 const BY_NAME: [RegExp, string][] = [
   [/\bpaella\b/i,                                   'wide flat two-handled paella pan'],
   [/\btacos?\b|\btostadas?\b|\bquesadillas?\b/i,    'flat oval platter'],
-  [/\bstir[- ]?fry|\bwok\b|\bpad thai\b|\bpad krapow\b|\bkrapow\b|\blo mein\b|\bfried rice\b/i, 'round steel-rimmed wok'],
+  // Noodle dishes are plated, not served in the wok — and two Thai dishes in
+  // one week would otherwise share a silhouette. Cooked-in-the-wok stays a wok.
+  [/\bpad thai\b|\blo mein\b|\bnoodles?\b/i,      'wide shallow noodle bowl'],
+  [/\bstir[- ]?fry|\bwok\b|\bpad krapow\b|\bkrapow\b|\bfried rice\b/i, 'round steel-rimmed wok'],
   // Before the pasta rule: "Baked Pasta Gratin" is a gratin dish, not a bowl.
   [/\bgratin\b|\blasagn|\bbaked?\b.*\bpasta\b|\bpasta\b.*\bbake[dr]?\b|\bziti\b/i,
                                                     'oval enamelled gratin dish'],
