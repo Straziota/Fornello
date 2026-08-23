@@ -18,13 +18,48 @@
  */
 
 export interface Vessel {
-  /** Phrase dropped straight into the image prompt. */
+  /** Shape phrase — the silhouette, which is what separates thumbnails. */
   vessel: string;
+  /** Finish phrase, chosen to contrast with the food's value. */
+  finish: string;
   /** Why this was chosen — useful when a picture looks wrong. */
   reason: string;
 }
 
-const DEFAULT: Vessel = { vessel: 'shallow round braiser', reason: 'default' };
+/**
+ * Roughly how light the food itself reads.
+ *
+ * A pale dish in a pale vessel on cream parchment is three values of the same
+ * thing, and disappears at thumbnail size — carbonara, risotto, chowder, roast
+ * potatoes. There are a lot of beige dinners, so the vessel has to carry the
+ * contrast the food cannot.
+ */
+type FoodValue = 'pale' | 'mid' | 'dark';
+
+const PALE = /carbonara|alfredo|risotto|cacio e pepe|gricia|chowder|\bcream\b|\bwhite wine\b|\bpolenta\b|\bmash(ed)?\b|\bpotato(es)?\b|\bcauliflower\b|\bblanquette\b|\bnormande\b|\bpiccata\b|\bscampi\b|\bfettuccine\b|\brice\b|\bcod\b|\bsole\b|\bhalibut\b|\bchicken breast\b/i;
+const DARK = /\bpad thai\b|\btamarind\b|bourguignon|\bstew\b|\bragù|\bragu\b|\bmole\b|\bsoy\b|\bteriyaki\b|\bhoisin\b|\bblack bean\b|\bbalsamic\b|\bred wine\b|\bchocolate\b|\bmushroom\b|\bbeef\b|\bbraised?\b|\bgoulash\b|\bdal makhani\b|\bmarsala\b|\bbulgogi\b|\bstir[- ]?fry\b/i;
+
+function foodValue(text: string): FoodValue {
+  // "rice noodles" is not pale rice, and "sweet potato" is not a pale potato.
+  // Strip the compounds before testing, or the modifier decides the value.
+  const t = text
+    .replace(/rice noodles?/gi, 'noodles')
+    .replace(/sweet potatoe?s?/gi, 'sweetpotato')
+    .replace(/cream(y)? of/gi, 'creamof');
+  if (DARK.test(t)) return 'dark';
+  if (PALE.test(t)) return 'pale';
+  return 'mid';
+}
+
+// Finishes that read clearly against cream parchment, grouped by how dark they
+// are. Pale food gets a saturated or dark vessel; dark food gets a pale one.
+const FINISH: Record<FoodValue, string> = {
+  pale: 'deep forest-green enamel with a darker rim',
+  dark: 'warm cream enamel with a soft pale rim',
+  mid:  'muted terracotta-ochre glaze',
+};
+
+const DEFAULT_SHAPE = 'shallow round braiser';
 
 // Ordered: the first match wins, so put the specific before the generic.
 // Keyed on dish NAME, which is the only field reliably populated.
@@ -71,17 +106,24 @@ const BY_TECHNIQUE: Record<string, string> = {
 };
 
 export function vesselFor(meal: {
-  name?: string; technique?: string; tags?: string[];
+  name?: string; technique?: string; tags?: string[]; description?: string;
 }): Vessel {
+  // Value is judged from name AND description — "creamy" rarely appears in a
+  // title but almost always in the blurb.
+  const value = foodValue(`${meal.name || ''} ${meal.description || ''}`);
+  const finish = FINISH[value];
+  const done = (vessel: string, reason: string): Vessel =>
+    ({ vessel, finish, reason: `${reason} · food reads ${value}` });
+
   const tech = (meal.technique || '').toLowerCase().trim();
   if (tech && BY_TECHNIQUE[tech]) {
-    return { vessel: BY_TECHNIQUE[tech], reason: `technique: ${meal.technique}` };
+    return done(BY_TECHNIQUE[tech], `technique: ${meal.technique}`);
   }
 
   // Tags carry a technique for some meals even when the field is empty.
   for (const t of (meal.tags || [])) {
     const key = String(t).toLowerCase().trim();
-    if (BY_TECHNIQUE[key]) return { vessel: BY_TECHNIQUE[key], reason: `tag: ${t}` };
+    if (BY_TECHNIQUE[key]) return done(BY_TECHNIQUE[key], `tag: ${t}`);
   }
 
   const name = meal.name || '';
@@ -90,13 +132,13 @@ export function vesselFor(meal: {
   // explicit choice and should beat any inference from the rest of the name.
   for (const [key, vessel] of Object.entries(BY_TECHNIQUE)) {
     if (new RegExp(`\\b${key.replace(/[- ]/g, '[- ]?')}\\b`, 'i').test(name)) {
-      return { vessel, reason: `technique in title: ${key}` };
+      return done(vessel, `technique in title: ${key}`);
     }
   }
 
   for (const [re, vessel] of BY_NAME) {
-    if (re.test(name)) return { vessel, reason: `name matched ${re.source.slice(0, 28)}…` };
+    if (re.test(name)) return done(vessel, `name matched ${re.source.slice(0, 24)}…`);
   }
 
-  return DEFAULT;
+  return done(DEFAULT_SHAPE, 'default');
 }

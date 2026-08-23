@@ -6,5 +6,6 @@ const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABA
 const { data } = await db.from('menus').select('week_start,data').order('week_start', { ascending: false });
 const wk = data.find(r => (r.data.meals || []).filter(m => !m.isLeftover).length >= 7);
 for (const m of wk.data.meals.filter(m => !m.isLeftover)) {
-  console.log(`${m.day}\t${m.name}\t${vesselFor(m).vessel}\t${(m.description||'').slice(0,80)}`);
+  const v = vesselFor(m);
+  console.log(`${m.day}\t${m.name}\t${v.vessel}\t${v.finish}\t${v.reason}`);
 }
