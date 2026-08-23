@@ -75,12 +75,18 @@ export default function NavBar() {
 
       <div className="w-full px-6 h-52 flex items-center gap-4">
         {/* Logo */}
-        <Link href="/" className="flex items-center">
-          <img src="/Fornello Logo.png" alt="Fornello" style={{ height: '140px', width: 'auto', display: 'block' }} />
+        {/* shrink-0, or flex squashes the logo horizontally: the nav beside it
+            is wider than the bar, and without this the logo is one of the things
+            paying for that. The source is square, so a squeezed width reads as
+            obvious distortion. objectFit guards the same failure from the far
+            side — letterbox rather than stretch. */}
+        <Link href="/" className="flex items-center shrink-0">
+          <img src="/Fornello Logo.png" alt="Fornello"
+               style={{ height: '140px', width: '140px', objectFit: 'contain', display: 'block' }} />
         </Link>
 
         {/* Desktop nav */}
-        <nav data-tour="tour-navbar" className="hidden md:flex items-end gap-0.5 flex-1">
+        <nav data-tour="tour-navbar" className="hidden md:flex items-end gap-0.5 flex-1 min-w-0">
           {links.map(l => (
             <Link key={l.href} href={l.href}
               className="px-2 py-2 rounded-xl transition-all flex flex-col items-center"
@@ -92,7 +98,7 @@ export default function NavBar() {
                   Labels still line up because the nav row bottom-aligns. */}
               <div style={{ height: `${(l as any).sz ?? 64}px`, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', width: '100%' }}>
                 {l.icon
-                  ? <NextImage src={l.icon} alt="" width={(l as any).sz ?? 64} height={(l as any).sz ?? 64} style={{ objectFit: 'cover', borderRadius: '10px' }} />
+                  ? <NextImage src={l.icon} alt="" width={(l as any).sz ?? 64} height={(l as any).sz ?? 64} style={{ objectFit: 'contain', borderRadius: '10px' }} />
                   : <span style={{ fontSize: '64px', lineHeight: 1 }}>{l.label.split(' ')[0]}</span>}
               </div>
               <span style={{ fontSize: '16px', letterSpacing: '0.06em', maxWidth: '72px', textAlign: 'center', lineHeight: '1.3', minHeight: '2.6em', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', marginTop: '2px' }}>{formatNavLabel(l.label.replace(/^[^\s]+ /, ''))}</span>
