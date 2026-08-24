@@ -347,16 +347,14 @@ export default function WelcomePage() {
           {step === 6 && (
             <>
               <h1 className="text-3xl mb-2" style={{ fontFamily: 'AbramoSerif, serif' }}>Anything you&apos;d rather never see?</h1>
-              <p className="text-sm mb-6" style={{ color: 'var(--text-2)' }}>
+              <p className="text-sm mb-6 leading-relaxed" style={{ color: 'var(--text-2)' }}>
                 Not allergies — just things nobody enjoys. Mushrooms, olives, blue cheese.
+                I&apos;ll avoid recipes built around these, but still allow them as an optional garnish.
               </p>
               <input value={skipIngredients} onChange={e => setSkipIngredients(e.target.value)}
                 placeholder="Separate with commas"
                 className="w-full rounded-xl px-4 py-3 text-sm"
                 style={{ border: '1px solid var(--border)', background: 'var(--cream)' }} />
-              <p className="text-xs mt-3 italic" style={{ color: 'var(--text-3)' }}>
-                I&apos;ll avoid recipes built around these, but still allow them as an optional garnish.
-              </p>
               <Nav />
             </>
           )}
@@ -366,6 +364,7 @@ export default function WelcomePage() {
               <h1 className="text-3xl mb-2" style={{ fontFamily: 'AbramoSerif, serif' }}>Where do you usually look for recipes?</h1>
               <p className="text-sm mb-6" style={{ color: 'var(--text-2)' }}>
                 I&apos;ll cook in the spirit of the places you trust. Nothing is copied from them.
+                List as many as you like, separated by commas.
               </p>
               <input value={websites} onChange={e => setWebsites(e.target.value)}
                 placeholder="e.g. Serious Eats, Giallo Zafferano, Half Baked Harvest"
@@ -382,7 +381,8 @@ export default function WelcomePage() {
               </h1>
               <p className="text-sm leading-relaxed mb-4" style={{ color: 'var(--text-2)' }}>
                 This first week is my best guess. Tell me what you loved and what you&apos;d
-                change, and by week four I&apos;ll know your family.
+                change, and I&apos;ll get to know your family and tailor the recipes to your
+                taste.
               </p>
               <p className="text-sm leading-relaxed" style={{ color: 'var(--text-2)' }}>
                 I only asked you a handful of questions; there are plenty more answers I&apos;ll take
