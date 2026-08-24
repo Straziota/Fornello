@@ -314,6 +314,18 @@ export default function WelcomePage() {
                     on={weeknightMinutes === m} onClick={() => setWeeknightMinutes(m)} />
                 ))}
               </div>
+              {/* This questionnaire replaced thirty-five per-day decisions with
+                  two questions, which is right — but only if people know the
+                  detail still exists. Said here, at the step where its absence
+                  is actually felt, rather than only in a closing note. */}
+              <p className="text-xs mt-5 leading-relaxed" style={{ color: 'var(--text-3)' }}>
+                One night different from the rest? Once you&apos;ve seen a week you can give
+                any single day its own time, meal type or method — slow cooker, air fryer,
+                grill — in{' '}
+                <Link href="/settings?section=cooking-schedule" style={{ color: 'var(--green)', textDecoration: 'underline' }}>
+                  Settings → Cooking Schedule
+                </Link>.
+              </p>
               <Nav />
             </>
           )}
@@ -411,8 +423,11 @@ export default function WelcomePage() {
           <div className="mt-6 rounded-[22px] px-6 py-5" style={{ background: 'var(--cream)' }}>
             <p className="text-sm leading-relaxed" style={{ color: 'var(--text-2)' }}>
               This first week is my best guess. Tell me what you loved and what you&apos;d change,
-              and by week four I&apos;ll know your family. There&apos;s more to tune whenever you want it —
-              sides, pantry, units, holidays — all in <Link href="/settings" style={{ color: 'var(--green)', textDecoration: 'underline' }}>Settings</Link>.
+              and by week four I&apos;ll know your family. I asked you eight questions; there are
+              plenty more answers I&apos;ll take whenever you feel like giving them — favourite
+              and unwanted sides, what&apos;s already in your cupboard, cups or grams, holidays,
+              and a method for any single night — all in{' '}
+              <Link href="/settings" style={{ color: 'var(--green)', textDecoration: 'underline' }}>Settings</Link>.
             </p>
 
             {/* The weekly-email offer used to live here as a tick-box footnote.

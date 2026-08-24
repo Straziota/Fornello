@@ -662,7 +662,7 @@ export default function SettingsPage() {
         </Section>
 
         {/* Cooking Schedule */}
-        <Section tour="set-schedule" icon="/icons/Cooking schedule.png" title="Cooking Schedule"
+        <Section id="cooking-schedule" tour="set-schedule" icon="/icons/Cooking schedule.png" title="Cooking Schedule"
           desc="Set your weekly cooking rhythm AND when you prep ingredients ahead. Toggle each day on or off, set available time and meal type, then choose your prep style below."
           action={
             <label className="flex items-center gap-2 cursor-pointer select-none">
