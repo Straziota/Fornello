@@ -12,7 +12,7 @@ const CUISINES = ['Italian','French','Mediterranean','Mexican','Indian','Thai','
 
 const COMMON_ALLERGIES = ['Shellfish','Peanuts','Tree nuts','Dairy','Gluten','Eggs','Soy','Fish'];
 
-const TOTAL = 8;
+const TOTAL = 9;
 
 const card: React.CSSProperties = {
   background: 'var(--white)', borderRadius: 22, padding: 32,
@@ -207,7 +207,7 @@ export default function WelcomePage() {
         {!understood && step <= TOTAL && (
           <>
             <p className="text-xs uppercase tracking-[0.22em] mb-2" style={{ color: 'var(--text-3)' }}>
-              Question {step} of {TOTAL}
+              Step {step} of {TOTAL}
             </p>
             <div className="w-full h-1 rounded-full mb-7" style={{ background: 'var(--border)' }}>
               <div style={{ width: `${(step / TOTAL) * 100}%`, height: '100%', background: 'var(--green)', borderRadius: 999, transition: 'width .3s' }} />
@@ -306,7 +306,7 @@ export default function WelcomePage() {
 
           {step === 4 && (
             <>
-              <h1 className="text-3xl mb-2" style={{ fontFamily: 'AbramoSerif, serif' }}>How long on a weeknight?</h1>
+              <h1 className="text-3xl mb-2" style={{ fontFamily: 'AbramoSerif, serif' }}>How much time do you have every night?</h1>
               <p className="text-sm mb-6" style={{ color: 'var(--text-2)' }}>Recipes are chosen to genuinely fit — not squeezed to look like they do.</p>
               <div className="flex flex-wrap gap-2">
                 {[20, 30, 45, 60, 90].map(m => (
@@ -318,7 +318,7 @@ export default function WelcomePage() {
                   two questions, which is right — but only if people know the
                   detail still exists. Said here, at the step where its absence
                   is actually felt, rather than only in a closing note. */}
-              <p className="text-xs mt-5 leading-relaxed" style={{ color: 'var(--text-3)' }}>
+              <p className="text-sm mt-5 leading-relaxed" style={{ color: 'var(--text-2)' }}>
                 One night different from the rest? Once you&apos;ve seen a week you can give
                 any single day its own time, meal type or method — slow cooker, air fryer,
                 grill — in{' '}
@@ -376,6 +376,28 @@ export default function WelcomePage() {
 
           {step === 8 && (
             <>
+              <h1 className="text-3xl mb-4" style={{ fontFamily: 'AbramoSerif, serif' }}>
+                One last thing before I cook
+              </h1>
+              <p className="text-sm leading-relaxed mb-4" style={{ color: 'var(--text-2)' }}>
+                This first week is my best guess. Tell me what you loved and what you&apos;d
+                change, and by week four I&apos;ll know your family.
+              </p>
+              <p className="text-sm leading-relaxed" style={{ color: 'var(--text-2)' }}>
+                I only asked you a handful of questions; there are plenty more answers I&apos;ll take
+                whenever you feel like giving them — favourite and unwanted sides, what&apos;s
+                already in your cupboard, cups or grams, holidays, and a method for any
+                single night — all in{' '}
+                <Link href="/settings" style={{ color: 'var(--green)', textDecoration: 'underline' }}>
+                  Settings
+                </Link>.
+              </p>
+              <Nav />
+            </>
+          )}
+
+          {step === 9 && (
+            <>
               <h1 className="text-3xl mb-2" style={{ fontFamily: 'AbramoSerif, serif' }}>
                 Shall I email you your week?
               </h1>
@@ -383,58 +405,49 @@ export default function WelcomePage() {
                 The day before your week starts, I&apos;ll send the menu and the shopping
                 list — so you don&apos;t have to remember to come back for it.
               </p>
-              {/* Asked, not assumed. A pre-ticked box in a footer is how sixteen
-                  households ended up subscribed to something none of them chose. */}
+
+              {/* Choosing and committing are two separate actions. A button that
+                  both answers and submits means a mis-tap is a decision, on the
+                  one screen where there is nothing after it to undo from. */}
               <div className="flex flex-col gap-2">
-                <button onClick={() => finish(true)} disabled={saving}
-                  className="rounded-xl px-5 py-3.5 text-sm text-white text-left disabled:opacity-50"
-                  style={{ background: 'var(--green)' }}>
-                  <strong>Yes, send me my week</strong>
-                </button>
-                <button onClick={() => finish(false)} disabled={saving}
-                  className="rounded-xl px-5 py-3.5 text-sm text-left disabled:opacity-50"
-                  style={{ border: '1px solid var(--border)', color: 'var(--text-2)' }}>
-                  No thanks — I&apos;ll open the app when I want it
-                </button>
+                {([[true, 'Yes, send me my week'], [false, 'No thanks — I\'ll open the app when I want it']] as const).map(([val, label]) => (
+                  <button key={String(val)} type="button" onClick={() => setAutoPlan(val)}
+                    className="rounded-xl px-5 py-3.5 text-sm text-left transition-all"
+                    style={{
+                      border: `1px solid ${autoPlan === val ? 'var(--green)' : 'var(--border)'}`,
+                      background: autoPlan === val ? 'var(--green-lt)' : 'transparent',
+                      color: autoPlan === val ? 'var(--green)' : 'var(--text-2)',
+                    }}>
+                    <span style={{ marginRight: 8 }}>{autoPlan === val ? '\u2713' : '\u25CB'}</span>
+                    {label}
+                  </button>
+                ))}
               </div>
-              {/* Names the real place. The toggle lives inside "First Day of the
-                  Week" — the email lands the day before the week starts, so the
-                  two settings are one decision — and the link scrolls straight
-                  to it rather than leaving anyone hunting. */}
-              <p className="text-xs mt-4 leading-relaxed" style={{ color: 'var(--text-3)' }}>
+
+              <p className="text-sm mt-4 leading-relaxed" style={{ color: 'var(--text-2)' }}>
                 You can change your mind whenever you like:{' '}
                 <Link href="/settings?section=weekly-email" style={{ color: 'var(--green)', textDecoration: 'underline' }}>
-                  Settings → First Day of the Week
+                  Settings &rarr; First Day of the Week
                 </Link>{' '}
                 has the switch, and every email has a one-tap link at the bottom that
                 stops it for good.
               </p>
+
               {err && <p className="text-sm mt-4" style={{ color: '#C0392B' }}>{err}</p>}
-              <div className="mt-6">
+
+              <div className="flex items-center gap-3 mt-8">
                 <button onClick={() => setStep(s => s - 1)}
                   className="text-xs uppercase tracking-[0.18em] transition-opacity hover:opacity-60"
-                  style={{ color: 'var(--text-3)' }}>← Back</button>
+                  style={{ color: 'var(--text-3)' }}>&larr; Back</button>
+                <button onClick={() => finish(autoPlan)} disabled={saving}
+                  className="rounded-full px-7 py-3 text-sm text-white disabled:opacity-50"
+                  style={{ background: 'var(--green)' }}>
+                  {saving ? 'Saving\u2026' : 'Finish \u2014 see my first week'}
+                </button>
               </div>
             </>
           )}
         </div>}
-
-        {!understood && step === TOTAL && (
-          <div className="mt-6 rounded-[22px] px-6 py-5" style={{ background: 'var(--cream)' }}>
-            <p className="text-sm leading-relaxed" style={{ color: 'var(--text-2)' }}>
-              This first week is my best guess. Tell me what you loved and what you&apos;d change,
-              and by week four I&apos;ll know your family. I asked you eight questions; there are
-              plenty more answers I&apos;ll take whenever you feel like giving them — favourite
-              and unwanted sides, what&apos;s already in your cupboard, cups or grams, holidays,
-              and a method for any single night — all in{' '}
-              <Link href="/settings" style={{ color: 'var(--green)', textDecoration: 'underline' }}>Settings</Link>.
-            </p>
-
-            {/* The weekly-email offer used to live here as a tick-box footnote.
-                It is step 8 now — asked as a question, with a plain answer
-                required either way. */}
-          </div>
-        )}
       </div>
     </>
   );
