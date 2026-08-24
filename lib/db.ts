@@ -57,6 +57,7 @@ export async function getSettings(userId: string) {
       randomizePool: [], prepSchedule: { type: 'daily' as const },
       prioritizeMyRecipes: false, fromEmail: '', emailFromName: 'Fornello',
       onboardedAt: null,
+      noAllergiesConfirmedAt: null,
     };
   }
 
@@ -82,6 +83,7 @@ export async function getSettings(userId: string) {
     autoPlanDay: data.auto_plan_day ?? null,
     autoPlanOfferAnsweredAt: data.auto_plan_offer_answered_at ?? null,
     restrictionsCorrected: data.restrictions_corrected ?? null,
+    noAllergiesConfirmedAt: data.no_allergies_confirmed_at ?? null,
     language: data.language ?? 'English',
     units: data.units ?? 'us',
     weekStartDay: data.week_start_day ?? 1,
@@ -96,6 +98,7 @@ export async function saveSettings(userId: string, s: {
   restrictions: string[]; schedule: object;
   randomizeMealTypes: boolean; randomizePool: string[]; prepSchedule: object;
   prioritizeMyRecipes: boolean; fromEmail?: string; emailFromName?: string; cookingTechniques?: string[];
+  noAllergiesConfirmedAt?: string | null;
   preferredSides?: string[]; avoidedSides?: string[]; skipIngredients?: string[]; hasSeenTour?: boolean; language?: string; units?: string; weekStartDay?: number;
   vacations?: { start: string; end: string; note?: string }[];
   staples?: string[];

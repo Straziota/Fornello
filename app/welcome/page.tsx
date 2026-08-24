@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import PageBackground from '@/components/PageBackground';
@@ -42,18 +42,66 @@ export default function WelcomePage() {
   const [familySize, setFamilySize] = useState(4);
   const [restrictions, setRestrictions] = useState<string[]>([]);
   const [restrictionsFree, setRestrictionsFree] = useState('');
+  // An explicit no, so an empty list stops meaning both "nobody is allergic"
+  // and "they skipped the question". The two need opposite treatment.
+  const [noAllergies, setNoAllergies] = useState(false);
   const [cookNights, setCookNights] = useState<string[]>(['Monday','Tuesday','Wednesday','Thursday']);
   const [weeknightMinutes, setWeeknightMinutes] = useState(45);
   const [preferences, setPreferences] = useState<string[]>([]);
   const [skipIngredients, setSkipIngredients] = useState('');
   const [websites, setWebsites] = useState('');
   const [autoPlan, setAutoPlan] = useState(false);
+  // True once we know whether this household has answered before. Everyone is
+  // being re-onboarded, so most people arriving here are NOT new.
+  const [returning, setReturning] = useState(false);
   // Set when the server rewrote what was typed, so it can be shown before the
   // first menu is generated rather than discovered later in Settings.
   const [understood, setUnderstood] = useState<{ from: string[]; to: string[] } | null>(null);
 
-  const toggle = (list: string[], set: (v: string[]) => void, v: string) =>
+  // Start from what they already told us, rather than from a blank form.
+  //
+  // Re-onboarding an existing household through an empty questionnaire is a
+  // chance to LOSE an allergy: two of these families have nut allergies we had
+  // to repair by hand, and a blank form invites them to tap "no allergies"
+  // rather than retype what they already said. Prefilled, this is a
+  // confirmation pass — which is all a re-onboarding should ever be.
+  useEffect(() => {
+    fetch('/api/settings').then(r => r.ok ? r.json() : null).then(s => {
+      if (!s) return;
+      if (typeof s.familySize === 'number') setFamilySize(s.familySize);
+      if (Array.isArray(s.restrictions) && s.restrictions.length) setRestrictions(s.restrictions);
+      if (s.noAllergiesConfirmedAt && !(s.restrictions || []).length) setNoAllergies(true);
+      if (Array.isArray(s.preferences) && s.preferences.length) setPreferences(s.preferences);
+      if (Array.isArray(s.skipIngredients) && s.skipIngredients.length) setSkipIngredients(s.skipIngredients.join(', '));
+      if (Array.isArray(s.websites) && s.websites.length) setWebsites(s.websites.join(', '));
+      if (s.schedule && typeof s.schedule === 'object') {
+        const on = Object.entries(s.schedule).filter(([, d]: any) => d?.enabled).map(([day]) => day);
+        if (on.length) setCookNights(on);
+        const mins = Object.values(s.schedule).find((d: any) => d?.enabled && d?.minutes) as any;
+        if (mins?.minutes) setWeeknightMinutes(mins.minutes);
+      }
+      if (s.autoPlan) setAutoPlan(true);
+      // Anyone with settings worth prefilling has been here before, whether or
+      // not their onboarded_at stamp was cleared for the re-run.
+      if (s.hasSeenTour || s.onboardedAt || (s.restrictions || []).length) setReturning(true);
+    }).catch(() => {});
+  }, []);
+
+  const toggle = (list: string[], set: (v: string[]) => void, v: string) => {
+    setNoAllergies(false);
     set(list.includes(v) ? list.filter(x => x !== v) : [...list, v]);
+  };
+
+  const declareNone = () => {
+    const next = !noAllergies;
+    setNoAllergies(next);
+    if (next) { setRestrictions([]); setRestrictionsFree(''); }
+  };
+
+  // The question now has to be answered one way or the other. Not to be
+  // officious — it is the only question here where silence is dangerous, and
+  // the whole point of the button is to stop treating silence as an answer.
+  const allergyAnswered = noAllergies || restrictions.length > 0 || restrictionsFree.trim().length > 0;
 
   // Real consequence, not flattery: this filters the same theme list the menu
   // generator uses, so the number shown is the number that actually applies.
@@ -67,7 +115,8 @@ export default function WelcomePage() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           familySize,
-          restrictions: [...restrictions, ...restrictionsFree.split(',').map(s => s.trim()).filter(Boolean)],
+          restrictions: noAllergies ? [] : [...restrictions, ...restrictionsFree.split(',').map(s => s.trim()).filter(Boolean)],
+          noAllergies,
           cookNights, weeknightMinutes, preferences,
           skipIngredients: skipIngredients.split(',').map(s => s.trim()).filter(Boolean),
           websites: websites.split(',').map(s => s.trim()).filter(Boolean),
@@ -183,26 +232,56 @@ export default function WelcomePage() {
 
           {step === 2 && (
             <>
-              <h1 className="text-3xl mb-2" style={{ fontFamily: 'AbramoSerif, serif' }}>Any allergies or absolute no-gos?</h1>
+              <h1 className="text-3xl mb-2" style={{ fontFamily: 'AbramoSerif, serif' }}>
+                {returning ? 'Still the same allergies?' : 'Any allergies or absolute no-gos?'}
+              </h1>
               <p className="text-sm mb-6" style={{ color: 'var(--text-2)' }}>
-                These are never included — not as a variation, not as a garnish.
+                {returning
+                  ? 'Here\'s what we have. Change anything that\'s out of date — these are never included, not as a variation, not as a garnish.'
+                  : 'These are never included — not as a variation, not as a garnish.'}
               </p>
               <div className="flex flex-wrap gap-2 mb-4">
                 {COMMON_ALLERGIES.map(a => (
                   <Chip key={a} label={a} on={restrictions.includes(a)} onClick={() => toggle(restrictions, setRestrictions, a)} />
                 ))}
               </div>
-              <input value={restrictionsFree} onChange={e => setRestrictionsFree(e.target.value)}
+              <input value={restrictionsFree}
+                onChange={e => { setRestrictionsFree(e.target.value); if (e.target.value) setNoAllergies(false); }}
                 placeholder="Anything else? Separate with commas"
                 className="w-full rounded-xl px-4 py-3 text-sm"
                 style={{ border: '1px solid var(--border)', background: 'var(--cream)' }} />
+
+              {/* Set apart from the chips on purpose. It is not another allergy
+                  to pick — it is the opposite answer, and it has to be as easy
+                  to give as the list above. */}
+              <button type="button" onClick={declareNone}
+                className="w-full mt-4 rounded-xl px-4 py-3 text-sm text-left transition-all"
+                style={{
+                  border: `1px solid ${noAllergies ? 'var(--green)' : 'var(--border)'}`,
+                  background: noAllergies ? 'var(--green-lt)' : 'transparent',
+                  color: noAllergies ? 'var(--green)' : 'var(--text-2)',
+                }}>
+                <span style={{ marginRight: 8 }}>{noAllergies ? '✓' : '○'}</span>
+                No allergies or restrictions in this family
+              </button>
+              {noAllergies && (
+                <p className="text-xs mt-3 italic" style={{ color: 'var(--text-3)' }}>
+                  Noted — and you can add one here or in Settings the moment anything changes.
+                </p>
+              )}
               {excluded.length > 0 && (
                 <p className="text-sm mt-4 px-4 py-3 rounded-xl" style={{ background: 'var(--green-lt)', color: 'var(--green)' }}>
                   Noted — that takes {excluded.length} cooking {excluded.length === 1 ? 'direction' : 'directions'} off
                   the table, including {excluded.slice(0, 2).join(' and ')}. I won&apos;t suggest them.
                 </p>
               )}
-              <Nav />
+              <Nav disabled={!allergyAnswered} />
+              {!allergyAnswered && (
+                <p className="text-xs mt-3" style={{ color: 'var(--text-3)' }}>
+                  Please answer this one — it&apos;s the only question here where I can&apos;t
+                  safely guess.
+                </p>
+              )}
             </>
           )}
 

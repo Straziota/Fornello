@@ -38,6 +38,11 @@ export async function POST(req: NextRequest) {
   const rawRestrictions = Array.isArray(body.restrictions) ? body.restrictions : [];
   const { restrictions, correction } = await normalizeOnSave(getAnthropicKey(), rawRestrictions, []);
 
+  // Recorded only when they actually said it, and only when the list is empty —
+  // a stamp sitting next to declared allergies would be a contradiction, and
+  // the safe reading of a contradiction is that the allergies are real.
+  const noAllergies = body.noAllergies === true && restrictions.length === 0;
+
   await saveSettings(user!.id, {
     ...existing,
     familySize: Number(body.familySize) || 4,
@@ -76,6 +81,10 @@ export async function POST(req: NextRequest) {
   if (correction) {
     await adminClient.from('settings')
       .update({ restrictions_corrected: correction }).eq('user_id', user!.id);
+  }
+  if (noAllergies) {
+    await adminClient.from('settings')
+      .update({ no_allergies_confirmed_at: new Date().toISOString() }).eq('user_id', user!.id);
   }
 
   return NextResponse.json({ ok: true, restrictions, corrected: correction });
