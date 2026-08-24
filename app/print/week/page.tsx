@@ -145,6 +145,11 @@ export default function PrintWeekPage() {
         .meal-name { font-size: 24px; }
         .meal-meta { font-size: 13px; color: #7A847B; margin-top: 4px; }
         .section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.2em; color: #556257; margin: 20px 0 10px; }
+        /* Printed sheets are read furthest from the app — taped inside a
+           cupboard, days later, often by someone who never filled in the
+           allergy list. One line per sheet, above the ingredients, and it
+           must survive a black-and-white printer. */
+        .safety { font-size: 9px; font-style: italic; color: #6B7269; margin: -4px 0 10px; line-height: 1.4; }
         .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
         .ing { display: flex; gap: 12px; padding: 5px 0; border-bottom: 1px dotted #D4B896; font-size: 13px; }
         .amt { color: #556257; font-weight: 700; min-width: 72px; flex-shrink: 0; }
@@ -249,6 +254,7 @@ export default function PrintWeekPage() {
                 <div className="two-col">
                   <div>
                     <div className="section-title">Ingredients</div>
+                    <p className="safety">Recipes are AI-generated and avoid the ingredients you&apos;ve listed &mdash; but check every ingredient and label before you cook.</p>
                     {meal.ingredients.map((ing, i) => (
                       <div key={i} className="ing">
                         <span className="amt">{ing.amount}</span>
