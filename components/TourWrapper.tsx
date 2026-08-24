@@ -8,30 +8,26 @@ export const useTour = () => useContext(TourContext);
 
 // Tour should never appear on these (unauthenticated) pages
 const PUBLIC_PATHS = ['/login', '/signup', '/privacy', '/reset-password', '/welcome', '/offline'];
+const isPublic = (p?: string | null) => PUBLIC_PATHS.some(x => (p || '').startsWith(x));
 
 export default function TourWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [showTour, setShowTour] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
-  const [checked, setChecked] = useState(false);
-  // Set the moment we know this account still owes us the questionnaire, and
-  // never cleared: from here the only destination is /welcome, and the app
-  // behind it must not paint even for a frame.
-  const [redirecting, setRedirecting] = useState(false);
+  // "We have confirmed this account has onboarded." NOT "we have run a check" —
+  // that distinction is the whole bug. Signing in leaves the wrapper mounted, so
+  // a flag meaning "checked" was already true from the login page and the app
+  // painted the moment /this-week mounted, before the new check could answer.
+  const [verified, setVerified] = useState(false);
 
   useEffect(() => {
     // Skip on public pages — user isn't logged in yet
-    if (PUBLIC_PATHS.some(p => pathname?.startsWith(p))) {
-      // Clearing `redirecting` matters: /welcome is itself a public path, so
-      // without this the splash we show on the way there would never lift once
-      // we arrived, and the questionnaire would sit behind a logo forever.
-      setRedirecting(false);
-      setChecked(true);
-      return;
-    }
+    // Public pages render themselves; there is no app behind them to leak.
+    if (PUBLIC_PATHS.some(p => pathname?.startsWith(p))) return;
     fetch('/api/settings').then(async r => {
-      if (!r.ok) { setChecked(true); return; }
+      // Not signed in. The middleware sends them to /login; nothing to gate.
+      if (!r.ok) { setVerified(true); return; }
       const s = await r.json();
       // Only show welcome to authenticated users who haven't seen the tour
       // (familySize check guards against malformed responses)
@@ -40,15 +36,16 @@ export default function TourWrapper({ children }: { children: React.ReactNode })
       // unconfigured product with a "want a tour?" modal on top — that was three
       // gates before anyone saw a dinner.
       if (s && !s.onboardedAt) {
-        setRedirecting(true);
+        // Deliberately leaves `verified` false, so nothing behind this paints
+        // while the navigation is in flight.
         router.replace('/welcome');
         return;
       }
       if (s && typeof s.familySize === 'number' && !s.hasSeenTour) {
         setShowWelcome(true);
       }
-      setChecked(true);
-    }).catch(() => setChecked(true));
+      setVerified(true);
+    }).catch(() => setVerified(true));
   }, [pathname]);
 
   const markSeen = () => fetch('/api/tour', { method: 'POST' }).catch(() => {});
@@ -65,18 +62,20 @@ export default function TourWrapper({ children }: { children: React.ReactNode })
     markSeen();
   };
 
-  // Nothing renders until we know whether this account has onboarded. Signing
-  // in used to paint the full home screen — nav icons, this week, the lot —
-  // and then yank it away as the redirect landed, which reads as the app
-  // breaking rather than as a questionnaire starting.
+  // Nothing behind a private path renders until this account is confirmed
+  // onboarded. Signing in used to paint the full home screen — nav icons, this
+  // week, the lot — and then yank it away as the redirect landed, which reads
+  // as the app breaking rather than as a questionnaire starting.
   //
-  // `checked` is only false on the first load: the effect re-runs on every
-  // navigation but never sets it back, so this costs one held frame per
-  // session, not one per page.
-  if (!checked || redirecting) {
+  // Public paths are exempt, and `verified` stays true once set, so this costs
+  // one held frame per session rather than one per navigation.
+  if (!isPublic(pathname) && !verified) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center" style={{ background: 'var(--cream, #F7F4EE)' }}>
-        <img src="/Fornello Logo.png" alt="" style={{ width: 128, opacity: 0.5 }} />
+      <div className="fixed inset-0 flex items-center justify-center px-4" style={{ background: 'var(--cream, #F7F4EE)' }}>
+        <div className="text-center">
+          <img src="/Fornello Logo.png" alt="Fornello" style={{ width: '160px', margin: '0 auto 16px' }} />
+          <p className="text-sm italic" style={{ color: 'var(--text-3)' }}>Your family meal planner</p>
+        </div>
       </div>
     );
   }
@@ -86,7 +85,7 @@ export default function TourWrapper({ children }: { children: React.ReactNode })
       {children}
 
       {/* Welcome prompt */}
-      {checked && showWelcome && !showTour && (
+      {showWelcome && !showTour && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
              style={{ background: 'rgba(0,0,0,0.5)' }}>
           <div className="rounded-[22px] p-8 max-w-sm w-full animate-slide-up"

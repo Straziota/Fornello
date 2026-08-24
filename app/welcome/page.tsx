@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import PageBackground from '@/components/PageBackground';
 import { themesExcludedBy } from '@/lib/themes';
 
 const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
@@ -14,6 +13,9 @@ const COMMON_ALLERGIES = ['Shellfish','Peanuts','Tree nuts','Dairy','Gluten','Eg
 
 const TOTAL = 9;
 
+// Deliberately identical to the login card. Signing in and answering the
+// questionnaire are one continuous moment and should not look like two
+// different products.
 const card: React.CSSProperties = {
   background: 'var(--white)', borderRadius: 22, padding: 32,
   boxShadow: '0 8px 32px rgba(47,58,50,0.08)',
@@ -167,8 +169,14 @@ export default function WelcomePage() {
 
   return (
     <>
-      <PageBackground src="/backgrounds/this-week-page.png" />
-      <div className="max-w-lg mx-auto py-6">
+      <div className="min-h-screen flex items-start justify-center px-4 py-10"
+           style={{ background: 'var(--cream)' }}>
+        <div className="w-full max-w-sm">
+
+          <div className="text-center mb-8">
+            <img src="/Fornello Logo.png" alt="Fornello" style={{ width: '160px', margin: '0 auto 16px' }} />
+            <p className="text-sm italic" style={{ color: 'var(--text-3)' }}>Your family meal planner</p>
+          </div>
 
         {/* Shown once, between the last answer and the first menu. Fornello has
             rewritten what was typed into the ingredient names its checks match
@@ -449,7 +457,8 @@ export default function WelcomePage() {
             </>
           )}
         </div>}
-      </div>
-    </>
+          </div>
+        </div>
+      </>
   );
 }
