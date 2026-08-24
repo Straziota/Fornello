@@ -1113,7 +1113,19 @@ function recipeInputToRow(input: HeritageProfileRecipeInput): Record<string, unk
   setIf('original_scan_url', input.original_scan_url ?? undefined);
   setIf('photo_url', input.photo_url ?? undefined);
   setIf('transcription_status', input.transcription_status ?? undefined);
+  setIf('original', input.original ?? undefined);
+  setIf('original_language', input.original_language?.trim() || undefined);
   return row;
+}
+
+// Columns added by sql/2026-08-24-recipe-translation.sql. Until that migration
+// runs, Postgres rejects the whole insert because of them — which would mean a
+// contributor loses a recipe they just typed, to save a field they did not ask
+// for. Better to drop the extras and keep the recipe.
+const TRANSLATION_COLUMNS = ['original', 'original_language'];
+function isMissingTranslationColumn(message: string): boolean {
+  return TRANSLATION_COLUMNS.some(c => message.includes(`'${c}'`) || message.includes(`"${c}"`))
+    && /column|schema cache/i.test(message);
 }
 
 export async function addHeritageProfileRecipe(
@@ -1124,11 +1136,16 @@ export async function addHeritageProfileRecipe(
     .from('heritage_profiles').select('id').eq('id', profileId).eq('owner_id', ownerId).maybeSingle();
   if (!profile) throw new Error('Profile not found');
 
-  const { data, error } = await adminClient
-    .from('heritage_profile_recipes')
-    .insert({ profile_id: profileId, owner_id: ownerId, ...recipeInputToRow(input) })
-    .select('*')
-    .single();
+  const row = { profile_id: profileId, owner_id: ownerId, ...recipeInputToRow(input) };
+  let { data, error } = await adminClient
+    .from('heritage_profile_recipes').insert(row).select('*').single();
+
+  if (error && isMissingTranslationColumn(error.message)) {
+    console.warn('[heritage] translation columns missing — saving without them. Run sql/2026-08-24-recipe-translation.sql');
+    for (const c of TRANSLATION_COLUMNS) delete (row as Record<string, unknown>)[c];
+    ({ data, error } = await adminClient
+      .from('heritage_profile_recipes').insert(row).select('*').single());
+  }
   if (error) throw new Error(error.message);
   return mapProfileRecipeRow(data);
 }

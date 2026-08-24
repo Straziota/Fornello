@@ -210,6 +210,10 @@ export interface HeritageProfileRecipe {
   original_scan_url?: string | null;
   photo_url?: string | null;
   transcription_status: TranscriptionStatus;
+  // The recipe as written on the card, kept beside the translation so a Family
+  // Kitchen never ends up holding only an English rendering of it.
+  original?: Partial<HeritageProfileRecipeInput> | null;
+  original_language?: string | null;
   display_order?: number;
   created_at?: string;
   updated_at?: string;
@@ -236,4 +240,6 @@ export interface HeritageProfileRecipeInput {
   original_scan_url?: string;
   photo_url?: string;
   transcription_status?: TranscriptionStatus;
+  original?: Partial<HeritageProfileRecipeInput> | null;
+  original_language?: string;
 }

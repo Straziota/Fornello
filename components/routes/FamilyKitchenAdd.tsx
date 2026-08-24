@@ -42,6 +42,14 @@ export default function AddRecipePage({ slug }: { slug: string }) {
   const [background, setBackground] = useState('');
   const [transcribed, setTranscribed] = useState(false);
 
+  // The card's own language, and the English version once asked for. Both are
+  // kept: the form shows one at a time, the save stores both.
+  const [cardLanguage, setCardLanguage] = useState('');
+  const [original, setOriginal] = useState<any>(null);
+  const [translation, setTranslation] = useState<any>(null);
+  const [showing, setShowing] = useState<'original' | 'translation'>('original');
+  const [translating, setTranslating] = useState(false);
+
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
@@ -60,6 +68,51 @@ export default function AddRecipePage({ slug }: { slug: string }) {
     setTranscribed(true);
   };
 
+  // Read the form back out, so whichever version is on screen is what gets
+  // saved — including any edits made to it.
+  const currentDraft = () => ({
+    name, cuisine, description,
+    ingredients: parseIngredients(ingredients),
+    instructions: linesToArray(instructions),
+    nonna_wisdom: linesToArray(wisdom),
+    prep_ahead: [] as string[],
+  });
+
+  const translate = async () => {
+    setTranslating(true);
+    try {
+      const source = original || currentDraft();
+      const res = await fetch('/api/heritage/translate', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ draft: source, from: cardLanguage, to: 'English' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not translate');
+      if (!original) setOriginal(source);
+      setTranslation(data.translation);
+      show('translation', data.translation);
+      setToast({ msg: 'Translated — the original is kept and you can switch back.', type: 'success' });
+    } catch (e: any) {
+      setToast({ msg: e.message, type: 'error' });
+    } finally { setTranslating(false); }
+  };
+
+  // Switching versions saves any edits made to the one being left, so nothing
+  // typed into the English version is lost by looking at the original.
+  const show = (which: 'original' | 'translation', preloaded?: any) => {
+    const leaving = currentDraft();
+    if (showing === 'original') setOriginal(leaving); else setTranslation((t: any) => ({ ...t, ...leaving }));
+    const next = which === 'translation' ? (preloaded || translation) : original;
+    if (!next) return;
+    setName(next.name || '');
+    if (next.cuisine !== undefined) setCuisine(next.cuisine || '');
+    setDescription(next.description || '');
+    setIngredients(ingredientsToText(next.ingredients || []));
+    setInstructions((next.instructions || []).join('\n'));
+    setWisdom((next.nonna_wisdom || []).join('\n'));
+    setShowing(which);
+  };
+
   const onScan = async (file: File) => {
     setScanning(true);
     setLegibility(null); setUnclear([]);
@@ -72,7 +125,16 @@ export default function AddRecipePage({ slug }: { slug: string }) {
       setScanUrl(data.scan_url);
       if (data.draft) {
         applyDraft(data.draft);
-        setToast({ msg: 'Recipe read from the card — review and edit below.', type: 'success' });
+        const lang = (data.draft.detected_language || '').trim();
+        setCardLanguage(lang);
+        setOriginal(null); setTranslation(null); setShowing('original');
+        const foreign = lang && !/^english$/i.test(lang);
+        setToast({
+          msg: foreign
+            ? `Read the card — it's in ${lang}. You can translate it below.`
+            : 'Recipe read from the card — review and edit below.',
+          type: 'success',
+        });
       } else {
         setToast({ msg: data.transcription_error || 'Saved the photo — please type the recipe in.', type: 'error' });
       }
@@ -98,6 +160,11 @@ export default function AddRecipePage({ slug }: { slug: string }) {
           background,
           original_scan_url: scanUrl || undefined,
           transcription_status: transcribed ? 'done' : 'none',
+          // Both versions travel together. Whichever is on screen goes into the
+          // main fields; the card's own words are preserved separately so the
+          // Family Kitchen never ends up holding only a translation.
+          original: showing === 'translation' ? original : (translation ? currentDraft() : undefined),
+          original_language: translation ? cardLanguage : undefined,
         }),
       });
       const data = await res.json();
@@ -157,6 +224,63 @@ export default function AddRecipePage({ slug }: { slug: string }) {
                 ? <T>Parts of the card were hard to read — please check everything below.</T>
                 : <T>A few words were unclear — please double-check the highlighted items.</T>}
             </p>
+          )}
+
+          {/* Offered only when the card is not already in English. The original
+              is never replaced — translating stores it and switches the view,
+              and both versions are saved. */}
+          {cardLanguage && !/^english$/i.test(cardLanguage) && (
+            <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--green)' }}>
+              {!translation ? (
+                <>
+                  <p className="text-sm mb-3" style={{ color: 'var(--text-2)' }}>
+                    This card is written in <strong>{cardLanguage}</strong>. I can add an
+                    English version beside it — the original stays exactly as written.
+                  </p>
+                  <button onClick={translate} disabled={translating}
+                    className="rounded-full px-5 py-2.5 text-xs uppercase tracking-[0.18em] text-white disabled:opacity-50"
+                    style={{ background: 'var(--green)' }}>
+                    {translating ? 'Translating…' : `Translate from ${cardLanguage}`}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="text-xs uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>
+                    Showing
+                  </p>
+                  <div className="flex gap-2 flex-wrap">
+                    {([['original', cardLanguage], ['translation', 'English']] as const).map(([key, label]) => (
+                      <button key={key} onClick={() => show(key as 'original' | 'translation')}
+                        className="rounded-full px-4 py-2 text-xs"
+                        style={{
+                          border: `1px solid ${showing === key ? 'var(--green)' : 'var(--border)'}`,
+                          background: showing === key ? 'var(--green)' : 'transparent',
+                          color: showing === key ? '#fff' : 'var(--text-2)',
+                        }}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs mt-3 italic" style={{ color: 'var(--text-3)' }}>
+                    Edit either one — both are saved, and the card keeps its own words.
+                  </p>
+
+                  {/* The two things a family can correct that a translator cannot
+                      get right on its own. Worth showing, not burying. */}
+                  {!!translation.kept_terms?.length && (
+                    <div className="mt-3 text-xs" style={{ color: 'var(--text-2)' }}>
+                      <span style={{ color: 'var(--text-3)' }}>Kept in {cardLanguage}: </span>
+                      {translation.kept_terms.map((k: any) => k.term).join(' · ')}
+                    </div>
+                  )}
+                  {!!translation.translator_notes?.length && (
+                    <ul className="mt-2 text-xs list-disc pl-4" style={{ color: '#a4552b' }}>
+                      {translation.translator_notes.map((n: string, i: number) => <li key={i}>{n}</li>)}
+                    </ul>
+                  )}
+                </>
+              )}
+            </div>
           )}
           {unclear.length > 0 && (
             <p className="text-xs mt-1 italic" style={{ color: 'var(--text-3)' }}>

@@ -10,13 +10,22 @@ import { T } from '@/components/T';
 import type { HeritageProfile, HeritageProfileRecipe } from '@/lib/types';
 import { familyKitchenAddHref } from '@/lib/routes';
 
-function toUserRecipe(r: HeritageProfileRecipe) {
+function toUserRecipe(r: HeritageProfileRecipe, asOriginal = false) {
+  // A translated card keeps its own words in `original`. Showing them is the
+  // point of the Family Kitchen — the English version is the useful one, the
+  // original is the one that is actually hers.
+  const o = asOriginal && r.original ? r.original : null;
   return {
-    name: r.name, cuisine: r.cuisine || '', mealType: r.meal_type || '',
+    name: o?.name || r.name, cuisine: r.cuisine || '', mealType: r.meal_type || '',
     serves: r.serves || undefined, total_time: r.total_time || '', prep_time: r.prep_time || '',
-    cook_time: r.cook_time || '', difficulty: r.difficulty || 'Medium', description: r.description || '',
-    tags: r.tags, ingredients: r.ingredients, instructions: r.instructions,
-    prep_ahead: r.prep_ahead, nonna_wisdom: r.nonna_wisdom, photo_url: r.photo_url || undefined,
+    cook_time: r.cook_time || '', difficulty: r.difficulty || 'Medium',
+    description: o?.description || r.description || '',
+    tags: r.tags,
+    ingredients: (o?.ingredients as any) || r.ingredients,
+    instructions: (o?.instructions as any) || r.instructions,
+    prep_ahead: (o?.prep_ahead as any) || r.prep_ahead,
+    nonna_wisdom: (o?.nonna_wisdom as any) || r.nonna_wisdom,
+    photo_url: r.photo_url || undefined,
     background: r.background || '', variants: r.variants,
     source: '',
   };
@@ -30,6 +39,13 @@ export default function ProfileDetailPage({ slug }: { slug: string }) {
   const [loading, setLoading] = useState(true);
   const [notFoundFlag, setNotFoundFlag] = useState(false);
   const [viewRecipe, setViewRecipe] = useState<any | null>(null);
+  // Which version of a translated card is open, and the row it came from.
+  const [viewSource, setViewSource] = useState<HeritageProfileRecipe | null>(null);
+  const [viewOriginal, setViewOriginal] = useState(false);
+
+  const openRecipe = (r: HeritageProfileRecipe, asOriginal = false) => {
+    setViewSource(r); setViewOriginal(asOriginal); setViewRecipe(toUserRecipe(r, asOriginal));
+  };
   const [inRotation, setInRotation] = useState<Set<string>>(new Set());
   const [busyVisibility, setBusyVisibility] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
@@ -100,7 +116,21 @@ export default function ProfileDetailPage({ slug }: { slug: string }) {
     <>
       <PageBackground src="/backgrounds/Nonna's kitchen-page.png" />
       {toast && <Toast message={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
-      {viewRecipe && <RecipeCardModal recipe={viewRecipe} onClose={() => setViewRecipe(null)} readOnly />}
+      {viewRecipe && (
+        <>
+          <RecipeCardModal recipe={viewRecipe} onClose={() => { setViewRecipe(null); setViewSource(null); }} readOnly />
+          {/* Floats over the card. A translated recipe should never make the
+              family hunt for their grandmother's actual words. */}
+          {viewSource?.original && viewSource.original_language && (
+            <button
+              onClick={() => openRecipe(viewSource, !viewOriginal)}
+              className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[10000] rounded-full px-5 py-2.5 text-xs uppercase tracking-[0.18em] text-white shadow-lg"
+              style={{ background: 'var(--green)' }}>
+              {viewOriginal ? 'Show English' : `Show the original — ${viewSource.original_language}`}
+            </button>
+          )}
+        </>
+      )}
 
       <Link href={isOwner ? '/family-kitchens' : '/heritage-kitchen'}
         className="inline-block text-xs uppercase tracking-widest mb-6 transition-opacity hover:opacity-70"
@@ -172,7 +202,7 @@ export default function ProfileDetailPage({ slug }: { slug: string }) {
               <div key={r.id}
                    className="rounded-[22px] overflow-hidden ring-1 group relative cursor-pointer"
                    style={{ boxShadow: '0 4px 16px rgba(47,58,50,0.06)' }}
-                   onClick={() => setViewRecipe(toUserRecipe(r))}>
+                   onClick={() => openRecipe(r)}>
                 {image ? (
                   <img src={image} alt={r.name} className="w-full object-cover block"
                        style={{ height: 170, filter: r.original_scan_url && !r.photo_url ? 'sepia(0.2) saturate(1.1)' : 'saturate(1.4) sepia(0.1)' }} />
