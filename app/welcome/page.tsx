@@ -307,18 +307,13 @@ export default function WelcomePage() {
           {step === 4 && (
             <>
               <h1 className="text-3xl mb-2" style={{ fontFamily: 'AbramoSerif, serif' }}>How much time do you have every night?</h1>
-              <p className="text-sm mb-6" style={{ color: 'var(--text-2)' }}>Recipes are chosen to genuinely fit — not squeezed to look like they do.</p>
-              <div className="flex flex-wrap gap-2">
-                {[20, 30, 45, 60, 90].map(m => (
-                  <Chip key={m} label={m >= 60 ? `${m / 60} hr${m > 60 ? '+' : ''}` : `${m} min`}
-                    on={weeknightMinutes === m} onClick={() => setWeeknightMinutes(m)} />
-                ))}
-              </div>
-              {/* This questionnaire replaced thirty-five per-day decisions with
-                  two questions, which is right — but only if people know the
-                  detail still exists. Said here, at the step where its absence
-                  is actually felt, rather than only in a closing note. */}
-              <p className="text-sm mt-5 leading-relaxed" style={{ color: 'var(--text-2)' }}>
+              <p className="text-sm mb-3" style={{ color: 'var(--text-2)' }}>Recipes are chosen to genuinely fit — not squeezed to look like they do.</p>
+              {/* Above the chips, not below them. This questionnaire replaced
+                  thirty-five per-day decisions with two questions, which is right
+                  — but only if people know the detail still exists, and anyone
+                  who taps a time and hits Continue never scrolls past the
+                  control. Below it, this would be read by nobody it is for. */}
+              <p className="text-sm mb-6 leading-relaxed" style={{ color: 'var(--text-2)' }}>
                 One night different from the rest? Once you&apos;ve seen a week you can give
                 any single day its own time, meal type or method — slow cooker, air fryer,
                 grill — in{' '}
@@ -326,6 +321,12 @@ export default function WelcomePage() {
                   Settings → Cooking Schedule
                 </Link>.
               </p>
+              <div className="flex flex-wrap gap-2">
+                {[20, 30, 45, 60, 90].map(m => (
+                  <Chip key={m} label={m >= 60 ? `${m / 60} hr${m > 60 ? '+' : ''}` : `${m} min`}
+                    on={weeknightMinutes === m} onClick={() => setWeeknightMinutes(m)} />
+                ))}
+              </div>
               <Nav />
             </>
           )}
