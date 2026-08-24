@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { waitUntil } from '@vercel/functions';
 
 export const maxDuration = 300;
 import { requireUser, getAnthropicKey } from '@/lib/auth';
@@ -177,8 +178,13 @@ export async function POST(req: Request) {
     (menu as any).language = language;
     const id = await saveMenu(user!.id, menu);
 
-    // Background: load ALL recipes first, then build grocery list from exact ingredients
-    Promise.all(
+    // waitUntil, not fire-and-forget. The response is returned immediately by
+    // design — onboarding must produce a menu without waiting on illustrations —
+    // but a serverless function can be frozen the moment it responds, and any
+    // in-flight promise dies with it. That is why a fresh menu came back with
+    // one illustration out of four: the first lookup landed and the rest were
+    // killed mid-flight, silently, with no error anywhere.
+    waitUntil(Promise.all(
       menu.meals
         .filter((m: any) => !m.isLeftover)
         .map(async (meal: any) => {
@@ -214,8 +220,18 @@ export async function POST(req: Request) {
       );
       const grocery_list = await generateGroceryList(apiKey, allMeals, settings.familySize);
       const current = await getLatestMenu(user!.id);
-      if (current?.id === id) await updateMenuData(user!.id, id, { ...current, meals: allMeals, grocery_list });
-    }).catch(() => {});
+      if (current?.id === id) {
+        // Carry forward whatever photo the row already has. updateMealPhoto
+        // wrote illustrations into the stored menu while this ran; allMeals is
+        // rebuilt from in-memory objects that never saw them, so writing it back
+        // unchanged would erase the illustrations it just saved.
+        const withArt = allMeals.map((m: any) => {
+          const saved = (current.meals || []).find((c: any) => c.day === m.day);
+          return m.photo_url ? m : (saved?.photo_url ? { ...m, photo_url: saved.photo_url } : m);
+        });
+        await updateMenuData(user!.id, id, { ...current, meals: withArt, grocery_list });
+      }
+    }).catch(() => {}));
 
     return NextResponse.json({ ...menu, id });
   } catch (e: any) {

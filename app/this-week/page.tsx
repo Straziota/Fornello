@@ -34,45 +34,34 @@ function Divider({ label }: { label: string }) {
   );
 }
 
-// Curated Unsplash food photo IDs by cuisine — permanent CDN URLs, no API key needed
-const FOOD_PHOTOS: Record<string, string[]> = {
-  Italian:       ['photo-1555396273-367ea4eb4db5','photo-1621996346565-e3dbc646d9a9','photo-1473093295043-cdd812d0e601'],
-  Asian:         ['photo-1569050467447-ce54b3bbc37d','photo-1563245372-f21724e3856d','photo-1547592180-85f173990880'],
-  Mexican:       ['photo-1565299585323-38d6b0865b47','photo-1551504734-5ee1c4a1479b','photo-1640467638851-17ee6b42c0e0'],
-  Seafood:       ['photo-1519708227418-c8fd9a32b7a2','photo-1534482421-64566f976cfa','photo-1559737558-2f5a35f4523b'],
-  meat:          ['photo-1544025162-d76694265947','photo-1558030006-450675393462','photo-1529193591184-b1d58069ecdd'],
-  chicken:       ['photo-1598103442097-8b74394b95c2','photo-1432139555190-58524dae6a55','photo-1501200291289-c5a76c232e5f'],
-  vegetarian:    ['photo-1512621776951-a57141f2eefd','photo-1498837167922-ddd27525d352','photo-1546069901-ba9599a7e63c'],
-  pasta:         ['photo-1540189549336-e6e99c3679fe','photo-1611270629569-8b357cb88da9','photo-1504674900247-0877df9cc836'],
-  soup:          ['photo-1547592166-23ac45744acd','photo-1448043552756-e747b7a2b2b8','photo-1476718406336-bb5a9690ee2a'],
-  default:       ['photo-1504674900247-0877df9cc836','photo-1546069901-ba9599a7e63c','photo-1567620905732-2d1ec7ab7445','photo-1540189549336-e6e99c3679fe'],
-};
-
-function getMealPhoto(cuisine?: string, tags?: string[]): string {
-  const key = Object.keys(FOOD_PHOTOS).find(k =>
-    cuisine?.toLowerCase().includes(k.toLowerCase()) ||
-    tags?.some(t => t.toLowerCase().includes(k.toLowerCase()))
-  ) || 'default';
-  const photos = FOOD_PHOTOS[key];
-  // Pick consistently based on cuisine string so the same meal always gets the same photo
-  const idx = (cuisine || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0) % photos.length;
-  return `https://images.unsplash.com/${photos[idx]}?auto=format&fit=crop&w=400&h=300&q=75`;
+// No stock-photo fallback. A generic Unsplash photograph keyed off cuisine used
+// to fill in whenever a meal had no illustration — which meant a picture of
+// somebody else's pasta stood in for your Saltimbocca, and looked convincing
+// enough that a silent pipeline failure read as a design choice. That is exactly
+// how three missing illustrations went unnoticed until they were on screen.
+//
+// A quiet parchment tile instead: it asserts nothing, and an absence that looks
+// like an absence is a bug you can see.
+function MealImagePlaceholder() {
+  return (
+    <div className="h-24 w-32 rounded-[18px] shrink-0"
+         style={{
+           background: 'linear-gradient(135deg, #F3EEE4 0%, #EDE6D8 100%)',
+           border: '1px solid var(--border-2)',
+         }} />
+  );
 }
 
-function MealImage({ cuisine, tags, isLeftover, photoUrl }: { cuisine?: string; tags?: string[]; isLeftover?: boolean; photoUrl?: string }) {
+function MealImage({ isLeftover, photoUrl }: { isLeftover?: boolean; photoUrl?: string }) {
   if (isLeftover) return (
     <div className="h-24 w-32 rounded-[18px] flex items-center justify-center shrink-0 text-3xl"
          style={{ background: '#FEF6E4' }}>♻️</div>
   );
-  const fallback = getMealPhoto(cuisine, tags);
-  const src = photoUrl || fallback;
+  if (!photoUrl) return <MealImagePlaceholder />;
   return (
-    <img src={src} alt=""
+    <img src={photoUrl} alt=""
          className="h-24 w-32 rounded-[18px] object-cover shrink-0"
-         onError={e => {
-           const img = e.target as HTMLImageElement;
-           if (img.src !== fallback) { img.src = fallback; } else { img.style.display = 'none'; }
-         }} />
+         onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
   );
 }
 
@@ -383,7 +372,7 @@ export default function HomePage() {
                         </p>
                       ) : null}
                     </div>
-                    <MealImage cuisine={meal.cuisine} tags={meal.tags} isLeftover={meal.isLeftover} photoUrl={meal.photo_url} />
+                    <MealImage isLeftover={meal.isLeftover} photoUrl={meal.photo_url} />
                   </div>
                   {!meal.isLeftover && (
                     <div className="mt-3 pt-3 border-t flex items-center justify-between gap-2" style={{ borderColor: 'var(--border)' }}>
