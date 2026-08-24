@@ -12,7 +12,7 @@ const CUISINES = ['Italian','French','Mediterranean','Mexican','Indian','Thai','
 
 const COMMON_ALLERGIES = ['Shellfish','Peanuts','Tree nuts','Dairy','Gluten','Eggs','Soy','Fish'];
 
-const TOTAL = 7;
+const TOTAL = 8;
 
 const card: React.CSSProperties = {
   background: 'var(--white)', borderRadius: 22, padding: 32,
@@ -108,7 +108,8 @@ export default function WelcomePage() {
   const allRestrictions = [...restrictions, restrictionsFree].join(' ');
   const { excluded } = themesExcludedBy(allRestrictions);
 
-  const finish = async () => {
+  const finish = async (wantsEmail?: boolean) => {
+    const emailChoice = typeof wantsEmail === 'boolean' ? wantsEmail : autoPlan;
     setSaving(true); setErr('');
     try {
       const res = await fetch('/api/onboarding', {
@@ -120,7 +121,7 @@ export default function WelcomePage() {
           cookNights, weeknightMinutes, preferences,
           skipIngredients: skipIngredients.split(',').map(s => s.trim()).filter(Boolean),
           websites: websites.split(',').map(s => s.trim()).filter(Boolean),
-          autoPlan,
+          autoPlan: emailChoice,
         }),
       });
       const out = await res.json();
@@ -357,8 +358,51 @@ export default function WelcomePage() {
                 placeholder="e.g. Serious Eats, Giallo Zafferano, Half Baked Harvest"
                 className="w-full rounded-xl px-4 py-3 text-sm"
                 style={{ border: '1px solid var(--border)', background: 'var(--cream)' }} />
+              <Nav />
+            </>
+          )}
+
+          {step === 8 && (
+            <>
+              <h1 className="text-3xl mb-2" style={{ fontFamily: 'AbramoSerif, serif' }}>
+                Shall I email you your week?
+              </h1>
+              <p className="text-sm mb-5" style={{ color: 'var(--text-2)' }}>
+                The day before your week starts, I&apos;ll send the menu and the shopping
+                list — so you don&apos;t have to remember to come back for it.
+              </p>
+              {/* Asked, not assumed. A pre-ticked box in a footer is how sixteen
+                  households ended up subscribed to something none of them chose. */}
+              <div className="flex flex-col gap-2">
+                <button onClick={() => finish(true)} disabled={saving}
+                  className="rounded-xl px-5 py-3.5 text-sm text-white text-left disabled:opacity-50"
+                  style={{ background: 'var(--green)' }}>
+                  <strong>Yes, send me my week</strong>
+                </button>
+                <button onClick={() => finish(false)} disabled={saving}
+                  className="rounded-xl px-5 py-3.5 text-sm text-left disabled:opacity-50"
+                  style={{ border: '1px solid var(--border)', color: 'var(--text-2)' }}>
+                  No thanks — I&apos;ll open the app when I want it
+                </button>
+              </div>
+              {/* Names the real place. The toggle lives inside "First Day of the
+                  Week" — the email lands the day before the week starts, so the
+                  two settings are one decision — and the link scrolls straight
+                  to it rather than leaving anyone hunting. */}
+              <p className="text-xs mt-4 leading-relaxed" style={{ color: 'var(--text-3)' }}>
+                You can change your mind whenever you like:{' '}
+                <Link href="/settings?section=weekly-email" style={{ color: 'var(--green)', textDecoration: 'underline' }}>
+                  Settings → First Day of the Week
+                </Link>{' '}
+                has the switch, and every email has a one-tap link at the bottom that
+                stops it for good.
+              </p>
               {err && <p className="text-sm mt-4" style={{ color: '#C0392B' }}>{err}</p>}
-              <Nav next={finish} />
+              <div className="mt-6">
+                <button onClick={() => setStep(s => s - 1)}
+                  className="text-xs uppercase tracking-[0.18em] transition-opacity hover:opacity-60"
+                  style={{ color: 'var(--text-3)' }}>← Back</button>
+              </div>
             </>
           )}
         </div>}
@@ -371,19 +415,9 @@ export default function WelcomePage() {
               sides, pantry, units, holidays — all in <Link href="/settings" style={{ color: 'var(--green)', textDecoration: 'underline' }}>Settings</Link>.
             </p>
 
-            {/* The offer under Generate only reaches households who come back —
-                and the ones this feature exists for are precisely those who
-                don't. This catches them in the first session. Unticked: it must
-                be chosen, never assumed. */}
-            <label className="flex items-start gap-3 mt-5 pt-5 cursor-pointer"
-                   style={{ borderTop: '1px solid var(--border)' }}>
-              <input type="checkbox" checked={autoPlan} onChange={e => setAutoPlan(e.target.checked)}
-                     className="mt-1" style={{ accentColor: 'var(--green)', width: 16, height: 16 }} />
-              <span className="text-sm leading-relaxed" style={{ color: 'var(--text-2)' }}>
-                <strong>Email me my week</strong> — sent the day before it starts, with the
-                shopping list. You won&apos;t have to come back for it.
-              </span>
-            </label>
+            {/* The weekly-email offer used to live here as a tick-box footnote.
+                It is step 8 now — asked as a question, with a plain answer
+                required either way. */}
           </div>
         )}
       </div>

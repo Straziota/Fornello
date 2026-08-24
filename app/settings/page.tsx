@@ -577,7 +577,7 @@ export default function SettingsPage() {
         </Section>
 
         {/* Week Start Day */}
-        <Section tour="set-weekstart" icon="/icons/First day of week.png" title="First Day of the Week"
+        <Section id="weekly-email" tour="set-weekstart" icon="/icons/First day of week.png" title="First Day of the Week"
           desc="The weekly menu resets on this day. Choose whichever day your week begins.">
           <div className="flex flex-wrap gap-2">
             {(['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'] as const).map((day, i) => {
