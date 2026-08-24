@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/auth';
 import { getCurrentMenu, deleteMenu , markMenuEngaged} from '@/lib/db';
+import { healMenuPhotos } from '@/lib/heal-photos';
 
 export async function GET() {
   const { user, error } = await requireUser();
   if (error) return error;
   // Current = this week or the upcoming week (pre-generated); see getCurrentMenu.
-  const menu = await getCurrentMenu(user!.id);
+  const menu = await healMenuPhotos(user!.id, await getCurrentMenu(user!.id));
   // Opening the week is the clearest evidence a human met it, which is what the
   // 12-week no-repeat rule now requires before it will suppress these dishes.
   if (menu?.id) void markMenuEngaged(user!.id, menu.id);

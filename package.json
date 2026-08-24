@@ -18,6 +18,7 @@
     "test:safety": "npx --yes tsx scripts/safety-suite.mjs",
     "test:photo-match": "npx --yes tsx scripts/photo-match-test.mjs",
     "test:cron": "node scripts/cron-coverage.mjs",
+    "photos": "npx --yes tsx scripts/photo-coverage.mjs",
     "prebuild": "node scripts/cron-coverage.mjs"
   },
   "build": {
