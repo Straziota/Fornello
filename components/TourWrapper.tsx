@@ -15,10 +15,18 @@ export default function TourWrapper({ children }: { children: React.ReactNode })
   const [showTour, setShowTour] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const [checked, setChecked] = useState(false);
+  // Set the moment we know this account still owes us the questionnaire, and
+  // never cleared: from here the only destination is /welcome, and the app
+  // behind it must not paint even for a frame.
+  const [redirecting, setRedirecting] = useState(false);
 
   useEffect(() => {
     // Skip on public pages — user isn't logged in yet
     if (PUBLIC_PATHS.some(p => pathname?.startsWith(p))) {
+      // Clearing `redirecting` matters: /welcome is itself a public path, so
+      // without this the splash we show on the way there would never lift once
+      // we arrived, and the questionnaire would sit behind a logo forever.
+      setRedirecting(false);
       setChecked(true);
       return;
     }
@@ -32,8 +40,8 @@ export default function TourWrapper({ children }: { children: React.ReactNode })
       // unconfigured product with a "want a tour?" modal on top — that was three
       // gates before anyone saw a dinner.
       if (s && !s.onboardedAt) {
+        setRedirecting(true);
         router.replace('/welcome');
-        setChecked(true);
         return;
       }
       if (s && typeof s.familySize === 'number' && !s.hasSeenTour) {
@@ -56,6 +64,22 @@ export default function TourWrapper({ children }: { children: React.ReactNode })
     setShowWelcome(false);
     markSeen();
   };
+
+  // Nothing renders until we know whether this account has onboarded. Signing
+  // in used to paint the full home screen — nav icons, this week, the lot —
+  // and then yank it away as the redirect landed, which reads as the app
+  // breaking rather than as a questionnaire starting.
+  //
+  // `checked` is only false on the first load: the effect re-runs on every
+  // navigation but never sets it back, so this costs one held frame per
+  // session, not one per page.
+  if (!checked || redirecting) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center" style={{ background: 'var(--cream, #F7F4EE)' }}>
+        <img src="/Fornello Logo.png" alt="" style={{ width: 128, opacity: 0.5 }} />
+      </div>
+    );
+  }
 
   return (
     <TourContext.Provider value={{ startTour }}>
