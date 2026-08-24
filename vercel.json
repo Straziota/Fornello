@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/auto-plan?send=1",
+      "schedule": "0 12 * * *"
+    }
+  ]
+}
