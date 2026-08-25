@@ -77,19 +77,28 @@ for the same minute.
 
 Delivery splits on whether the household has a weekly email at all:
 
-- **auto-plan on** — the check-in rides on week two's menu, under a "Before you
-  go" divider. One message, inside something they already open for the food.
-  Stamped only after that email actually sends, so a failure leaves the check-in
-  owed rather than silently spent. If the weekly email is not due yet it simply
-  waits for the next one.
-- **auto-plan off** — the standalone check-in, unchanged.
+- **auto-plan on** — ONE question rides on week two's menu, under a "Before you
+  go" divider. That email already carries seven dinners, the prep plan, the
+  shopping list, the rating links and the phone-list button; it can afford a
+  rider, not a form. `topQuestion()` picks the highest-signal one and drops the
+  rest, preferring anything derived from an actual day over "did you cook any of
+  these?", which is true of anyone who hasn't rated and observes nothing. No
+  suggestion block either. Timing needs no scheduling: week two's menu goes out
+  roughly seven days after week one's, inside the existing window. Stamped only
+  after that email actually sends, so a failure leaves the check-in owed rather
+  than silently spent; if the weekly email is not due yet it waits for the next
+  one.
+- **auto-plan off** — the standalone check-in, unchanged: three questions, one
+  suggestion.
+
+Dedup is one column, `settings.week_one_checkin_sent_at`, read and written by
+both paths. A household gets the check-in once, by whichever envelope applies.
 
 The split is not an optimisation, it is the constraint. The households most in
 need of a check-in are precisely the ones subscribed to nothing, so this can
-never simply become a section of the weekly mailer. Both variants fold in: a
-silent household on auto-plan gets "I've been planning these weeks and haven't
-heard anything back" under their menu, which is honest rather than contradictory
-— it is the same message, delivered where they will actually see it.
+never simply become a section of the weekly mailer. Both variants fold in, including the silent one — under a menu it reads better
+than as a standalone ask, because something is being handed over at the same
+time as something is being asked for.
 
 Email rather than in-app, deliberately. An in-app check-in reaches only the
 people who came back, which is exactly the wrong half: the households this
@@ -103,8 +112,19 @@ questionnaire, and never a list of settings. If nothing specific was observed,
 nothing is sent: "here's what I noticed" followed by nothing is a generic
 message wearing a specific subject line.
 
-**Did nothing** — no tuning questions at all. One honest question, "Did it
-work?", and a reply that reaches a person. That is customer development
+**Did nothing** — no tuning questions at all:
+
+> I can't tell whether these have been useful, wrong, or just badly timed.
+> Would you tell me which?
+
+Two things in that phrasing are load-bearing. It names three options rather than
+asking an open question: "did it work?" asks someone to compose a sentence,
+while useful/wrong/badly-timed can be answered in one word, and for a household
+that has not opened the app in weeks that difference decides whether there is a
+reply at all. And it leads with the not-knowing, never with what Fornello has
+done — anything shaped like "I've planned these for you and heard nothing back"
+is a ledger of effort presented before asking for something, which reads as an
+invoice however gently it is phrased. That is customer development
 arriving at the right moment from someone with a legitimate reason to ask, and
 it is currently the most valuable thing this feature can produce.
 

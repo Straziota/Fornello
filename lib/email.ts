@@ -291,19 +291,27 @@ export async function sendWeeklyMenuEmail(
   // ONLY for households that have a weekly email — everyone else still gets it
   // standalone, because the households most in need of a check-in are precisely
   // the ones not subscribed to anything.
+  // Leads with the not-knowing, never with what Fornello has done. Anything
+  // shaped like "I've planned these for you and heard nothing back" is a ledger
+  // of effort presented before asking for something, which reads as an invoice
+  // however gently it is phrased.
+  //
+  // And three named options rather than an open question: "did it work?" asks
+  // someone to compose a sentence, while useful/wrong/badly-timed can be
+  // answered in one word. For a household that has not opened the app in weeks,
+  // that difference decides whether there is a reply at all.
   const checkInBlock = data.checkIn?.silent ? `
       <div style="border-top:1px solid #EDE3D4;margin-top:30px;padding-top:26px">
         <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.18em;color:#9A8B7B">
           Before you go
         </p>
         <p style="margin:0 0 12px;font-size:15px;color:#3D2714;line-height:1.65">
-          I've been planning these weeks for you and haven't heard anything back — so
-          I genuinely don't know whether they're useful, wrong, or just badly timed.
+          I can't tell whether these have been useful, wrong, or just badly timed.
+          Would you tell me which?
         </p>
         <p style="margin:0;font-size:15px;color:#6B5B4B;line-height:1.65">
-          If you have a minute, just reply to this email and tell me. Anything at all.
-          It goes to a person, not a form. And if you'd rather I stopped, say that
-          too — no hard feelings.
+          One word is plenty — just reply to this email. It goes to a person, not a
+          form. And if you'd rather I stopped, say that too; no hard feelings.
         </p>
       </div>` : data.checkIn?.questions?.length ? `
       <div style="border-top:1px solid #EDE3D4;margin-top:30px;padding-top:26px">
@@ -468,15 +476,17 @@ export async function sendWeekOneCheckIn(
     // Deliberately not a feature pitch, not a nudge, and not three questions.
     // Someone who ignored a whole week is not short of prompting.
     const html = shell(`
-      <div style="font-size:23px;color:#3D2714;margin-bottom:22px;line-height:1.3">Did it work?</div>
+      <div style="font-size:23px;color:#3D2714;margin-bottom:22px;line-height:1.3">
+        Useful, wrong, or badly timed?
+      </div>
       <p style="font-size:15px;color:#6B5B4B;line-height:1.7;margin:0 0 16px">
-        I planned you a week, and then I didn't hear anything — so I genuinely don't
-        know whether it was useful, wrong, or just badly timed.
+        I can't tell whether these have been useful, wrong, or just badly timed.
+        Would you tell me which?
       </p>
       <p style="font-size:15px;color:#6B5B4B;line-height:1.7;margin:0 0 22px">
-        If you have a minute, just reply to this email and tell me. Anything at all —
-        what put you off, what was missing, what you'd have wanted instead. It goes
-        to a person, not a form, and it's the most useful thing you could send me.
+        One word is plenty. If you have more to say — what put you off, what was
+        missing, what you'd have wanted instead — I'd rather have that than anything
+        else you could send me. Just reply; it goes to a person, not a form.
       </p>
       <p style="font-size:15px;color:#6B5B4B;line-height:1.7;margin:0">
         And if you'd rather I stopped, say that too. No hard feelings.
@@ -485,7 +495,7 @@ export async function sendWeekOneCheckIn(
     const { error } = await resend.emails.send({
       from: `${settings.fromName || 'Fornello'} <${settings.fromEmail}>`,
       replyTo: REPLY_TO_EMAIL, to: [toEmail],
-      subject: 'Did it work?', html,
+      subject: 'Useful, wrong, or badly timed?', html,
       headers: {
         'List-Unsubscribe': `<${data.unsubscribeUrl}>`,
         'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',

@@ -8,7 +8,7 @@ import {
   updateMealRecipe, updateMenuData, saveGlobalRecipeIfNew,
 } from '@/lib/db';
 import { generateMenu, generateMealRecipe, generateGroceryList } from '@/lib/claude';
-import { analyseWeekOne } from '@/lib/week-one';
+import { analyseWeekOne, topQuestion } from '@/lib/week-one';
 
 export const maxDuration = 300;
 
@@ -236,9 +236,12 @@ export async function GET(req: NextRequest) {
         const week = await analyseWeekOne(s.user_id);
         const days = week ? (Date.now() - new Date(week.firstMenuAt).getTime()) / 86_400_000 : 0;
         if (week && days >= 7 && days <= 21 && (week.silent || week.questions.length)) {
+          // One question, not three. The menu is the payload; the check-in is
+          // a rider beneath it.
+          const top = topQuestion(week);
           checkIn = {
             silent: week.silent,
-            questions: week.questions,
+            questions: top ? [top] : [],
             answerUrl: `${appUrl}/week-one?token=${s.email_token}`,
           };
         }

@@ -210,3 +210,20 @@ export async function analyseWeekOne(userId: string): Promise<WeekOne | null> {
     }),
   };
 }
+
+/**
+ * The one question worth carrying on a menu email.
+ *
+ * That email already holds seven dinners, the prep plan, the shopping list, the
+ * rating links and the phone-list button. It can afford a rider, not a form —
+ * so this picks the single highest-signal question and drops the rest.
+ *
+ * "Did you cook any of these?" is the weakest of them: true of anyone who
+ * hasn't rated, and it observes nothing specific. Anything derived from an
+ * actual day — a budget that never got used, a day that never got a dinner —
+ * beats it, so it is only chosen when nothing else exists.
+ */
+export function topQuestion(week: WeekOne): CheckInQuestion | null {
+  if (!week.questions.length) return null;
+  return week.questions.find(q => q.id !== 'cooked') ?? week.questions[0];
+}
