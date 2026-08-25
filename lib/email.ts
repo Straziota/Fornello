@@ -291,6 +291,14 @@ export async function sendWeeklyMenuEmail(
   // ONLY for households that have a weekly email — everyone else still gets it
   // standalone, because the households most in need of a check-in are precisely
   // the ones not subscribed to anything.
+  // No signature here, unlike the standalone version. This sits under a
+  // Fornello letterhead — logo, week label, seven dinners — and a personal
+  // sign-off beneath all that reads as a mismatch rather than as a person. The
+  // standalone note has no branding to argue with, so it keeps the signature.
+  //
+  // "Just reply" is honest on both: every Fornello email sets Reply-To to a
+  // real mailbox.
+  //
   // Leads with the not-knowing, never with what Fornello has done. Anything
   // shaped like "I've planned these for you and heard nothing back" is a ledger
   // of effort presented before asking for something, which reads as an invoice
@@ -308,10 +316,9 @@ export async function sendWeeklyMenuEmail(
         <p style="margin:0 0 12px;font-size:15px;color:#3D2714;line-height:1.65">
           Has Fornello been useful, wrong, or just badly timed?
         </p>
-        <p style="margin:0 0 12px;font-size:15px;color:#6B5B4B;line-height:1.65">
+        <p style="margin:0;font-size:15px;color:#6B5B4B;line-height:1.65">
           One word is plenty — just reply.
         </p>
-        <p style="margin:0;font-size:15px;color:#6B5B4B;line-height:1.65">&mdash; Claudia</p>
       </div>` : data.checkIn?.questions?.length ? `
       <div style="border-top:1px solid #EDE3D4;margin-top:30px;padding-top:26px">
         <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.18em;color:#9A8B7B">
