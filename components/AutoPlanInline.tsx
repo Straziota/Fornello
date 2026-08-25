@@ -135,8 +135,7 @@ export default function AutoPlanInline() {
             )}
 
             <p className="text-xs mt-5 pt-4 text-center" style={{ color: 'var(--text-3)', borderTop: '1px solid var(--border)' }}>
-              You can stop it any time — here, from any email, or in{' '}
-              <strong>Settings → First Day of the Week</strong>.
+              You can stop it any time — here, or from any email.
             </p>
           </div>
         </div>

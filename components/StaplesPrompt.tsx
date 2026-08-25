@@ -81,9 +81,7 @@ export default function StaplesPrompt() {
             </Link>
 
             <p className="text-xs mt-5 pt-4 text-center" style={{ color: 'var(--text-3)', borderTop: '1px solid var(--border)' }}>
-              They live in <strong>Settings → Pantry Staples</strong>, and you can change them
-              any time.
-            </p>
+              You can change them whenever you like.</p>
           </div>
         </div>
       )}

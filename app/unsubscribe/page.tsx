@@ -23,7 +23,7 @@ function Inner() {
         {state === 'done'
           ? "You won't get the weekly email again. Your recipes and menus are untouched — nothing else changes."
           : state === 'error'
-          ? 'That link didn’t work. You can turn the weekly email off in Settings instead.'
+          ? 'That link didn’t work. Open Fornello and you can turn the weekly email off there — or just reply to any email and I’ll do it.'
           : ''}
       </p>
     </div>

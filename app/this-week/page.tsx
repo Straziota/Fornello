@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react';
 import { WeeklyMenu, Meal } from '@/lib/types';
 import MealModal from '@/components/MealModal';
 import AutoPlanInline from '@/components/AutoPlanInline';
+import DayOfferPrompt from '@/components/DayOfferPrompt';
+import { offerFromReplacement, offerFromSkip, type DayOffer, type OfferLog } from '@/lib/day-offers';
 import Toast from '@/components/Toast';
 import PageBackground from '@/components/PageBackground';
 import ReplaceMealModal from '@/components/ReplaceMealModal';
@@ -78,6 +80,11 @@ export default function HomePage() {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [skipDays, setSkipDays] = useState<Set<string>>(new Set());
+  // A change made for this week may be a fact about every week. When it looks
+  // like one, we offer — once — rather than leaving it in a settings page.
+  const [schedule, setSchedule] = useState<any>({});
+  const [offerLog, setOfferLog] = useState<OfferLog>({});
+  const [offer, setOffer] = useState<DayOffer | null>(null);
   const [showVacationPicker, setShowVacationPicker] = useState(false);
 
   useEffect(() => {
@@ -108,7 +115,11 @@ export default function HomePage() {
         generate();
       }
     });
-    fetch('/api/settings').then(r => r.json()).then(d => setSkipIngredients(d.skipIngredients || []));
+    fetch('/api/settings').then(r => r.json()).then(d => {
+      setSkipIngredients(d.skipIngredients || []);
+      setSchedule(d.schedule || {});
+      setOfferLog(d.dayOffers || {});
+    });
     fetch('/api/admin/check').then(r => r.json()).then(d => setIsAdmin(d.isAdmin)).catch(() => {});
   }, []);
 
@@ -404,7 +415,7 @@ export default function HomePage() {
           <img src="/icons/this-week.png" alt="" style={{ width: '140px', height: 'auto', marginBottom: '20px', margin: '0 auto 20px' }} />
           <h2 className="text-2xl mb-3"><T>No menu yet</T></h2>
           <p className="mb-6 max-w-sm mx-auto italic" style={{ color: 'var(--text-2)' }}>
-            <T>Set up your preferences in Settings, then generate your first personalized weekly dinner plan.</T>
+            <T>Generate your first week — I&apos;ll plan it around everything you told me.</T>
           </p>
           <a href="/settings"
             className="inline-block rounded-full px-5 py-2.5 text-xs uppercase tracking-[0.18em]"

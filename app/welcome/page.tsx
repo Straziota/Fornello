@@ -1,7 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { themesExcludedBy } from '@/lib/themes';
 
 const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
@@ -275,7 +274,7 @@ export default function WelcomePage() {
               </button>
               {noAllergies && (
                 <p className="text-xs mt-3 italic" style={{ color: 'var(--text-3)' }}>
-                  Noted — and you can add one here or in Settings the moment anything changes.
+                  Noted — and you can add one the moment anything changes.
                 </p>
               )}
               {excluded.length > 0 && (
@@ -316,18 +315,15 @@ export default function WelcomePage() {
             <>
               <h1 className="text-3xl mb-2" style={{ fontFamily: 'AbramoSerif, serif' }}>How much time do you have every night?</h1>
               <p className="text-sm mb-3" style={{ color: 'var(--text-2)' }}>Recipes are chosen to genuinely fit — not squeezed to look like they do.</p>
-              {/* Above the chips, not below them. This questionnaire replaced
-                  thirty-five per-day decisions with two questions, which is right
-                  — but only if people know the detail still exists, and anyone
-                  who taps a time and hits Continue never scrolls past the
-                  control. Below it, this would be read by nobody it is for. */}
+              {/* Reassurance, not instruction. Its job is to stop someone
+                  thinking "this can't handle the night I only have twenty
+                  minutes" — and that needs no path. A link would also
+                  contradict its own copy ("once you've got a week") and drop
+                  someone into a settings page mid-questionnaire. */}
               <p className="text-sm mb-6 leading-relaxed" style={{ color: 'var(--text-2)' }}>
-                One night different from the rest? Once you&apos;ve seen a week you can give
-                any single day its own time, meal type or method — slow cooker, air fryer,
-                grill — in{' '}
-                <Link href="/settings?section=cooking-schedule" style={{ color: 'var(--green)', textDecoration: 'underline' }}>
-                  Settings → Cooking Schedule
-                </Link>.
+                One night different from the rest? You&apos;ll be able to give any single day
+                its own time or method — slow cooker, air fryer, grill — once you&apos;ve got a
+                week to work with.
               </p>
               <div className="flex flex-wrap gap-2">
                 {[20, 30, 45, 60, 90].map(m => (
@@ -392,14 +388,13 @@ export default function WelcomePage() {
                 change, and I&apos;ll get to know your family and tailor the recipes to your
                 taste.
               </p>
+              {/* Deliberately not a list of settings. A catalogue here is the
+                  settings page relocated into the last screen of onboarding —
+                  the same thing nobody acts on, one step earlier. Everything it
+                  used to enumerate is offered in context, when the need is
+                  real. */}
               <p className="text-sm leading-relaxed" style={{ color: 'var(--text-2)' }}>
-                I only asked you a handful of questions; there are plenty more answers I&apos;ll take
-                whenever you feel like giving them — favourite and unwanted sides, what&apos;s
-                already in your cupboard, cups or grams, holidays, and a method for any
-                single night — all in{' '}
-                <Link href="/settings" style={{ color: 'var(--green)', textDecoration: 'underline' }}>
-                  Settings
-                </Link>.
+                I&apos;ll ask about the rest as it comes up — no setting up required.
               </p>
               <Nav />
             </>
@@ -434,12 +429,8 @@ export default function WelcomePage() {
               </div>
 
               <p className="text-sm mt-4 leading-relaxed" style={{ color: 'var(--text-2)' }}>
-                You can change your mind whenever you like:{' '}
-                <Link href="/settings?section=weekly-email" style={{ color: 'var(--green)', textDecoration: 'underline' }}>
-                  Settings &rarr; First Day of the Week
-                </Link>{' '}
-                has the switch, and every email has a one-tap link at the bottom that
-                stops it for good.
+                You can change your mind whenever you like — every email has a one-tap
+                link at the bottom that stops it for good.
               </p>
 
               {err && <p className="text-sm mt-4" style={{ color: '#C0392B' }}>{err}</p>}

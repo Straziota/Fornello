@@ -20,6 +20,7 @@
     "test:cron": "node scripts/cron-coverage.mjs",
     "photos": "npx --yes tsx scripts/photo-coverage.mjs",
     "test:translate": "npx --yes tsx scripts/translate-test.mjs",
+    "test:day-offers": "npx --yes tsx scripts/day-offers-test.mjs",
     "prebuild": "node scripts/cron-coverage.mjs"
   },
   "build": {
