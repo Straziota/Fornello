@@ -8,6 +8,7 @@ import {
   updateMealRecipe, updateMenuData, saveGlobalRecipeIfNew,
 } from '@/lib/db';
 import { generateMenu, generateMealRecipe, generateGroceryList } from '@/lib/claude';
+import { analyseWeekOne } from '@/lib/week-one';
 
 export const maxDuration = 300;
 
@@ -70,7 +71,7 @@ export async function GET(req: NextRequest) {
 
   const { data: subs } = await adminClient
     .from('settings')
-    .select('user_id, email_token, week_start_day, auto_plan_day, auto_plan_ignored, auto_plan_paused, auto_plan_asked_at, auto_plan_asks_sent, last_engaged_at')
+    .select('user_id, email_token, week_start_day, auto_plan_day, auto_plan_ignored, auto_plan_paused, auto_plan_asked_at, auto_plan_asks_sent, last_engaged_at, week_one_checkin_sent_at')
     .eq('auto_plan', true)
     .eq('auto_plan_paused', false);
 
@@ -227,6 +228,22 @@ export async function GET(req: NextRequest) {
         .update({ auto_plan_ignored: (s.auto_plan_ignored ?? 0) + 1 })
         .eq('user_id', s.user_id);
 
+      // Due a week-one check-in? Fold it in rather than sending a second email
+      // the same week. A subscriber gets one message; the questions ride inside
+      // something they already open for the food.
+      let checkIn: { silent: boolean; questions: any[]; answerUrl: string } | undefined;
+      if (!s.week_one_checkin_sent_at) {
+        const week = await analyseWeekOne(s.user_id);
+        const days = week ? (Date.now() - new Date(week.firstMenuAt).getTime()) / 86_400_000 : 0;
+        if (week && days >= 7 && days <= 21 && (week.silent || week.questions.length)) {
+          checkIn = {
+            silent: week.silent,
+            questions: week.questions,
+            answerUrl: `${appUrl}/week-one?token=${s.email_token}`,
+          };
+        }
+      }
+
       const meals = (menu.meals || []).filter((m: any) => !m.isLeftover);
       const groceries = Object.entries(menu.grocery_list || {})
         .map(([category, items]) => ({ category, items: (items as any[]).map(i => i.item).filter(Boolean) }))
@@ -246,8 +263,17 @@ export async function GET(req: NextRequest) {
           // Chef Claude, scaling. Middleware carries a logged-out reader through
           // login and back to this exact dinner.
           mealUrl: `${appUrl}/this-week?meal=`,
+          checkIn,
         },
       );
+
+      // Stamped only after the email actually went, so a failed send leaves the
+      // check-in owed rather than silently spent.
+      if (checkIn) {
+        await adminClient.from('settings')
+          .update({ week_one_checkin_sent_at: new Date().toISOString() })
+          .eq('user_id', s.user_id);
+      }
       results.push({ email, status: 'planned + sent', detail: `${meals.length} meals` });
     } catch (e: any) {
       results.push({ email, status: 'failed', detail: e.message });

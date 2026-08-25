@@ -213,6 +213,17 @@ export async function sendWeeklyMenuEmail(
     shopUrl?: string;
     /** Base for opening one dinner's full recipe, token already attached. */
     mealUrl?: string;
+    /**
+     * The week-one check-in, when this household is due one. Folded in here so
+     * a subscriber gets one email that week instead of two — the questions ride
+     * inside a message they already open for the food.
+     */
+    checkIn?: {
+      /** True when the household has shown no sign of using any of this. */
+      silent: boolean;
+      questions: { observation: string; question: string }[];
+      answerUrl: string;
+    };
   },
 ) {
   const resend = new Resend(settings.resendApiKey);
@@ -275,6 +286,46 @@ export async function sendWeeklyMenuEmail(
         <div style="font-size:13px;color:#6B5B4B;line-height:1.7">${g.items.map(esc).join(' · ')}</div>
       </div>`).join('')}` : '';
 
+  // The week-one check-in, folded into a message they already open for the
+  // food, rather than sent as a second email in the same week. It rides along
+  // ONLY for households that have a weekly email — everyone else still gets it
+  // standalone, because the households most in need of a check-in are precisely
+  // the ones not subscribed to anything.
+  const checkInBlock = data.checkIn?.silent ? `
+      <div style="border-top:1px solid #EDE3D4;margin-top:30px;padding-top:26px">
+        <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.18em;color:#9A8B7B">
+          Before you go
+        </p>
+        <p style="margin:0 0 12px;font-size:15px;color:#3D2714;line-height:1.65">
+          I've been planning these weeks for you and haven't heard anything back — so
+          I genuinely don't know whether they're useful, wrong, or just badly timed.
+        </p>
+        <p style="margin:0;font-size:15px;color:#6B5B4B;line-height:1.65">
+          If you have a minute, just reply to this email and tell me. Anything at all.
+          It goes to a person, not a form. And if you'd rather I stopped, say that
+          too — no hard feelings.
+        </p>
+      </div>` : data.checkIn?.questions?.length ? `
+      <div style="border-top:1px solid #EDE3D4;margin-top:30px;padding-top:26px">
+        <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.18em;color:#9A8B7B">
+          Before you go
+        </p>
+        <p style="margin:0 0 14px;font-size:15px;color:#3D2714;line-height:1.6">
+          Your first week was my best guess. Here's what I've noticed since — tell me
+          if I read it right, and I'll remember it for every week after.
+        </p>
+        ${data.checkIn.questions.map(q => `
+          <div style="background:#F7F4EE;border-radius:12px;padding:14px 18px;margin:0 0 10px">
+            <p style="margin:0 0 4px;font-size:12px;color:#9A8B7B;line-height:1.5">${esc(q.observation)}</p>
+            <p style="margin:0;font-size:15px;color:#3D2714">${esc(q.question)}</p>
+          </div>`).join('')}
+        <div style="text-align:center;margin-top:16px">
+          <a href="${data.checkIn.answerUrl}" style="display:inline-block;background:#4A7859;color:#fff;text-decoration:none;padding:11px 26px;border-radius:999px;font-size:13px">
+            Answer these
+          </a>
+        </div>
+      </div>` : '';
+
   const html = `
   <div style="background:#FBF7F0;padding:28px 0;font-family:Georgia,'Times New Roman',serif">
     <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:18px;padding:36px">
@@ -291,6 +342,8 @@ export async function sendWeeklyMenuEmail(
       <table style="width:100%;border-collapse:collapse">${mealRows}</table>
       ${prepBlock}
       ${groceryBlock}
+
+      ${checkInBlock}
 
       <div style="text-align:center;margin-top:34px">
         <a href="${data.appUrl}" style="font-size:13px;color:#8B6A42">Change something, or plan next week</a>

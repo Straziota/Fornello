@@ -25,10 +25,16 @@ export async function GET(req: NextRequest) {
   const creds = { resendApiKey, fromEmail, fromName: process.env.INVITE_FROM_NAME || 'Fornello' };
   const site = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.fornello.app';
 
+  // Standalone only for households WITHOUT a weekly email. Anyone on auto-plan
+  // gets the check-in folded into week two's menu instead — one message rather
+  // than two in the same week. The split matters because the households most in
+  // need of a check-in are exactly the ones subscribed to nothing, so this can
+  // never simply become a section of the weekly mailer.
   const { data: households } = await adminClient
     .from('settings')
     .select('user_id, email_token, week_one_checkin_sent_at')
-    .is('week_one_checkin_sent_at', null);
+    .is('week_one_checkin_sent_at', null)
+    .or('auto_plan.is.null,auto_plan.eq.false');
 
   const { data: list } = await adminClient.auth.admin.listUsers({ perPage: 1000 });
   const email = Object.fromEntries((list?.users || []).map((u: { id: string; email?: string }) => [u.id, u.email]));

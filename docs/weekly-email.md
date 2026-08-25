@@ -73,6 +73,24 @@ Seven days after a household's first menu, once. `/api/cron/week-one?send=1`,
 daily at 13:00 UTC — an hour after the auto-plan run, so the two never contend
 for the same minute.
 
+### One email, not two
+
+Delivery splits on whether the household has a weekly email at all:
+
+- **auto-plan on** — the check-in rides on week two's menu, under a "Before you
+  go" divider. One message, inside something they already open for the food.
+  Stamped only after that email actually sends, so a failure leaves the check-in
+  owed rather than silently spent. If the weekly email is not due yet it simply
+  waits for the next one.
+- **auto-plan off** — the standalone check-in, unchanged.
+
+The split is not an optimisation, it is the constraint. The households most in
+need of a check-in are precisely the ones subscribed to nothing, so this can
+never simply become a section of the weekly mailer. Both variants fold in: a
+silent household on auto-plan gets "I've been planning these weeks and haven't
+heard anything back" under their menu, which is honest rather than contradictory
+— it is the same message, delivered where they will actually see it.
+
 Email rather than in-app, deliberately. An in-app check-in reaches only the
 people who came back, which is exactly the wrong half: the households this
 exists for are the ones drifting, and they are not opening the app.
