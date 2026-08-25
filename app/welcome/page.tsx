@@ -36,7 +36,9 @@ function Chip({ label, on, onClick }: { label: string; on: boolean; onClick: () 
 
 export default function WelcomePage() {
   const router = useRouter();
-  const [step, setStep] = useState(1);
+  // 0 is the intro. It is not a question and must not be counted as one — a
+  // progress bar on a screen with nothing to answer is a bar that lies.
+  const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
 
@@ -211,7 +213,7 @@ export default function WelcomePage() {
           </div>
         )}
 
-        {!understood && step <= TOTAL && (
+        {!understood && step >= 1 && step <= TOTAL && (
           <>
             <p className="text-xs uppercase tracking-[0.22em] mb-2" style={{ color: 'var(--text-3)' }}>
               Step {step} of {TOTAL}
@@ -223,6 +225,22 @@ export default function WelcomePage() {
         )}
 
         {!understood && <div style={card}>
+          {step === 0 && (
+            <>
+              <h1 className="text-3xl mb-3 leading-tight" style={{ fontFamily: 'AbramoSerif, serif' }}>
+                Let&apos;s get you a week of dinners.
+              </h1>
+              <p className="text-sm mb-8 leading-relaxed" style={{ color: 'var(--text-2)' }}>
+                Eight questions, about a minute. Then I&apos;ll build your first week.
+              </p>
+              <button onClick={() => setStep(1)}
+                className="rounded-full px-8 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                style={{ background: 'var(--green)' }}>
+                Start
+              </button>
+            </>
+          )}
+
           {step === 1 && (
             <>
               <h1 className="text-3xl mb-2" style={{ fontFamily: 'AbramoSerif, serif' }}>How many are you feeding?</h1>
