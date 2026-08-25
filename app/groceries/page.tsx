@@ -51,6 +51,14 @@ export default function GroceriesPage() {
 
   const fetchMenu = async () => {
     const d = await fetch('/api/menu').then(r => r.json());
+    // Recorded so the check-in can tell "never found the shopping list" from
+    // "found it and didn't like it". Deliberately not awaited.
+    if (d?.id) {
+      fetch('/api/menu/groceries-opened', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ menuId: d.id }),
+      }).catch(() => {});
+    }
     if (d?.meals) setMenu(d);
     return d;
   };

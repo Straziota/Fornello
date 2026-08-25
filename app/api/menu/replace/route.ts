@@ -5,6 +5,7 @@ import { generateSingleMeal, generateSidesOnly } from '@/lib/claude';
 import { resolveIllustration } from '@/lib/illustrate';
 import { fetchMealPhoto } from '@/lib/photos';
 import { Meal } from '@/lib/types';
+import { recordSwap } from '@/lib/signals';
 
 export async function POST(req: NextRequest) {
   const { user, error } = await requireUser('menu:replace');

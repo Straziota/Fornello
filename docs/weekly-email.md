@@ -103,13 +103,25 @@ and is functionally the settings page relocated into an inbox. So: one
 capability they have not used, chosen from behaviour, with a button that opens
 the screen — never a path like "Settings → Cooking Schedule".
 
-Only observable signals are used. "Never opened the grocery list" would be a
-good suggestion and is in the original brief, but nothing records grocery-list
-opens; a suggestion picked from a signal we do not have is a guess wearing
-behaviour's clothes. What IS observable: ratings, Chef Claude questions, menu
-count, heritage recipes and scans, auto-plan state, and the hour a menu was
-generated. Swap counts are not recorded either — if swap logging ever lands,
-`pickSuggestion` is the first caller that wants it.
+Behaviour first, absence second. An absence cannot distinguish someone who tried
+a feature and disliked it from someone who never found it, so anything derived
+from what a household actually did outranks everything derived from what is
+missing.
+
+Two behavioural signals are now recorded (`menus.swaps`,
+`menus.groceries_opened_at`), both forward-only and both written
+fire-and-forget — a signal is not worth one millisecond of a user's time and
+certainly not worth an error. Grocery-list opens needed their own endpoint,
+because the groceries page loads from `/api/menu`, which This Week also uses, so
+the open is invisible in the request log.
+
+`openedGroceries` is three-valued on purpose: `null` means the menu predates the
+signal, `false` means they did not open it. Only the second is evidence, and
+conflating them would libel every household from before the column existed.
+
+Everything below those two branches is still absence-based: ratings, Chef Claude
+questions, menu count, heritage recipes and scans, auto-plan state, and the hour
+a menu was generated.
 
 ### The window, and why the cron is not armed
 
@@ -120,10 +132,9 @@ week was four months ago. That is a cold email wearing a check-in's clothes, and
 it spends the one moment this message is credible. Anyone past the window has
 missed it — the correct outcome, not a backlog to flush.
 
-The schedule is deliberately registered WITHOUT `?send=1`, so it runs daily and
-reports who it would reach without writing to anyone. It is the only piece of
-this work that contacts strangers, and the households in range have not heard
-from Fornello in weeks. Arming it is one edit to vercel.json.
+The schedule is armed (`?send=1`), sending daily at 13:00 UTC to whoever is in
+the window. `npm run week-one:who` shows that list at any time without touching
+the deployment.
 
 ### Later, not now
 

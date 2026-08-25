@@ -47,15 +47,31 @@ const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Satur
  * chosen because of what they did, with a button that opens the screen.
  */
 function pickSuggestion(f: {
+  swaps: number; openedGroceries: boolean | null;
   askedChef: boolean; emptyGroceries: boolean;
   hasHeritageRecipes: boolean; hasScannedCard: boolean; autoPlan: boolean;
   generatedLate: boolean;
 }): Suggestion | null {
-  // Ordered most-specific first, so the suggestion differs between households
-  // instead of everyone receiving the same one. Only observable signals appear
-  // here — "never opened the grocery list" is in the brief and would be a good
-  // suggestion, but nothing records grocery-list opens, and a suggestion picked
-  // from a signal we do not have is just a guess wearing behaviour's clothes.
+  // Behaviour first, absence second.
+  //
+  // An absence cannot tell someone who tried a thing and disliked it from
+  // someone who never found it — so anything derived from what a household
+  // actually DID outranks everything derived from what is missing. The two
+  // behavioural branches below were only possible once swaps and grocery-list
+  // opens started being recorded; everything under them is still absence.
+  //
+  // openedGroceries is null for menus generated before that signal existed.
+  // Null is "we don't know", not "no", and must never be read as evidence.
+  if (f.swaps >= 2 && !f.askedChef) return {
+    title: 'Ask about any recipe',
+    body: `You swapped ${f.swaps} meals that week. If something is nearly right, you can ask instead of replacing it — a substitution, a timing, how to scale it up.`,
+    cta: 'Try it on this week’s menu', path: '/this-week',
+  };
+  if (f.openedGroceries === false && !f.emptyGroceries) return {
+    title: 'The shopping list is already written',
+    body: 'That week had a full list waiting — every ingredient, sorted by aisle, ticked off as you go. It is the part people say they would miss most.',
+    cta: 'See this week’s list', path: '/groceries',
+  };
   if (f.hasHeritageRecipes && !f.hasScannedCard) return {
     title: 'Photograph a recipe card',
     body: 'A handwritten card becomes a proper recipe — and if it is in another language, an English version alongside the original.',
@@ -88,7 +104,13 @@ export async function analyseWeekOne(userId: string): Promise<WeekOne | null> {
   const db = adminClient;
 
   const { data: menus } = await db
-    .from('menus').select('id, week_start, created_at, engaged_at, data, auto_planned')
+    // select('*'), not a column list. Naming swaps/groceries_opened_at before
+    // their migration has run makes Postgres reject the whole query, and a
+    // rejected query here returns no menus — which reads as "this household
+    // never generated one" and silently disables the entire check-in. That is
+    // the same shape of failure as every other one this week: not broken code,
+    // disconnected code, raising nothing.
+    .from('menus').select('*')
     .eq('user_id', userId).order('created_at', { ascending: true });
   if (!menus?.length) return null;
 
@@ -173,6 +195,12 @@ export async function analyseWeekOne(userId: string): Promise<WeekOne | null> {
     firstMenuAt: first.created_at,
     questions: questions.slice(0, 3),
     suggestion: pickSuggestion({
+      swaps: (first.swaps as number) ?? 0,
+      // undefined = column not deployed yet; null = never opened. Only the
+      // second is evidence.
+      openedGroceries: first.groceries_opened_at === undefined
+        ? null
+        : Boolean(first.groceries_opened_at),
       askedChef,
       emptyGroceries: !groceries,
       hasHeritageRecipes: Boolean(heritage?.length),
