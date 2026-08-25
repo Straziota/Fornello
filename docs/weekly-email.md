@@ -111,6 +111,20 @@ count, heritage recipes and scans, auto-plan state, and the hour a menu was
 generated. Swap counts are not recorded either — if swap logging ever lands,
 `pickSuggestion` is the first caller that wants it.
 
+### The window, and why the cron is not armed
+
+The check-in fires between 7 and 21 days after a household's first menu. The
+upper bound is not tidiness: without it, the first armed run sends a "week one"
+check-in to everyone who ever generated a menu, including households whose first
+week was four months ago. That is a cold email wearing a check-in's clothes, and
+it spends the one moment this message is credible. Anyone past the window has
+missed it — the correct outcome, not a backlog to flush.
+
+The schedule is deliberately registered WITHOUT `?send=1`, so it runs daily and
+reports who it would reach without writing to anyone. It is the only piece of
+this work that contacts strangers, and the households in range have not heard
+from Fornello in weeks. Arming it is one edit to vercel.json.
+
 ### Later, not now
 
 Once auto-plan is running for real households, the weekly menu email is a better

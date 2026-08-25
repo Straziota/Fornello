@@ -38,8 +38,16 @@ export async function GET(req: NextRequest) {
     const week = await analyseWeekOne(h.user_id);
     if (!week) continue;                                    // never generated a menu
 
+    // Seven days after the first menu, and not months after.
+    //
+    // Without an upper bound, the first armed run sends a "week one" check-in
+    // to every household that ever generated a menu — including people whose
+    // first week was four months ago. That is not a check-in, it is a cold
+    // email wearing one, and it burns the one moment this message is credible.
+    // Anyone already past the window has missed it; that is the correct
+    // outcome, not a backlog to flush.
     const days = (Date.now() - new Date(week.firstMenuAt).getTime()) / 86_400_000;
-    if (days < 7) continue;
+    if (days < 7 || days > 21) continue;
 
     // Not silent, but nothing specific to say. Sending anyway would produce
     // "here's what I noticed" followed by nothing — a generic message wearing

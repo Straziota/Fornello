@@ -21,6 +21,8 @@
     "photos": "npx --yes tsx scripts/photo-coverage.mjs",
     "test:translate": "npx --yes tsx scripts/translate-test.mjs",
     "test:day-offers": "npx --yes tsx scripts/day-offers-test.mjs",
+    "test:week-one": "npx --yes tsx scripts/week-one-test.mjs",
+    "week-one:who": "npx --yes tsx scripts/week-one-preview.mjs",
     "prebuild": "node scripts/cron-coverage.mjs"
   },
   "build": {

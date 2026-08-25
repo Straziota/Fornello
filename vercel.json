@@ -5,7 +5,7 @@
       "schedule": "0 12 * * *"
     },
     {
-      "path": "/api/cron/week-one?send=1",
+      "path": "/api/cron/week-one",
       "schedule": "0 13 * * *"
     }
   ]
