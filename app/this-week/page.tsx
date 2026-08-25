@@ -12,6 +12,7 @@ import LoadingMessage from '@/components/LoadingMessage';
 import { useLanguage } from '@/components/LanguageProvider';
 import { getCachedTranslation } from '@/lib/translation-cache';
 import { T } from '@/components/T';
+import Link from 'next/link';
 
 function localizedMealName(meal: Meal, language: string): string {
   if (language === 'English') return meal.name;
@@ -85,6 +86,7 @@ export default function HomePage() {
   const [schedule, setSchedule] = useState<any>({});
   const [offerLog, setOfferLog] = useState<OfferLog>({});
   const [offer, setOffer] = useState<DayOffer | null>(null);
+  const [needsMore, setNeedsMore] = useState(false);
   const [showVacationPicker, setShowVacationPicker] = useState(false);
 
   useEffect(() => {
@@ -119,6 +121,10 @@ export default function HomePage() {
       setSkipIngredients(d.skipIngredients || []);
       setSchedule(d.schedule || {});
       setOfferLog(d.dayOffers || {});
+      // Only asked of households who have not answered. Someone who already
+      // told us their sites and their no-gos should not be asked again every
+      // time they open the week — that is how a helpful line becomes wallpaper.
+      setNeedsMore(!(d.websites || []).length || !(d.skipIngredients || []).length);
     });
     fetch('/api/admin/check').then(r => r.json()).then(d => setIsAdmin(d.isAdmin)).catch(() => {});
   }, []);
@@ -252,6 +258,20 @@ export default function HomePage() {
               ? <><T>Week of</T> {formatDate(menu.week_start)}</>
               : <T>A calm weekly rhythm of meals and simple inspiration.</T>}
           </p>
+          {/* The two answers onboarding deliberately stopped demanding. Asked
+              here instead, where a week already exists to compare against — and
+              a button that opens the screen rather than a path to go and find.
+              Disappears once either has been answered, because a helpful line
+              shown to someone who already answered is wallpaper. */}
+          {menu && needsMore && (
+            <p className="mt-3 text-[14px] leading-6" style={{ color: 'var(--text-2)', maxWidth: 460 }}>
+              <T>Tell me the sites you cook from and what your family won&apos;t eat, and next week will be even better.</T>{' '}
+              <Link href="/settings" className="whitespace-nowrap"
+                    style={{ color: 'var(--green)', textDecoration: 'underline' }}>
+                <T>Go to Settings</T> &rarr;
+              </Link>
+            </p>
+          )}
         </div>
         {/* items-center, not the default stretch: Days off is wrapped in a
             relative div for its dropdown, so it sizes to its content while the

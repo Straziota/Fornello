@@ -398,28 +398,6 @@ export default function WelcomePage() {
 
           {step === 8 && (
             <>
-              <h1 className="text-3xl mb-4" style={{ fontFamily: 'AbramoSerif, serif' }}>
-                One last thing before I cook
-              </h1>
-              <p className="text-sm leading-relaxed mb-4" style={{ color: 'var(--text-2)' }}>
-                This first week is my best guess. Tell me what you loved and what you&apos;d
-                change, and I&apos;ll get to know your family and tailor the recipes to your
-                taste.
-              </p>
-              {/* Deliberately not a list of settings. A catalogue here is the
-                  settings page relocated into the last screen of onboarding —
-                  the same thing nobody acts on, one step earlier. Everything it
-                  used to enumerate is offered in context, when the need is
-                  real. */}
-              <p className="text-sm leading-relaxed" style={{ color: 'var(--text-2)' }}>
-                I&apos;ll ask about the rest as it comes up — no setting up required.
-              </p>
-              <Nav />
-            </>
-          )}
-
-          {step === 9 && (
-            <>
               <h1 className="text-3xl mb-2" style={{ fontFamily: 'AbramoSerif, serif' }}>
                 Shall I email you your week?
               </h1>
@@ -451,20 +429,38 @@ export default function WelcomePage() {
                 link at the bottom that stops it for good.
               </p>
 
-              {err && <p className="text-sm mt-4" style={{ color: '#C0392B' }}>{err}</p>}
+              <Nav />
+            </>
+          )}
 
-              <div className="flex items-center gap-3 mt-8">
+          {step === 9 && (
+            <>
+              <h1 className="text-3xl mb-4" style={{ fontFamily: 'AbramoSerif, serif' }}>
+                One last thing before I cook
+              </h1>
+              {/* Deliberately not a list of settings. A catalogue here is the
+                  settings page relocated into the last screen of onboarding —
+                  the same thing nobody acts on, one step earlier. Everything it
+                  used to enumerate is offered in context, when the need is
+                  real. */}
+              <p className="text-sm leading-relaxed mb-8" style={{ color: 'var(--text-2)' }}>
+                There&apos;s a lot more I can learn about how your family eats — I&apos;ll ask
+                as it comes up.
+              </p>
+              {err && <p className="text-sm mb-4" style={{ color: '#C0392B' }}>{err}</p>}
+              <div className="flex items-center gap-3">
                 <button onClick={() => setStep(s => s - 1)}
                   className="text-xs uppercase tracking-[0.18em] transition-opacity hover:opacity-60"
                   style={{ color: 'var(--text-3)' }}>&larr; Back</button>
                 <button onClick={() => finish(autoPlan)} disabled={saving}
-                  className="rounded-full px-7 py-3 text-sm text-white disabled:opacity-50"
+                  className="ml-auto rounded-full px-7 py-3 text-sm font-semibold text-white disabled:opacity-50"
                   style={{ background: 'var(--green)' }}>
-                  {saving ? 'Saving\u2026' : 'Finish \u2014 see my first week'}
+                  {saving ? 'Saving\u2026' : 'Build my week'}
                 </button>
               </div>
             </>
           )}
+
         </div>}
           </div>
         </div>
