@@ -377,3 +377,111 @@ export async function sendCheckInEmail(
   });
   if (error) throw new Error(error.message);
 }
+
+/**
+ * The week-one check-in. Sent seven days after a household's first menu.
+ *
+ * Email, not in-app: an in-app check-in reaches only the people who came back,
+ * which is exactly the wrong half. The households this exists for are the ones
+ * drifting, and they are not opening the app.
+ *
+ * Two shapes. A household that used the week gets up to three questions drawn
+ * from what actually happened — never a questionnaire, and never a list of
+ * settings. A household that did nothing gets no tuning at all: one honest
+ * question, and a reply that comes straight back to a person.
+ */
+export async function sendWeekOneCheckIn(
+  settings: { resendApiKey: string; fromEmail: string; fromName: string },
+  toEmail: string,
+  data: {
+    silent: boolean;
+    questions: { id: string; observation: string; question: string; answers: { label: string }[] }[];
+    suggestion: { title: string; body: string; cta: string; path: string } | null;
+    answerUrl: string;       // token-authenticated, one screen, one tap per answer
+    unsubscribeUrl: string;
+  },
+) {
+  const resend = new Resend(settings.resendApiKey);
+
+  const shell = (inner: string) => `
+  <div style="background:#FBF7F0;padding:28px 0;font-family:Georgia,'Times New Roman',serif">
+    <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:18px;padding:40px">${inner}</div>
+    <div style="max-width:560px;margin:14px auto 0;text-align:center">
+      <a href="${data.unsubscribeUrl}" style="font-size:11px;color:#9A8B7B">Stop sending me this</a>
+    </div>
+  </div>`;
+
+  if (data.silent) {
+    // Deliberately not a feature pitch, not a nudge, and not three questions.
+    // Someone who ignored a whole week is not short of prompting.
+    const html = shell(`
+      <div style="font-size:23px;color:#3D2714;margin-bottom:22px;line-height:1.3">Did it work?</div>
+      <p style="font-size:15px;color:#6B5B4B;line-height:1.7;margin:0 0 16px">
+        I planned you a week, and then I didn't hear anything — so I genuinely don't
+        know whether it was useful, wrong, or just badly timed.
+      </p>
+      <p style="font-size:15px;color:#6B5B4B;line-height:1.7;margin:0 0 22px">
+        If you have a minute, just reply to this email and tell me. Anything at all —
+        what put you off, what was missing, what you'd have wanted instead. It goes
+        to a person, not a form, and it's the most useful thing you could send me.
+      </p>
+      <p style="font-size:15px;color:#6B5B4B;line-height:1.7;margin:0">
+        And if you'd rather I stopped, say that too. No hard feelings.
+      </p>`);
+
+    const { error } = await resend.emails.send({
+      from: `${settings.fromName || 'Fornello'} <${settings.fromEmail}>`,
+      replyTo: REPLY_TO_EMAIL, to: [toEmail],
+      subject: 'Did it work?', html,
+      headers: {
+        'List-Unsubscribe': `<${data.unsubscribeUrl}>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      },
+    });
+    if (error) throw new Error(error.message);
+    return;
+  }
+
+  const questions = data.questions.map(q => `
+    <div style="background:#F7F4EE;border-radius:12px;padding:16px 20px;margin:0 0 12px">
+      <p style="margin:0 0 6px;font-size:13px;color:#9A8B7B;line-height:1.5">${q.observation}</p>
+      <p style="margin:0;font-size:16px;color:#3D2714">${q.question}</p>
+    </div>`).join('');
+
+  const suggestion = data.suggestion ? `
+    <div style="border-top:1px solid #EDE3D4;margin-top:28px;padding-top:24px">
+      <p style="margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:0.18em;color:#9A8B7B">
+        Something you haven't tried
+      </p>
+      <p style="margin:0 0 6px;font-size:16px;color:#3D2714">${data.suggestion.title}</p>
+      <p style="margin:0 0 14px;font-size:14px;color:#6B5B4B;line-height:1.6">${data.suggestion.body}</p>
+      <a href="${data.suggestion.path}" style="font-size:14px;color:#4A7859">${data.suggestion.cta} &rarr;</a>
+    </div>` : '';
+
+  const html = shell(`
+    <div style="font-size:23px;color:#3D2714;margin-bottom:18px;line-height:1.3">
+      Here's what I noticed
+    </div>
+    <p style="font-size:15px;color:#6B5B4B;line-height:1.7;margin:0 0 22px">
+      Week one was my best guess. Tell me if I read it right — each of these is one
+      tap, and I'll remember it for every week after.
+    </p>
+    ${questions}
+    <div style="text-align:center;margin:26px 0 0">
+      <a href="${data.answerUrl}" style="display:inline-block;background:#4A7859;color:#fff;text-decoration:none;padding:13px 30px;border-radius:999px;font-size:14px">
+        Answer these
+      </a>
+    </div>
+    ${suggestion}`);
+
+  const { error } = await resend.emails.send({
+    from: `${settings.fromName || 'Fornello'} <${settings.fromEmail}>`,
+    replyTo: REPLY_TO_EMAIL, to: [toEmail],
+    subject: "Week one — here's what I noticed", html,
+    headers: {
+      'List-Unsubscribe': `<${data.unsubscribeUrl}>`,
+      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+    },
+  });
+  if (error) throw new Error(error.message);
+}

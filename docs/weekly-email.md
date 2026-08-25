@@ -66,3 +66,55 @@ assert two things are still wired to each other.
 3. One week as user zero. A real end-to-end run with a recipient who will notice
    anything wrong.
 4. Then invite real households.
+
+## The week-one check-in
+
+Seven days after a household's first menu, once. `/api/cron/week-one?send=1`,
+daily at 13:00 UTC — an hour after the auto-plan run, so the two never contend
+for the same minute.
+
+Email rather than in-app, deliberately. An in-app check-in reaches only the
+people who came back, which is exactly the wrong half: the households this
+exists for are the ones drifting, and they are not opening the app.
+
+Two shapes:
+
+**Used the week** — up to three questions, each derived from something that
+actually happened, each one tap, each writing a real setting. Not a
+questionnaire, and never a list of settings. If nothing specific was observed,
+nothing is sent: "here's what I noticed" followed by nothing is a generic
+message wearing a specific subject line.
+
+**Did nothing** — no tuning questions at all. One honest question, "Did it
+work?", and a reply that reaches a person. That is customer development
+arriving at the right moment from someone with a legitimate reason to ask, and
+it is currently the most valuable thing this feature can produce.
+
+Silence deliberately does NOT require an unopened menu. An earlier definition
+did, and against real data it produced zero silent households — everyone who
+generated a menu also glanced at it once, months ago, and never returned. Those
+are precisely the households the variant is for. Generating one menu, looking at
+it, and never rating, asking or generating again is doing nothing.
+
+### One suggestion, never a list
+
+A catalogue of adjustable settings turns a specific message into a feature menu
+and is functionally the settings page relocated into an inbox. So: one
+capability they have not used, chosen from behaviour, with a button that opens
+the screen — never a path like "Settings → Cooking Schedule".
+
+Only observable signals are used. "Never opened the grocery list" would be a
+good suggestion and is in the original brief, but nothing records grocery-list
+opens; a suggestion picked from a signal we do not have is a guess wearing
+behaviour's clothes. What IS observable: ratings, Chef Claude questions, menu
+count, heritage recipes and scans, auto-plan state, and the hour a menu was
+generated. Swap counts are not recorded either — if swap logging ever lands,
+`pickSuggestion` is the first caller that wants it.
+
+### Later, not now
+
+Once auto-plan is running for real households, the weekly menu email is a better
+home for feature discovery than any one-off: a single rotating line at the
+bottom, drawn from what a household has not touched, inside a message they
+already open for the food. A slow drip through an existing channel beats a
+catalogue in a message sent once. Not built.
