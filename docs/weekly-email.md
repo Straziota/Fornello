@@ -112,19 +112,43 @@ questionnaire, and never a list of settings. If nothing specific was observed,
 nothing is sent: "here's what I noticed" followed by nothing is a generic
 message wearing a specific subject line.
 
-**Did nothing** — no tuning questions at all:
+**Did nothing** — no tuning questions at all. Two wordings, by how long ago it
+was.
 
-> I can't tell whether these have been useful, wrong, or just badly timed.
-> Would you tell me which?
+A week in, subject *How was your first week?*:
 
-Two things in that phrasing are load-bearing. It names three options rather than
-asking an open question: "did it work?" asks someone to compose a sentence,
-while useful/wrong/badly-timed can be answered in one word, and for a household
-that has not opened the app in weeks that difference decides whether there is a
-reply at all. And it leads with the not-knowing, never with what Fornello has
-done — anything shaped like "I've planned these for you and heard nothing back"
-is a ledger of effort presented before asking for something, which reads as an
-invoice however gently it is phrased. That is customer development
+> Has Fornello been useful, wrong, or just badly timed?
+>
+> One word is plenty.
+>
+> — Claudia
+
+Long gone, subject *Fornello*:
+
+> I'm curious what happened after you tried Fornello: useful, wrong, or just
+> bad timing?
+>
+> One word is plenty.
+>
+> — Claudia
+
+Both are sent outside the Fornello template — no logo, no green header, no
+card. Four lines signed by a person, wrapped in a branded shell, look like a
+campaign, and a campaign is exactly what someone who has stopped using a product
+ignores. The plain formatting is the mechanism, not an oversight.
+
+Three named options rather than an open question is the other half: "did it
+work?" asks for a composed sentence, useful/wrong/badly-timed can be answered in
+one word. And neither opens with what Fornello has done — a ledger of effort
+presented before asking for something reads as an invoice however gently it is
+phrased.
+
+The questions variant keeps its 7–21 day upper bound, because asking "want
+Thursdays shorter?" about a week four months ago is a cold email wearing a
+check-in's clothes. Silence has no upper bound: a household that went quiet long
+ago still gets one short question. A household that used it and moved on gets
+nothing — there is nothing specific left to ask, and a generic nudge is not
+worth sending. That is customer development
 arriving at the right moment from someone with a legitimate reason to ask, and
 it is currently the most valuable thing this feature can produce.
 

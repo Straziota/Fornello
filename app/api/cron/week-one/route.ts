@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminClient } from '@/lib/supabase-admin';
 import { analyseWeekOne } from '@/lib/week-one';
-import { sendWeekOneCheckIn } from '@/lib/email';
+import { sendWeekOneCheckIn, sendSilenceCheckIn } from '@/lib/email';
 
 export const maxDuration = 300;
 
@@ -44,16 +44,21 @@ export async function GET(req: NextRequest) {
     const week = await analyseWeekOne(h.user_id);
     if (!week) continue;                                    // never generated a menu
 
-    // Seven days after the first menu, and not months after.
+    // Three outcomes, by how long ago the first menu was and whether anything
+    // happened since.
     //
-    // Without an upper bound, the first armed run sends a "week one" check-in
-    // to every household that ever generated a menu — including people whose
-    // first week was four months ago. That is not a check-in, it is a cold
-    // email wearing one, and it burns the one moment this message is credible.
-    // Anyone already past the window has missed it; that is the correct
-    // outcome, not a backlog to flush.
+    // The upper bound still matters for the QUESTIONS variant: asking someone
+    // "want Thursdays shorter?" about a week four months ago is a cold email
+    // wearing a check-in's clothes. But a household that went quiet long ago is
+    // worth one short, honest question, in its own words — so silence past the
+    // window gets the long-silent note rather than nothing.
     const days = (Date.now() - new Date(week.firstMenuAt).getTime()) / 86_400_000;
-    if (days < 7 || days > 21) continue;
+    if (days < 7) continue;
+    const variant: 'week-one' | 'long-silent' | null =
+      !week.silent ? null : days <= 21 ? 'week-one' : 'long-silent';
+    // Not silent and long past the window: they used it and moved on. There is
+    // nothing specific left to ask, and a generic nudge is not worth sending.
+    if (!variant && days > 21) continue;
 
     // Not silent, but nothing specific to say. Sending anyway would produce
     // "here's what I noticed" followed by nothing — a generic message wearing
@@ -66,19 +71,26 @@ export async function GET(req: NextRequest) {
     const to = email[h.user_id];
     if (!to || !h.email_token) { results.push(`${h.user_id}: no address or token`); continue; }
 
-    const shape = week.silent ? 'silent' : `${week.questions.length}q`;
+    const shape = variant ?? `${week.questions.length}q`;
     if (!send) { results.push(`would send [${shape}] -> ${to}`); continue; }
 
     try {
-      await sendWeekOneCheckIn(creds, to, {
-        silent: week.silent,
-        questions: week.questions,
-        suggestion: week.suggestion
-          ? { ...week.suggestion, path: `${site}${week.suggestion.path}` }
-          : null,
-        answerUrl: `${site}/week-one?token=${h.email_token}`,
-        unsubscribeUrl: `${site}/unsubscribe?token=${h.email_token}`,
-      });
+      if (variant) {
+        await sendSilenceCheckIn(creds, to, {
+          variant,
+          unsubscribeUrl: `${site}/unsubscribe?token=${h.email_token}`,
+        });
+      } else {
+        await sendWeekOneCheckIn(creds, to, {
+          silent: false,
+          questions: week.questions,
+          suggestion: week.suggestion
+            ? { ...week.suggestion, path: `${site}${week.suggestion.path}` }
+            : null,
+          answerUrl: `${site}/week-one?token=${h.email_token}`,
+          unsubscribeUrl: `${site}/unsubscribe?token=${h.email_token}`,
+        });
+      }
       await adminClient.from('settings')
         .update({ week_one_checkin_sent_at: new Date().toISOString() })
         .eq('user_id', h.user_id);

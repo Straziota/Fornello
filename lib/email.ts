@@ -306,13 +306,12 @@ export async function sendWeeklyMenuEmail(
           Before you go
         </p>
         <p style="margin:0 0 12px;font-size:15px;color:#3D2714;line-height:1.65">
-          I can't tell whether these have been useful, wrong, or just badly timed.
-          Would you tell me which?
+          Has Fornello been useful, wrong, or just badly timed?
         </p>
-        <p style="margin:0;font-size:15px;color:#6B5B4B;line-height:1.65">
-          One word is plenty — just reply to this email. It goes to a person, not a
-          form. And if you'd rather I stopped, say that too; no hard feelings.
+        <p style="margin:0 0 12px;font-size:15px;color:#6B5B4B;line-height:1.65">
+          One word is plenty — just reply.
         </p>
+        <p style="margin:0;font-size:15px;color:#6B5B4B;line-height:1.65">&mdash; Claudia</p>
       </div>` : data.checkIn?.questions?.length ? `
       <div style="border-top:1px solid #EDE3D4;margin-top:30px;padding-top:26px">
         <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.18em;color:#9A8B7B">
@@ -473,36 +472,7 @@ export async function sendWeekOneCheckIn(
   </div>`;
 
   if (data.silent) {
-    // Deliberately not a feature pitch, not a nudge, and not three questions.
-    // Someone who ignored a whole week is not short of prompting.
-    const html = shell(`
-      <div style="font-size:23px;color:#3D2714;margin-bottom:22px;line-height:1.3">
-        Useful, wrong, or badly timed?
-      </div>
-      <p style="font-size:15px;color:#6B5B4B;line-height:1.7;margin:0 0 16px">
-        I can't tell whether these have been useful, wrong, or just badly timed.
-        Would you tell me which?
-      </p>
-      <p style="font-size:15px;color:#6B5B4B;line-height:1.7;margin:0 0 22px">
-        One word is plenty. If you have more to say — what put you off, what was
-        missing, what you'd have wanted instead — I'd rather have that than anything
-        else you could send me. Just reply; it goes to a person, not a form.
-      </p>
-      <p style="font-size:15px;color:#6B5B4B;line-height:1.7;margin:0">
-        And if you'd rather I stopped, say that too. No hard feelings.
-      </p>`);
-
-    const { error } = await resend.emails.send({
-      from: `${settings.fromName || 'Fornello'} <${settings.fromEmail}>`,
-      replyTo: REPLY_TO_EMAIL, to: [toEmail],
-      subject: 'Useful, wrong, or badly timed?', html,
-      headers: {
-        'List-Unsubscribe': `<${data.unsubscribeUrl}>`,
-        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-      },
-    });
-    if (error) throw new Error(error.message);
-    return;
+    throw new Error('Silent households go through sendSilenceCheckIn, not this.');
   }
 
   const questions = data.questions.map(q => `
@@ -541,6 +511,58 @@ export async function sendWeekOneCheckIn(
     from: `${settings.fromName || 'Fornello'} <${settings.fromEmail}>`,
     replyTo: REPLY_TO_EMAIL, to: [toEmail],
     subject: "Week one — here's what I noticed", html,
+    headers: {
+      'List-Unsubscribe': `<${data.unsubscribeUrl}>`,
+      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+    },
+  });
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * The two silence emails: one for a household a week in, one for a household
+ * months gone.
+ *
+ * Deliberately not built on the Fornello template. Both are four lines signed
+ * by a person, and wrapping four lines in a branded card with a logo and a
+ * green header would make them look like campaigns — which is exactly what
+ * someone who has stopped using a product ignores. The formatting is plain
+ * because the message is personal, and that is the whole mechanism.
+ *
+ * Three named options rather than an open question: "did it work?" asks for a
+ * composed sentence, useful/wrong/badly-timed can be answered in one word. For
+ * someone who has not opened the app in months, that difference decides whether
+ * there is a reply at all.
+ */
+export async function sendSilenceCheckIn(
+  settings: { resendApiKey: string; fromEmail: string; fromName: string },
+  toEmail: string,
+  data: { variant: 'week-one' | 'long-silent'; unsubscribeUrl: string },
+) {
+  const resend = new Resend(settings.resendApiKey);
+
+  const weekOne = data.variant === 'week-one';
+  const subject = weekOne ? 'How was your first week?' : 'Fornello';
+  const opening = weekOne
+    ? 'Has Fornello been useful, wrong, or just badly timed?'
+    : "I'm curious what happened after you tried Fornello: useful, wrong, or just bad timing?";
+
+  const html = `
+  <div style="font-family:Georgia,'Times New Roman',serif;font-size:16px;color:#2F3A32;line-height:1.6;max-width:520px;margin:0 auto;padding:24px">
+    <p style="margin:0 0 18px">${opening}</p>
+    <p style="margin:0 0 18px">One word is plenty.</p>
+    <p style="margin:0">&mdash; Claudia</p>
+    <p style="margin:34px 0 0;font-size:11px;color:#9A8B7B">
+      <a href="${data.unsubscribeUrl}" style="color:#9A8B7B">Stop emails from Fornello</a>
+    </p>
+  </div>`;
+
+  const { error } = await resend.emails.send({
+    from: `${settings.fromName || 'Fornello'} <${settings.fromEmail}>`,
+    replyTo: REPLY_TO_EMAIL,
+    to: [toEmail],
+    subject,
+    html,
     headers: {
       'List-Unsubscribe': `<${data.unsubscribeUrl}>`,
       'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
