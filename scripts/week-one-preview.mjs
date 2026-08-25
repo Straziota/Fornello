@@ -1,28 +1,18 @@
-// Who the check-in would actually reach, and in which shape. Read-only.
-import { createClient } from '@supabase/supabase-js';
-import { analyseWeekOne } from '../lib/week-one.ts';
-const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
-const { data: { users } } = await db.auth.admin.listUsers({ perPage: 1000 });
-const { data: rows } = await db.from('settings').select('user_id, week_one_checkin_sent_at');
-const sent = new Set((rows || []).filter(r => r.week_one_checkin_sent_at).map(r => r.user_id));
+// Who the check-in will reach, from the SAME selection the cron uses. Read-only
+// apart from creating a settings row where one is missing, which the send would
+// do anyway and which nothing else depends on.
+import { weekOneRecipients } from '../lib/week-one-recipients.ts';
+const { due, skipped } = await weekOneRecipients();
 
-const weekOne = [], longSilent = [], questions = [], skipped = [], tooEarly = [];
-for (const u of users) {
-  if (sent.has(u.id)) continue;
-  const w = await analyseWeekOne(u.id);
-  if (!w) continue;
-  const days = (Date.now() - new Date(w.firstMenuAt)) / 86400000;
-  const row = `${(u.email||'?').padEnd(28)} ${days.toFixed(0).padStart(3)}d`;
-  if (days < 7) tooEarly.push(row);
-  else if (w.silent && days <= 21) weekOne.push(row);
-  else if (w.silent) longSilent.push(row);
-  else if (days > 21) skipped.push(row + '  (used it and moved on)');
-  else if (!w.questions.length) skipped.push(row + '  (nothing observed)');
-  else questions.push(row);
+const SUBJECTS = {
+  'week-one': '"How was your first week?"',
+  'long-silent': '"Fornello" — long-silent',
+  'questions': 'questions + suggestion',
+};
+for (const variant of Object.keys(SUBJECTS)) {
+  const rows = due.filter(r => r.variant === variant);
+  console.log(`\n  ${SUBJECTS[variant]} (${rows.length}):`);
+  for (const r of rows) console.log(`    ${r.email.padEnd(28)} ${r.days.toFixed(0).padStart(3)}d`);
 }
-const show = (label, rows) => { console.log(`\n  ${label} (${rows.length}):`); rows.forEach(r => console.log('    ' + r)); };
-show('"How was your first week?"', weekOne);
-show('"Fornello"  — long-silent', longSilent);
-show('questions + suggestion', questions);
-show('not yet, will qualify later', tooEarly);
-show('never sent', skipped);
+console.log(`\n  not sent (${skipped.length}):`);
+for (const s of skipped) console.log(`    ${s.email.padEnd(28)} ${s.days.toFixed(0).padStart(3)}d  ${s.reason}`);
