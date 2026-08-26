@@ -23,6 +23,7 @@
     "test:day-offers": "npx --yes tsx scripts/day-offers-test.mjs",
     "test:week-one": "npx --yes tsx scripts/week-one-test.mjs",
     "test:week-start": "npx --yes tsx scripts/week-start-test.mjs",
+    "test:vessel": "npx --yes tsx scripts/vessel-test.mjs",
     "week-one:who": "npx --yes tsx scripts/week-one-preview.mjs",
     "prebuild": "node scripts/cron-coverage.mjs"
   },

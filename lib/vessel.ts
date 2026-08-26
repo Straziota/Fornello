@@ -128,6 +128,15 @@ const BY_NAME: [RegExp, string][] = [
   [/\bsoup\b|\bbroth\b|\bchowder\b|\bbisque\b|\bramen\b|\bpho\b/i, 'deep two-handled soup pot'],
   [/\bstew\b|bourguignon|\bcassoulet\b|\bgoulash\b|\btagine\b|\bcurry\b|\bdal\b|\bchili\b/i,
                                                     'deep round casserole'],
+  // These arrive in the thing they were cooked or tossed in, so they must be
+  // decided BEFORE the composed-plate rule below. "Shakshuka with Feta and Warm
+  // Flatbread" is a pan of eggs with bread beside it, not a plated dinner, and
+  // "Souvlaki Bowls with Tzatziki and Orzo" says what it is served in twice.
+  [/\bshakshuka\b|\bfrittata\b|\bomelette?\b|\beggs?\b/i, 'small round cast-iron pan'],
+  [/\bsalad\b|\bbowls?\b|\bgrain bowl\b/i,          'wide shallow serving bowl'],
+  [/\bfish\b|\bsalmon\b|\bbranzino\b|\bsea bass\b|\bhalibut\b|\bsole\b|\bcod\b/i,
+                                                    'long oval fish platter'],
+
   // ── A composed plate is plated ────────────────────────────────────────────
   // A name that lists a main AND its accompaniments is describing a dinner as
   // it reaches the table, not a dish that cooks and is served in one vessel.
@@ -152,10 +161,6 @@ const BY_NAME: [RegExp, string][] = [
                                                     'black cast-iron skillet'],
   [/\bbraise[d]?\b|\bcoq au\b|\bpoulet\b|\bosso buco\b|\bshanks?\b|\bcacciatore\b|\bparprikas?\b|\bpaprikás\b/i,
                                                     'shallow round braiser'],
-  [/\bshakshuka\b|\bfrittata\b|\bomelette?\b|\beggs?\b/i, 'small round cast-iron pan'],
-  [/\bsalad\b|\bbowls?\b|\bgrain bowl\b/i,          'wide shallow serving bowl'],
-  [/\bfish\b|\bsalmon\b|\bbranzino\b|\bsea bass\b|\bhalibut\b|\bsole\b|\bcod\b/i,
-                                                    'long oval fish platter'],
 ];
 
 // An explicitly-assigned technique beats anything inferred from the name.
