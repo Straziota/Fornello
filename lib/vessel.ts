@@ -128,6 +128,22 @@ const BY_NAME: [RegExp, string][] = [
   [/\bsoup\b|\bbroth\b|\bchowder\b|\bbisque\b|\bramen\b|\bpho\b/i, 'deep two-handled soup pot'],
   [/\bstew\b|bourguignon|\bcassoulet\b|\bgoulash\b|\btagine\b|\bcurry\b|\bdal\b|\bchili\b/i,
                                                     'deep round casserole'],
+  // ── A composed plate is plated ────────────────────────────────────────────
+  // A name that lists a main AND its accompaniments is describing a dinner as
+  // it reaches the table, not a dish that cooks and is served in one vessel.
+  // "Bistecca alla Fiorentina with Roasted Potatoes and Arugula" matched the
+  // roast rule and was drawn as a steak, potatoes and salad leaves lying in a
+  // sheet pan — the pan is where one component was cooked, and nothing is
+  // served that way.
+  //
+  // Deliberately placed AFTER paella, soup, stew, gratin and pasta: those are
+  // genuinely brought to the table in their vessel, and a stew with mash beside
+  // it is still a stew in a casserole.
+  [/\b(with|and)\b[^,]*\b(potatoes?|mash(ed)?|rice|couscous|quinoa|polenta|grits|arugula|rocket|salad|greens|vegetables?|veg|chickpeas|beans|lentils|carrots|asparagus|broccoli|green beans|slaw|pilaf|orzo|fries|buns?|flatbread)\b/i,
+                                                    'wide rimmed dinner plate'],
+  // The same dish, said the other way round.
+  [/\bsur (un )?lit de\b|\bon a bed of\b|\bover\b[^,]*\b(rice|couscous|polenta|noodles|greens)\b/i,
+                                                    'wide rimmed dinner plate'],
   [/\broast(ed)?\b|\bsheet[- ]?pan\b|\btray[- ]?bake\b|\bschnitzel\b|\bwings?\b/i,
                                                     'flat sheet pan'],
   [/\bgratin\b|\blasagn|\bbake[dr]?\b|\bcasserole\b|\bmoussaka\b|\benchiladas?\b/i,

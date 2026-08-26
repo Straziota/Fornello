@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminClient } from '@/lib/supabase-admin';
 import { generateIllustration } from '@/lib/illustrate';
 import { recordUnitCost } from '@/lib/usage';
+import { authorizeOps } from '@/lib/ops-auth';
 
 export const maxDuration = 300;
 
@@ -15,8 +16,7 @@ export const maxDuration = 300;
 //
 // Dry by default.
 export async function POST(req: NextRequest) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret || req.headers.get('authorization') !== `Bearer ${secret}`) {
+  if (!authorizeOps(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   const dry = req.nextUrl.searchParams.get('write') !== '1';

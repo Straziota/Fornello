@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminClient } from '@/lib/supabase-admin';
 import { generateIllustration, illustrationPrompt } from '@/lib/illustrate';
+import { authorizeOps } from '@/lib/ops-auth';
 
 export const maxDuration = 120;
 
@@ -14,8 +15,7 @@ export const maxDuration = 120;
 //
 // ?dry=1 returns the prompt without generating, which costs nothing.
 export async function GET(req: NextRequest) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret || req.headers.get('authorization') !== `Bearer ${secret}`) {
+  if (!authorizeOps(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
