@@ -4,6 +4,7 @@ import { EXPLORATION_THEMES } from './themes';
 import { allergenGuard } from './allergens';
 import { Settings, WeeklyMenu, WeekSchedule, Meal, Ingredient, SubstituteResult } from './types';
 import { normalizeRecipeUnits } from './unit-convert';
+import { targetWeekStart } from './week-start';
 
 const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 
@@ -142,13 +143,14 @@ export async function generateMenu(
     ? `\nMeals specifically requested for this week — INCLUDE at least one of these regardless of recent history:\n${nextWeekPicks.map(m => `- ${m}`).join('\n')}`
     : '';
 
-  const today = new Date();
-  const weekStart = new Date(today);
-  const startDay = (settings as any).weekStartDay ?? 1;
-  const daysSinceStart = ((today.getDay() - startDay) % 7 + 7) % 7;
-  // If today is the day right before the reset day, generate for the upcoming week
-  weekStart.setDate(today.getDate() + (daysSinceStart === 6 ? 1 : -daysSinceStart));
-  const weekStartStr = weekStart.toISOString().split('T')[0];
+  // firstEver comes from the caller because only it knows whether this
+  // household has ever had a menu — and a first menu must cover the week they
+  // are standing in, whatever day it is.
+  const weekStartStr = targetWeekStart(
+    (settings as any).weekStartDay ?? 1,
+    new Date(),
+    { firstEver: (settings as any).firstEver === true },
+  );
 
   const schedText = scheduleText(settings.schedule || {});
   const leftoverDaysList = leftoverDays(settings.schedule || {});

@@ -7,6 +7,7 @@ import { getSettings, getRecentMealNames, saveMenu, updateMenuData, getLatestMen
 import { generateMenu, generateGroceryList, generateMealRecipe, generateSingleMeal } from '@/lib/claude';
 import { WeekSchedule } from '@/lib/types';
 import { resolveIllustration } from '@/lib/illustrate';
+import { adminClient } from '@/lib/supabase-admin';
 
 const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 const ALL_MEAL_TYPES = ['meat','chicken','seafood','pasta','vegetarian','soup or stew','Mexican','Asian','legumes or beans'];
@@ -83,7 +84,16 @@ export async function POST(req: Request) {
       getGlobalRecipeSummaries(),
     ]);
 
-    const menu = await generateMenu(settings, recentMeals, dislikedMeals, pantry, userRecipes, apiKey, mealFeedback, lovedMeals, nextWeekPicks, globalRecipes);
+    // Has this household ever had a menu? Decides whether "generate" means the
+    // week they are in or the one coming.
+    const { count: priorMenus } = await adminClient
+      .from('menus').select('*', { count: 'exact', head: true }).eq('user_id', user!.id);
+
+    const menu = await generateMenu(
+      { ...settings, firstEver: !priorMenus } as any,
+      recentMeals, dislikedMeals, pantry, userRecipes, apiKey,
+      mealFeedback, lovedMeals, nextWeekPicks, globalRecipes,
+    );
 
     // Defensive: catch duplicates, disliked meals, AND variations of recent meals
     // (e.g. "Italian Chicken Marsala" vs "Chicken Marsala"). Token-overlap match,

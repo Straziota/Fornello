@@ -9,6 +9,7 @@ import {
 } from '@/lib/db';
 import { generateMenu, generateMealRecipe, generateGroceryList } from '@/lib/claude';
 import { analyseWeekOne, topQuestion } from '@/lib/week-one';
+import { targetWeekStart } from '@/lib/week-start';
 
 export const maxDuration = 300;
 
@@ -144,6 +145,44 @@ export async function GET(req: NextRequest) {
 
     try {
       const settings = await getSettings(s.user_id);
+
+      // Never plan over a week the household planned themselves.
+      //
+      // saveMenu keys on week_start and UPDATES a matching row, so generating
+      // here would silently replace a menu someone had already built by hand —
+      // swaps, replacements and all. It has happened. If a menu for the target
+      // week already exists and Fornello did not make it, send that one instead
+      // of writing a new one over the top.
+      const targetWeek = targetWeekStart(weekStart);
+      const { data: existingWeek } = await adminClient
+        .from('menus').select('id, data, auto_planned')
+        .eq('user_id', s.user_id).eq('week_start', targetWeek).maybeSingle();
+
+      if (existingWeek?.auto_planned) {
+        results.push({ email, status: 'skipped', detail: `already sent week of ${targetWeek}` });
+        return;
+      }
+      if (existingWeek) {
+        const theirMeals = (existingWeek.data?.meals || []).filter((m: any) => !m.isLeftover);
+        const theirGroceries = Object.entries(existingWeek.data?.grocery_list || {})
+          .map(([category, items]) => ({ category, items: (items as any[]).map(i => i.item).filter(Boolean) }))
+          .filter(g => g.items.length);
+        await sendWeeklyMenuEmail(
+          { resendApiKey: resendKey, fromEmail, fromName: process.env.INVITE_FROM_NAME || 'Fornello' },
+          email,
+          {
+            meals: theirMeals, groceries: theirGroceries,
+            weekLabel: `Week of ${targetWeek}`,
+            unsubscribeUrl: `${appUrl}/unsubscribe?t=${s.email_token}`,
+            appUrl: `${appUrl}/this-week`,
+            rateUrl: `${appUrl}/api/rate?t=${s.email_token}`,
+            shopUrl: `${appUrl}/shop?t=${s.email_token}`,
+            mealUrl: `${appUrl}/this-week?meal=`,
+          },
+        );
+        results.push({ email, status: 'sent their own menu', detail: `${theirMeals.length} meals, not regenerated` });
+        return;
+      }
       const [recent, disliked, pantry, userRecipes, feedback, loved, picks, globals] = await Promise.all([
         getRecentMealNames(s.user_id, 12),
         getDislikedMealNames(s.user_id),
