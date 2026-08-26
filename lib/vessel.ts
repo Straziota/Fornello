@@ -37,7 +37,12 @@ const FOOD_COLOUR: [RegExp, string][] = [
   [/\bred wine\b|bourguignon|\bburgundy\b/i, 'deep burgundy-brown, thick'],
   [/\bsoy\b|\bteriyaki\b|\bhoisin\b|\btamarind\b/i, 'dark soy-brown, glossy'],
   [/\btomato|\bmarinara\b|amatriciana|arrabbiata/i, 'warm brick-red'],
-  [/\bpesto\b|\bherb\b|\bsalsa verde\b/i, 'fresh green'],
+  // \bherb\b alone was too broad: "Roasted Lemon Herb Chicken" is a roast with
+  // herbs scattered over it, not a dish in a green sauce, and calling its sauce
+  // fresh green painted a green pool onto a forest-green plate. Only actual
+  // green sauces qualify.
+  [/\bpesto\b|\bsalsa verde\b|\bchimichurri\b|\bgremolata\b|\bgreen sauce\b|\bherb (sauce|butter|oil|cream)\b/i,
+                                                    'fresh green'],
   [/\bwhite wine\b|\bcr[eè]me fra[iî]che\b|\bcream\b|\bb[eé]chamel\b/i, 'pale ivory, thin and silky'],
   [/\bpecorino\b|\bparmesan\b|cacio e pepe|\bgricia\b|\bcarbonara\b/i, 'pale straw, glossy and barely-there'],
   [/\blemon\b|\bpiccata\b/i,           'pale gold'],

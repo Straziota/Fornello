@@ -1,4 +1,22 @@
 import { vesselFor } from '../lib/vessel.ts';
+
+// Food colour, separately: it is fed to the prompt as "the sauce reads X", so a
+// wrong value paints a sauce the dish does not have.
+const COLOUR = {
+  'Roasted Lemon Herb Chicken with Root Vegetables': 'pale gold',
+  'Trofie al Pesto Genovese': 'fresh green',
+  'Grilled Steak with Chimichurri and Potatoes': 'fresh green',
+  'Herb Butter Roast Chicken': 'fresh green',
+  'Pasta alla Amatriciana': 'warm brick-red',
+};
+let colourBad = 0;
+for (const [name, want] of Object.entries(COLOUR)) {
+  const got = vesselFor({ name }).foodColour;
+  const ok = got === want;
+  if (!ok) colourBad++;
+  console.log(`  ${ok ? '✓' : '✗'} sauce reads ${String(got).padEnd(18)} ${name}${ok ? '' : `   (want ${want})`}`);
+}
+console.log('');
 const names = [
   'Bistecca alla Fiorentina with Roasted Potatoes and Arugula',
   'Honey Harissa Sheet Pan Chicken Thighs with Chickpeas and Roasted Carrots',
@@ -38,4 +56,4 @@ for (const n of names) {
   console.log(`  ${ok ? '✓' : '✗'} ${(v || '?').padEnd(34)} ${n}${ok || !want ? '' : `   (want ${want})`}`);
 }
 console.log(`\n  ${bad ? `${bad} FAILED` : 'all passed'}`);
-process.exit(bad ? 1 : 0);
+process.exit(bad + colourBad ? 1 : 0);
