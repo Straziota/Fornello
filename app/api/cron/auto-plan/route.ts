@@ -77,15 +77,26 @@ export async function GET(req: NextRequest) {
 
   const results: { email: string; status: string; detail?: string }[] = [];
 
-  for (const s of subs || []) {
+  // Households are processed CONCURRENTLY, in small batches.
+  //
+  // Each one costs a menu generation, seven recipes and a grocery list —
+  // roughly eighty seconds. Sequentially, seven households is nearly ten
+  // minutes against a five-minute ceiling, so the run would be killed partway
+  // and whoever came last in an unordered query would silently get no email.
+  // Four at a time keeps a realistic Sunday inside the limit, and the cap is
+  // there because seven simultaneous Anthropic conversations is how you find
+  // the rate limiter.
+  const CONCURRENCY = 4;
+  const queue = [...(subs || [])];
+  const runOne = async (s: any) => {
     // An explicit choice wins; otherwise the day before their week starts.
     const weekStart = typeof s.week_start_day === 'number' ? s.week_start_day : 1;
     const sendDay = typeof s.auto_plan_day === 'number' ? s.auto_plan_day : (weekStart + 6) % 7;
-    if (!allDays && sendDay !== today) continue;
+    if (!allDays && sendDay !== today) return;
 
     const { data: authUser } = await adminClient.auth.admin.getUserById(s.user_id);
     const email = authUser?.user?.email;
-    if (!email) { results.push({ email: '(none)', status: 'skipped', detail: 'no address' }); continue; }
+    if (!email) { results.push({ email: '(none)', status: 'skipped', detail: 'no address' }); return; }
 
     // Enough quiet weeks — ask, don't decide. Asked only once; we then wait for
     // an answer rather than sending this every week too.
@@ -128,7 +139,7 @@ export async function GET(req: NextRequest) {
 
     if (dryRun) {
       results.push({ email, status: 'would plan + send', detail: `ignored streak ${s.auto_plan_ignored ?? 0}` });
-      continue;
+      return;
     }
 
     try {
@@ -220,13 +231,6 @@ export async function GET(req: NextRequest) {
       await updateMenuData(s.user_id, menuId, { ...(menu as any), meals: fullMeals, grocery_list });
       (menu as any).meals = fullMeals;
       (menu as any).grocery_list = grocery_list;
-      // Mark it as Fornello's work, and deliberately NOT engaged: whether a
-      // human meets this week is exactly what we must not assume.
-      await adminClient.from('menus')
-        .update({ auto_planned: true }).eq('id', menuId);
-      await adminClient.from('settings')
-        .update({ auto_plan_ignored: (s.auto_plan_ignored ?? 0) + 1 })
-        .eq('user_id', s.user_id);
 
       // Due a week-one check-in? Fold it in rather than sending a second email
       // the same week. A subscriber gets one message; the questions ride inside
@@ -281,7 +285,18 @@ export async function GET(req: NextRequest) {
     } catch (e: any) {
       results.push({ email, status: 'failed', detail: e.message });
     }
-  }
+  };
+
+  // Four workers pulling from one queue, so a slow household delays only itself
+  // rather than everyone queued behind it.
+  await Promise.all(
+    Array.from({ length: CONCURRENCY }, async () => {
+      for (let next = queue.shift(); next; next = queue.shift()) {
+        try { await runOne(next); }
+        catch (e: any) { results.push({ email: next.user_id, status: 'failed', detail: e.message }); }
+      }
+    }),
+  );
 
   return NextResponse.json({ dryRun, day: today, count: results.length, results });
 }
