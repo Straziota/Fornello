@@ -23,6 +23,12 @@ export default function AdminPage() {
 
   const cards = [
     {
+      href: '/admin/traction',
+      icon: '📈',
+      title: 'Traction',
+      desc: 'The few numbers that decide whether to keep going — week-two returns, external ratings, and where each household stopped.',
+    },
+    {
       href: '/admin/invites',
       icon: '📨',
       title: 'Invites',
