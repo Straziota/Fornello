@@ -19,7 +19,22 @@ export default function TourWrapper({ children }: { children: React.ReactNode })
   // that distinction is the whole bug. Signing in leaves the wrapper mounted, so
   // a flag meaning "checked" was already true from the login page and the app
   // painted the moment /this-week mounted, before the new check could answer.
-  const [verified, setVerified] = useState(false);
+  // Remembered across launches. On the website /api/settings is a same-origin
+  // request and the wait is invisible; inside the app it is a cold round trip
+  // to fornello.app over cellular, and holding the ENTIRE app behind it turned
+  // every launch into a several-second parchment screen. A household that has
+  // already onboarded once cannot un-onboard, so the answer is worth keeping.
+  const [verified, setVerified] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem('fornello:onboarded') === '1';
+  });
+
+  const [timedOut, setTimedOut] = useState(false);
+  useEffect(() => {
+    if (verified) return;
+    const t = setTimeout(() => setTimedOut(true), 6000);
+    return () => clearTimeout(t);
+  }, [verified]);
 
   useEffect(() => {
     // Skip on public pages — user isn't logged in yet
@@ -36,14 +51,17 @@ export default function TourWrapper({ children }: { children: React.ReactNode })
       // unconfigured product with a "want a tour?" modal on top — that was three
       // gates before anyone saw a dinner.
       if (s && !s.onboardedAt) {
-        // Deliberately leaves `verified` false, so nothing behind this paints
-        // while the navigation is in flight.
+        // Clear the cache too: an account reset for re-onboarding must not be
+        // waved through by a remembered "yes" from before the reset.
+        try { window.localStorage.removeItem('fornello:onboarded'); } catch { /* private mode */ }
+        setVerified(false);
         router.replace('/welcome');
         return;
       }
       if (s && typeof s.familySize === 'number' && !s.hasSeenTour) {
         setShowWelcome(true);
       }
+      try { window.localStorage.setItem('fornello:onboarded', '1'); } catch { /* private mode */ }
       setVerified(true);
     }).catch(() => setVerified(true));
   }, [pathname]);
@@ -69,7 +87,10 @@ export default function TourWrapper({ children }: { children: React.ReactNode })
   //
   // Public paths are exempt, and `verified` stays true once set, so this costs
   // one held frame per session rather than one per navigation.
-  if (!isPublic(pathname) && !verified) {
+  // A slow or dead connection must not leave someone staring at a logo. After
+  // this the app renders regardless — a brief flash of icons is a smaller
+  // failure than an app that never opens.
+  if (!isPublic(pathname) && !verified && !timedOut) {
     return (
       <div className="fixed inset-0 flex items-center justify-center px-4" style={{ background: 'var(--cream, #F7F4EE)' }}>
         <div className="text-center">

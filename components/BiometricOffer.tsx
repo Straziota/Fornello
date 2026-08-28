@@ -26,8 +26,15 @@ export default function BiometricOffer() {
       if (!b.available || cancelled) return;
       // Only for someone actually signed in — offering this on the login
       // screen would be asking to protect an account they have not opened.
-      const res = await fetch('/api/settings').catch(() => null);
-      if (!res?.ok || cancelled) return;
+      //
+      // Uses the flag TourWrapper already wrote rather than making its own
+      // request: a second cold round trip to fornello.app on launch is exactly
+      // what made the app feel slow, and this one would have been for a dialog.
+      if (window.localStorage.getItem('fornello:onboarded') !== '1') {
+        const res = await fetch('/api/settings').catch(() => null);
+        if (!res?.ok || cancelled) return;
+      }
+      if (cancelled) return;
       setName(b.name);
       setShow(true);
     })();
