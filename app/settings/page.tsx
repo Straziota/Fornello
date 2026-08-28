@@ -11,6 +11,7 @@ import { normalizeLanguage } from '@/lib/translations';
 import { T } from '@/components/T';
 import { createBrowser } from '@/lib/supabase';
 import WeeklyEmailSetting from '@/components/WeeklyEmailSetting';
+import BiometricSetting from '@/components/BiometricSetting';
 import RestrictionNormalizer from '@/components/RestrictionNormalizer';
 import RestrictionCorrectionNotice from '@/components/RestrictionCorrectionNotice';
 import AllergySafetyNotice from '@/components/AllergySafetyNotice';
@@ -875,6 +876,10 @@ export default function SettingsPage() {
 
         {/* Account — change email / change password */}
         <Section tour="set-account" title="Account">
+          {/* Belongs with the account rather than in a section of its own: it
+              guards who can see this account on this phone, and it renders
+              nothing at all on a device without biometrics. */}
+          <BiometricSetting />
           <div className="space-y-6">
             <div>
               <p className="text-xs uppercase tracking-widest mb-1.5" style={{ color: 'var(--text-3)' }}>Current email</p>

@@ -3,6 +3,7 @@ import { Lora, Inter, Dancing_Script } from 'next/font/google';
 import './globals.css';
 import NavBar from '@/components/NavBar';
 import TourWrapper from '@/components/TourWrapper';
+import BiometricGate from '@/components/BiometricGate';
 import { LanguageProvider } from '@/components/LanguageProvider';
 import PageTourFloating from '@/components/PageTourFloating';
 import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar';
@@ -47,6 +48,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <NativeAuthGate />
         <ServiceWorkerRegistrar />
         <LanguageProvider>
+          <BiometricGate>
           <TourWrapper>
             <div style={{ position: 'relative', zIndex: 1, minHeight: '100vh' }}>
               <NavBar />
@@ -56,6 +58,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <PageTourFloating />
             </div>
           </TourWrapper>
+          </BiometricGate>
         </LanguageProvider>
       </body>
     </html>
