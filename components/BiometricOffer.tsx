@@ -58,12 +58,11 @@ export default function BiometricOffer() {
         <h2 className="text-2xl mb-3" style={{ fontFamily: 'AbramoSerif, serif' }}>
           Use {name} to open Fornello?
         </h2>
-        <p className="text-sm leading-relaxed mb-3" style={{ color: 'var(--text-2)' }}>
-          You&apos;ll stay signed in on this phone — which means anyone holding it can
-          see your week, your recipes and your family&apos;s allergies. {name} keeps that
-          to you.
-        </p>
-        <p className="text-xs leading-relaxed mb-6" style={{ color: 'var(--text-3)' }}>
+        {/* No paragraph about who might pick up the phone. Someone who wants
+            the lock does not need the danger explained, and someone who does
+            not want it should be able to decline without having been made
+            uneasy first. The question is enough. */}
+        <p className="text-sm leading-relaxed mb-6" style={{ color: 'var(--text-2)' }}>
           You can turn this on or off whenever you like in Settings, and change how
           long the app waits before asking again.
         </p>
