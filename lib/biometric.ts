@@ -99,9 +99,30 @@ export function markActive(): void {
   try { window.localStorage.setItem(LAST_ACTIVE, String(Date.now())); } catch { /* private mode */ }
 }
 
+/**
+ * Whether a Supabase session is stored on this device.
+ *
+ * Locking a signed-out app is a door in front of another door: the lock screen
+ * appears, a face is scanned, and what is revealed is the login page. Worse, a
+ * failed scan then looks like the app refusing to let someone log in.
+ *
+ * Read from localStorage rather than asked of Supabase, because this decides
+ * what renders on the very first frame and must not wait on anything.
+ */
+function hasStoredSession(): boolean {
+  try {
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const k = window.localStorage.key(i) || '';
+      if (k.startsWith('sb-') && k.includes('auth-token')) return true;
+    }
+  } catch { /* private mode */ }
+  return false;
+}
+
 /** True when the app should ask before showing anything. */
 export function shouldLock(): boolean {
   if (!isNativeApp() || !lockEnabled()) return false;
+  if (!hasStoredSession()) return false;
   const last = Number(window.localStorage.getItem(LAST_ACTIVE) || 0);
   return !last || Date.now() - last > getRelockMs();
 }

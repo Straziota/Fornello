@@ -30,10 +30,16 @@ export default function BiometricOffer() {
       // Uses the flag TourWrapper already wrote rather than making its own
       // request: a second cold round trip to fornello.app on launch is exactly
       // what made the app feel slow, and this one would have been for a dialog.
-      if (window.localStorage.getItem('fornello:onboarded') !== '1') {
-        const res = await fetch('/api/settings').catch(() => null);
-        if (!res?.ok || cancelled) return;
-      }
+      // The cached onboarded flag survives a sign-out, so it alone is not
+      // evidence anyone is signed in NOW. A stored Supabase session is.
+      let signedIn = false;
+      try {
+        for (let i = 0; i < window.localStorage.length; i++) {
+          const k = window.localStorage.key(i) || '';
+          if (k.startsWith('sb-') && k.includes('auth-token')) { signedIn = true; break; }
+        }
+      } catch { /* private mode */ }
+      if (!signedIn) return;
       if (cancelled) return;
       setName(b.name);
       setShow(true);
