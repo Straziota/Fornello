@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { isNativeApp } from '@/lib/native';
 import { shouldLock, authenticate, markActive, lockEnabled } from '@/lib/biometric';
+import BiometricOffer from './BiometricOffer';
 
 /**
  * Holds the app behind Face ID when the device has asked for it.
@@ -62,5 +63,5 @@ export default function BiometricGate({ children }: { children: React.ReactNode 
       </div>
     );
   }
-  return <>{children}</>;
+  return <>{children}<BiometricOffer /></>;
 }

@@ -19,11 +19,54 @@ import { isNativeApp } from './native';
  */
 const KEY = 'fornello:biometric-lock';
 const LAST_ACTIVE = 'fornello:last-active';
+const OFFERED = 'fornello:biometric-offered';
+const DELAY = 'fornello:biometric-delay';
 
-// Long enough to check a shopping list in another app and come back, short
-// enough that a phone left on a table re-locks. Banking apps lock instantly;
-// a meal planner that did would just be uninstalled.
-const RELOCK_AFTER_MS = 2 * 60 * 1000;
+/**
+ * How long the app may sit in the background before it locks again.
+ *
+ * There is no correct value, which is why it is a choice. Instantly is right
+ * for a phone that gets handed around and wrong for someone checking a
+ * shopping list in another app every thirty seconds. The default is two
+ * minutes because that survives the shopping-list case, which is the one this
+ * app actually causes.
+ */
+export const RELOCK_OPTIONS = [
+  { ms: 0,            label: 'Immediately' },
+  { ms: 60_000,       label: 'After 1 minute' },
+  { ms: 2 * 60_000,   label: 'After 2 minutes' },
+  { ms: 15 * 60_000,  label: 'After 15 minutes' },
+  { ms: 60 * 60_000,  label: 'After an hour' },
+] as const;
+
+const DEFAULT_RELOCK_MS = 2 * 60_000;
+
+export function getRelockMs(): number {
+  if (typeof window === 'undefined') return DEFAULT_RELOCK_MS;
+  const raw = window.localStorage.getItem(DELAY);
+  // Two traps, opposite directions. `|| DEFAULT` would turn "Immediately" (0)
+  // into two minutes, giving the strictest choice the loosest behaviour. And
+  // Number('') is 0, so an empty stored value would silently BECOME
+  // "Immediately" for someone who never chose it. Both are wrong; treat empty
+  // as absent and everything else as a number.
+  if (raw == null || raw.trim() === '') return DEFAULT_RELOCK_MS;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : DEFAULT_RELOCK_MS;
+}
+
+export function setRelockMs(ms: number): void {
+  window.localStorage.setItem(DELAY, String(ms));
+}
+
+/** Whether we have already asked. Asked once, never nagged. */
+export function hasBeenOffered(): boolean {
+  if (typeof window === 'undefined') return true;
+  return window.localStorage.getItem(OFFERED) === '1';
+}
+
+export function markOffered(): void {
+  try { window.localStorage.setItem(OFFERED, '1'); } catch { /* private mode */ }
+}
 
 export type Biometry = { available: boolean; name: string };
 
@@ -60,7 +103,7 @@ export function markActive(): void {
 export function shouldLock(): boolean {
   if (!isNativeApp() || !lockEnabled()) return false;
   const last = Number(window.localStorage.getItem(LAST_ACTIVE) || 0);
-  return !last || Date.now() - last > RELOCK_AFTER_MS;
+  return !last || Date.now() - last > getRelockMs();
 }
 
 export async function authenticate(reason: string): Promise<boolean> {
