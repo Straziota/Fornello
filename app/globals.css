@@ -108,6 +108,45 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Removes the ~300ms wait iOS keeps before acting on a tap, in case that tap is
+   the first half of a double-tap zoom. On a page that never wants double-tap
+   zoom, the delay reads as the app ignoring you — which is precisely what
+   "difficult to make selections" feels like. */
+* {
+  touch-action: manipulation;
+}
+
+/* Taking the grey flash away above also removed the only confirmation that a
+   tap landed. With a mouse that is fine, because the cursor shows where the
+   click went; a finger covers the target completely. So put deliberate feedback
+   back, for touch devices only — without it a tap that missed and a tap that
+   was ignored look identical, and people jab at it repeatedly. */
+@media (pointer: coarse) {
+  button:active,
+  [role="button"]:active,
+  a:active {
+    opacity: 0.55;
+    transition: opacity 60ms ease-out;
+  }
+
+  /* Most controls here are pills sized for a cursor: px-4 py-2 is about 32px
+     tall against Apple's 44pt minimum. Rather than resize every button and
+     reflow the layouts, extend the invisible hit area by 4px a side. Four and
+     not eight because the tightest rows use an 8px gap — this meets its
+     neighbour exactly without overlapping it and stealing taps meant for
+     something else. */
+  button,
+  [role="button"] {
+    position: relative;
+  }
+  button::after,
+  [role="button"]::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+  }
+}
+
 /* Rubber-band scrolling past the top of the page reveals the WebView behind it
    and instantly breaks the illusion. Inner scrollers keep their own bounce. */
 html, body {
