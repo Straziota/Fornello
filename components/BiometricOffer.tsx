@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { isNativeApp } from '@/lib/native';
+import { createBrowser } from '@/lib/supabase';
 import { biometryAvailable, hasBeenOffered, markOffered, lockEnabled, setLockEnabled, authenticate } from '@/lib/biometric';
 
 /**
@@ -21,7 +22,8 @@ export default function BiometricOffer() {
   useEffect(() => {
     if (!isNativeApp() || hasBeenOffered() || lockEnabled()) return;
     let cancelled = false;
-    (async () => {
+
+    const check = async () => {
       const b = await biometryAvailable();
       if (!b.available || cancelled) return;
       // Only for someone actually signed in — offering this on the login
@@ -43,8 +45,21 @@ export default function BiometricOffer() {
       if (cancelled) return;
       setName(b.name);
       setShow(true);
-    })();
-    return () => { cancelled = true; };
+    };
+
+    // Re-check when a session appears, not only on mount.
+    //
+    // The app opens on the login screen, so at mount there is no session and
+    // this bailed out — permanently, because an effect does not run again.
+    // Signing in a moment later produced nothing at all, which is exactly what
+    // happened on the phone: Face ID detected, offer never shown.
+    const supabase = createBrowser();
+    const { data: sub } = supabase.auth.onAuthStateChange(event => {
+      if (event === 'SIGNED_IN' && !cancelled) void check();
+    });
+
+    void check();
+    return () => { cancelled = true; sub?.subscription?.unsubscribe(); };
   }, []);
 
   if (!show) return null;
