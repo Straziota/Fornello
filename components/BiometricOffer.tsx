@@ -20,10 +20,17 @@ export default function BiometricOffer() {
   const [show, setShow] = useState(false);
 
   useEffect(() => {
-    if (!isNativeApp() || hasBeenOffered() || lockEnabled()) return;
+    if (!isNativeApp()) return;
     let cancelled = false;
 
     const check = async () => {
+      // Guards live INSIDE the check, not in front of the subscription.
+      //
+      // Bailing out before subscribing meant a single stale flag in
+      // localStorage — from any earlier build, on a device I cannot inspect —
+      // permanently prevented the listener from ever existing. The state is
+      // re-read on every sign-in now, so a wrong value stops being fatal.
+      if (hasBeenOffered() || lockEnabled() || cancelled) return;
       const b = await biometryAvailable();
       if (!b.available || cancelled) return;
       // Only for someone actually signed in — offering this on the login
