@@ -84,3 +84,104 @@ try {
 } finally {
   restoreAll();
 }
+
+// ── Shrink the images before they are bundled ──────────────────────────────
+//
+// The website serves these through Next's image optimiser, so nobody ever
+// downloads the originals. A static export has no optimiser: it copies public/
+// verbatim, and public/ holds 4096x4096 PNGs — 10MB each — drawn at 112px in
+// the navbar. The app shipped 268MB, of which 5.8MB was the application. iOS
+// unpacks all of it before the WebView paints, which is why launch took half a
+// minute of black screen.
+//
+// Only the copy inside app-build is touched; public/ keeps its originals
+// because the website's optimiser works from them.
+import sharp from 'sharp';
+import { readdirSync, statSync } from 'node:fs';
+
+const OUT = 'app-build';
+
+function* walk(dir) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) yield* walk(full);
+    else yield full;
+  }
+}
+
+if (existsSync(OUT)) {
+  const mb = n => (n / 1024 / 1024).toFixed(1);
+  let before = 0, after = 0;
+  const renamed = [];
+
+  for (const file of walk(OUT)) {
+    if (!/\.(png|jpe?g)$/i.test(file) || file.includes('/_next/')) continue;
+    const size = statSync(file).size;
+    if (size < 150 * 1024) continue;
+    before += size;
+
+    const isBackground = file.includes('/backgrounds/');
+    // Icons are watercolour cut-outs and need their alpha; backgrounds are
+    // opaque photographs, where PNG is simply the wrong format — JPEG is four
+    // times smaller at a quality nobody can distinguish behind text.
+    const width = isBackground ? 1600 : 512;
+
+    try {
+      const img = sharp(file);
+      const meta = await img.metadata();
+      const resized = (meta.width || 0) > width
+        ? img.resize({ width, withoutEnlargement: true })
+        : img;
+
+      if (isBackground && !meta.hasAlpha) {
+        const buf = await resized.jpeg({ quality: 80, mozjpeg: true }).toBuffer();
+        const target = file.replace(/\.png$/i, '.jpg');
+        writeFileSync(target, buf);
+        if (target !== file) { rmSync(file, { force: true }); renamed.push([file, target]); }
+        after += buf.length;
+      } else {
+        const buf = await resized.png({ compressionLevel: 9, palette: true }).toBuffer();
+        writeFileSync(file, buf);
+        after += buf.length;
+      }
+    } catch {
+      after += size;   // a picture that will not convert still ships
+    }
+  }
+
+  // Rewriting references rather than trusting content sniffing. A .png holding
+  // JPEG bytes usually renders and occasionally does not, and a background that
+  // silently fails is invisible until someone opens the page.
+  if (renamed.length) {
+    const swaps = renamed.map(([from, to]) => {
+      const rel = f => f.slice(OUT.length);
+      return [rel(from), rel(to)];
+    });
+    for (const file of walk(OUT)) {
+      if (!/\.(html|js|json|css|txt)$/i.test(file)) continue;
+      let text = readFileSync(file, 'utf8');
+      let changed = false;
+      for (const [from, to] of swaps) {
+        // Filenames contain spaces, so both the raw and percent-encoded forms
+        // appear in the built output.
+        for (const [a, b] of [[from, to], [encodeURI(from), encodeURI(to)]]) {
+          if (text.includes(a)) { text = text.split(a).join(b); changed = true; }
+        }
+      }
+      if (changed) writeFileSync(file, text);
+    }
+
+    // Prove it: nothing may still point at a file that no longer exists.
+    let dangling = 0;
+    for (const file of walk(OUT)) {
+      if (!/\.(html|js|css)$/i.test(file)) continue;
+      const text = readFileSync(file, 'utf8');
+      for (const [from] of swaps) {
+        if (text.includes(from) || text.includes(encodeURI(from))) dangling++;
+      }
+    }
+    if (dangling) throw new Error(`${dangling} reference(s) still point at converted images`);
+  }
+
+  console.log(`\n  images: ${mb(before)}MB -> ${mb(after)}MB (${renamed.length} converted to JPEG)`);
+}
