@@ -22,10 +22,10 @@ export default function HomePage() {
     <>
       <PageBackground src="/backgrounds/Home page background.png" />
 
-      {/* Logo */}
-      <div className="flex justify-center mb-10 mt-4">
-        <img src="/Fornello Logo.png" alt="Fornello" style={{ width: '180px', height: 'auto' }} />
-      </div>
+      {/* No logo here. The navbar already carries one, pinned to the top; a
+          second copy that scrolls away with the page meant two Fornello marks
+          on screen at once and, on a phone, most of the first screen given to
+          saying the app's name to someone already inside it. */}
 
       {/* Tile grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto">
