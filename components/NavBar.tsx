@@ -16,9 +16,6 @@ function formatNavLabel(label: string): string {
 
 export default function NavBar() {
   const path = usePathname();
-  // The masthead belongs where there is nothing else at the top — the home
-  // page, above the thumbnails. On any other page the content is the heading.
-  const isHome = path === '/';
   const router = useRouter();
   const { t } = useLanguage();
   const [userName, setUserName] = useState('');
@@ -76,11 +73,11 @@ export default function NavBar() {
     <header className="sticky top-0 z-50 backdrop-blur-sm"
             style={{ background: 'rgba(247,244,238,0.92)', borderBottom: '1px solid var(--border-2)' }}>
 
-      {/* 208px of header is a desktop measurement. On a phone it swallowed half
-          the screen on every page, with a 140px logo sitting above whatever the
-          page was actually for. The full masthead is now the home page only;
-          everywhere else the bar collapses to something you can navigate past. */}
-      <div className={`w-full px-6 flex items-center gap-4 ${isHome ? 'h-24 md:h-52' : 'h-14 md:h-52'}`}>
+      {/* 208px of header is a desktop measurement; on a phone it swallowed half
+          the screen before the page began. The bar is 80px on mobile and the
+          full masthead on desktop — the logo stays top-left on every screen,
+          which is where it reads as chrome rather than as content. */}
+      <div className="w-full px-6 flex items-center gap-4 h-20 md:h-52">
         {/* Logo */}
         {/* shrink-0, or flex squashes the logo horizontally: the nav beside it
             is wider than the bar, and without this the logo is one of the things
@@ -90,7 +87,7 @@ export default function NavBar() {
             with thirteen of them the row is always being squeezed, and contain
             turns that squeeze into lost HEIGHT, which is worse than a few
             cropped pixels at the sides. */}
-        <Link href="/" className={`items-center shrink-0 ${isHome ? 'flex' : 'hidden md:flex'}`}>
+        <Link href="/" className="flex items-center shrink-0">
           <img src="/Fornello Logo.png" alt="Fornello"
                className="h-[84px] w-[84px] md:h-[140px] md:w-[140px]"
                style={{ objectFit: 'contain', display: 'block' }} />

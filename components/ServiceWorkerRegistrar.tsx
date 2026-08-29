@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { isNativeApp } from '@/lib/native';
 
 /**
  * Registers the offline service worker.
@@ -12,6 +13,33 @@ import { useEffect } from 'react';
  */
 export default function ServiceWorkerRegistrar() {
   useEffect(() => {
+    // NEVER in the native app.
+    //
+    // The worker exists so a phone with no signal can still read this week's
+    // menu. Inside Capacitor that problem does not exist: every asset is on
+    // disk in the bundle, readable with the radio off. What the worker adds is
+    // a cache in front of files that are already local — and because it treats
+    // /icons/ and /backgrounds/ as immutable and serves the shell from cache, a
+    // freshly installed build gets answered with the previous one. That is why
+    // new builds appeared not to arrive: they did, and were then overruled.
+    //
+    // Tear down anything an earlier build registered too, or a device already
+    // holding a stale cache would go on serving it forever.
+    if (isNativeApp()) {
+      void (async () => {
+        try {
+          const regs = (await navigator.serviceWorker?.getRegistrations?.()) ?? [];
+          await Promise.all(regs.map(r => r.unregister()));
+          const keys = (await caches?.keys?.()) ?? [];
+          await Promise.all(keys.map(k => caches.delete(k)));
+          if (regs.length || keys.length) {
+            console.log(`[sw] native: removed ${regs.length} worker(s), ${keys.length} cache(s)`);
+          }
+        } catch { /* nothing to clean up */ }
+      })();
+      return;
+    }
+
     if (process.env.NODE_ENV !== 'production') return;
     if (!('serviceWorker' in navigator)) return;
 
