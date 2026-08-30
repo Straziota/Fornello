@@ -267,13 +267,17 @@ export async function sendWeeklyMenuEmail(
   //
   // Three answers, not two. "We changed it" is the commonest truth about a
   // family recipe, and forcing it into loved-or-never loses the useful half.
+  //
+  // The copy says FUTURE menus, not next week's. Next week is already in this
+  // email, sitting a few inches above the question — promising that an answer
+  // shapes it would be contradicted by the message carrying the promise.
   const lastWeekBlock = data.lastWeek?.meals?.length ? `
       <div style="border-top:1px solid #EDE3D4;margin-top:32px;padding-top:26px">
         <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.18em;color:#9A8B7B">
           Last week
         </p>
         <p style="margin:0 0 16px;font-size:14px;color:#6B5B4B;line-height:1.6">
-          How did these go? One tap each — it is how next week gets closer to your family.
+          How did these go? One tap each — it is how future menus get closer to your taste.
         </p>
         ${data.lastWeek.meals.map(name => `
           <div style="padding:10px 0;border-bottom:1px solid #F3EDE2">
