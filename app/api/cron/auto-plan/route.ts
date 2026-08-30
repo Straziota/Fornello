@@ -313,6 +313,22 @@ export async function GET(req: NextRequest) {
         },
       );
 
+      // Mark it as Fornello's work — and deliberately NOT engaged, because
+      // whether a human meets this week is exactly what must not be assumed.
+      //
+      // This was lost when the loop became a worker pool: the pre-email block
+      // was deleted and the post-email replacement never applied, so the eight
+      // menus Fornello planned this morning are recorded as user-made. Two
+      // things depend on it. Every retention number would count a generated
+      // week as a household coming back, and the guard that stops the cron
+      // planning over a week it already sent reads this flag — without it a
+      // re-run would regenerate its own work and email it twice.
+      await adminClient.from('menus')
+        .update({ auto_planned: true }).eq('id', menuId);
+      await adminClient.from('settings')
+        .update({ auto_plan_ignored: (s.auto_plan_ignored ?? 0) + 1 })
+        .eq('user_id', s.user_id);
+
       // Stamped only after the email actually went, so a failed send leaves the
       // check-in owed rather than silently spent.
       if (checkIn) {

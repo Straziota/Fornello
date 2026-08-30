@@ -37,7 +37,11 @@ export interface FunnelRow {
   onboarded: boolean;
   firstMenu: string | null;
   menus: number;
+  /** Menus the household generated, or opened after Fornello sent them. */
+  humanMenus: number;
   secondMenu: boolean;
+  autoPlanned: number;
+  autoPlannedOpened: number;
   ratings: number;
   groceriesOpened: boolean | null;
   swaps: number;
@@ -101,8 +105,9 @@ export async function computeTraction(): Promise<Traction> {
     // generated a week, and the honest stall is that he never came back.
     const stalledAt =
       !s ? 'never opened the app'
-      : ms.length >= 2 ? ((ratingsBy[u.id] || 0) === 0 ? 'returning, but never rated anything' : '—')
-      : ms.length === 1
+      : ms.filter(m => !m.auto_planned || m.engaged_at).length >= 2
+        ? ((ratingsBy[u.id] || 0) === 0 ? 'returning, but never rated anything' : '—')
+      : ms.filter(m => !m.auto_planned || m.engaged_at).length === 1
         ? ((Date.now() - new Date(first.created_at).getTime()) / 86_400_000 < 7
             ? 'first week in progress'
             : 'one menu, never came back')
@@ -116,7 +121,17 @@ export async function computeTraction(): Promise<Traction> {
       onboarded: Boolean(s?.onboarded_at),
       firstMenu: first ? String(first.created_at).slice(0, 10) : null,
       menus: ms.length,
-      secondMenu: ms.length >= 2,
+      // A "return" has to be something a HUMAN did.
+      //
+      // Counting menus alone counts the weeks Fornello planned and emailed
+      // unprompted, so the retention number would climb every Sunday whether or
+      // not a single household came back — the auto-plan feature marking its own
+      // homework. A menu counts only if the household generated it themselves,
+      // or opened one Fornello made for them.
+      humanMenus: ms.filter(m => !m.auto_planned || m.engaged_at).length,
+      secondMenu: ms.filter(m => !m.auto_planned || m.engaged_at).length >= 2,
+      autoPlanned: ms.filter(m => m.auto_planned).length,
+      autoPlannedOpened: ms.filter(m => m.auto_planned && m.engaged_at).length,
       ratings: ratingsBy[u.id] || 0,
       groceriesOpened:
         !first || String(first.created_at).slice(0, 10) < '2026-08-24'
@@ -159,7 +174,7 @@ export async function computeTraction(): Promise<Traction> {
       key: 'week2',
       label: 'Week-2 return rate',
       value: `${extSecond.length} / ${extDue.length}`,
-      detail: `Households whose first week has elapsed, and how many came back for a second. ${extWithMenu.length - extDue.length} more are still inside week one and are not counted yet — a new signup must not make this number look worse.`,
+      detail: `Households whose first week has elapsed, and how many came back for a second. Counts only weeks a person caused — generated themselves, or opened after Fornello sent them — so the auto-plan cron cannot mark its own homework. ${extWithMenu.length - extDue.length} more are still inside week one and are not counted yet.`,
       threshold: {
         keepGoing: 'Any non-zero at all is the first real signal. Roughly a third of first-menu households returning means the product works.',
         stop: 'Twenty external households through a fixed onboarding, and still zero second menus.',
@@ -221,6 +236,10 @@ export async function computeTraction(): Promise<Traction> {
       detail: `Of which $${illustration.toFixed(2)} is illustrations.` },
     { key: 'autoplan', label: 'Auto-plan opt-in', value: `${ext.filter(r => r.autoPlan).length} / ${ext.filter(r => r.onboarded).length}`,
       detail: 'Among external households that finished onboarding and therefore saw the offer.' },
+    { key: 'autoplan-opened',
+      label: 'Auto-planned weeks opened',
+      value: `${ext.reduce((n, r) => n + r.autoPlannedOpened, 0)} / ${ext.reduce((n, r) => n + r.autoPlanned, 0)}`,
+      detail: 'Weeks Fornello planned and emailed, and how many were actually opened. This is the auto-plan feature working or not — a sent week nobody opens is a menu written to nobody.' },
     { key: 'checkins', label: 'Check-ins sent', value: `${ext.filter(r => r.checkInSent).length}`,
       detail: 'Week-one and long-silent notes, by either path.' },
   ];

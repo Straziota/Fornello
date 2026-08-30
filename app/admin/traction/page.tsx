@@ -46,7 +46,7 @@ function Funnel({ rows }: { rows: FunnelRow[] }) {
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 860 }}>
           <thead>
             <tr>
-              {['Household', 'Joined', 'Onboarded', 'First menu', 'Menus', 'Ratings', 'List opened', 'Swaps', 'Where they stopped']
+              {['Household', 'Joined', 'Onboarded', 'First menu', 'Weeks (theirs / sent)', 'Ratings', 'List opened', 'Swaps', 'Where they stopped']
                 .map(h => <th key={h} style={{ ...head, textAlign: 'left' }}>{h}</th>)}
             </tr>
           </thead>
@@ -59,7 +59,14 @@ function Funnel({ rows }: { rows: FunnelRow[] }) {
                 <td style={{ ...cell, whiteSpace: 'nowrap', color: 'var(--text-2)' }}>{r.joined}</td>
                 <td style={cell}>{r.onboarded ? '✓' : '—'}</td>
                 <td style={{ ...cell, whiteSpace: 'nowrap', color: 'var(--text-2)' }}>{r.firstMenu ?? '—'}</td>
-                <td style={{ ...cell, color: r.secondMenu ? 'var(--green)' : undefined, fontWeight: r.secondMenu ? 600 : 400 }}>{r.menus}</td>
+                {/* Two numbers, because they mean opposite things: weeks a
+                    person caused, and weeks Fornello sent unprompted. */}
+                <td style={{ ...cell, color: r.secondMenu ? 'var(--green)' : undefined, fontWeight: r.secondMenu ? 600 : 400 }}>
+                  {r.humanMenus}
+                  {r.autoPlanned > 0 && (
+                    <span style={{ color: 'var(--text-3)', fontWeight: 400 }}> / {r.autoPlanned} sent</span>
+                  )}
+                </td>
                 <td style={{ ...cell, color: r.ratings ? 'var(--green)' : undefined }}>{r.ratings || '—'}</td>
                 <td style={cell}>{r.groceriesOpened == null ? <span style={{ color: 'var(--text-3)' }}>n/a</span> : r.groceriesOpened ? '✓' : '—'}</td>
                 <td style={cell}>{r.swaps || '—'}</td>
