@@ -15,7 +15,10 @@ export async function GET(req: NextRequest) {
   const meal = url.searchParams.get('m');
   const rating = url.searchParams.get('r');
 
-  if (!token || !meal || !['liked', 'disliked'].includes(rating || '')) {
+  // liked_adjusted has existed in the type since the beginning and was never
+  // accepted here, so "we cooked it but changed it" — the most common truth
+  // about a family recipe — had nowhere to go.
+  if (!token || !meal || !['liked', 'liked_adjusted', 'disliked'].includes(rating || '')) {
     return NextResponse.redirect(new URL('/rated?ok=0', url.origin));
   }
 

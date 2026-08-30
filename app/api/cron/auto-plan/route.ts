@@ -154,6 +154,30 @@ export async function GET(req: NextRequest) {
       // week already exists and Fornello did not make it, send that one instead
       // of writing a new one over the top.
       const targetWeek = targetWeekStart(weekStart);
+
+      // The week just finished — the one they have actually cooked from.
+      //
+      // Already-rated dishes are left out: asking again about something someone
+      // answered last Sunday is how a useful question becomes noise, and the
+      // list should shrink as they answer rather than nag at full length.
+      let lastWeek: { meals: string[]; rateUrl: string } | undefined;
+      {
+        const { data: prev } = await adminClient
+          .from('menus').select('week_start, data')
+          .eq('user_id', s.user_id).lt('week_start', targetWeek)
+          .order('week_start', { ascending: false }).limit(1).maybeSingle();
+        const { data: rated } = await adminClient
+          .from('meal_feedback').select('meal_name').eq('user_id', s.user_id);
+        const answered = new Set((rated || []).map(r => String(r.meal_name).toLowerCase()));
+        const names = (prev?.data?.meals || [])
+          .filter((m: any) => m && !m.isLeftover && m.name)
+          .map((m: any) => String(m.name))
+          .filter((n: string) => !answered.has(n.toLowerCase()));
+        if (names.length) {
+          lastWeek = { meals: names.slice(0, 7), rateUrl: `${appUrl}/api/rate?t=${s.email_token}` };
+        }
+      }
+
       const { data: existingWeek } = await adminClient
         .from('menus').select('id, data, auto_planned')
         .eq('user_id', s.user_id).eq('week_start', targetWeek).maybeSingle();
@@ -178,6 +202,7 @@ export async function GET(req: NextRequest) {
             rateUrl: `${appUrl}/api/rate?t=${s.email_token}`,
             shopUrl: `${appUrl}/shop?t=${s.email_token}`,
             mealUrl: `${appUrl}/this-week?meal=`,
+            lastWeek,
           },
         );
         results.push({ email, status: 'sent their own menu', detail: `${theirMeals.length} meals, not regenerated` });
@@ -309,6 +334,7 @@ export async function GET(req: NextRequest) {
           // Chef Claude, scaling. Middleware carries a logged-out reader through
           // login and back to this exact dinner.
           mealUrl: `${appUrl}/this-week?meal=`,
+          lastWeek,
           checkIn,
         },
       );

@@ -214,6 +214,11 @@ export async function sendWeeklyMenuEmail(
     /** Base for opening one dinner's full recipe, token already attached. */
     mealUrl?: string;
     /**
+     * The week just finished, so it can be rated. Names only — the email asks
+     * about the food, not the plan.
+     */
+    lastWeek?: { meals: string[]; rateUrl: string };
+    /**
      * The week-one check-in, when this household is due one. Folded in here so
      * a subscriber gets one email that week instead of two — the questions ride
      * inside a message they already open for the food.
@@ -245,12 +250,44 @@ export async function sendWeeklyMenuEmail(
         }</div>
         ${m.description ? `<div style="font-size:13px;color:#6B5B4B;margin-top:3px">${esc(m.description)}</div>` : ''}
         ${m.total_time ? `<div style="font-size:12px;color:#8B6A42;margin-top:4px">${esc(m.total_time)}</div>` : ''}
-        ${data.rateUrl ? `<div style="margin-top:7px">
-          <a href="${data.rateUrl}&m=${encodeURIComponent(m.name)}&r=liked" style="font-size:12px;color:#4A7859;text-decoration:none;margin-right:14px">👍 We loved this</a>
-          <a href="${data.rateUrl}&m=${encodeURIComponent(m.name)}&r=disliked" style="font-size:12px;color:#B4796A;text-decoration:none">👎 Never again</a>
-        </div>` : ''}
+        ${''/* No rating links here. These are next week's dinners — nobody has
+             cooked them yet, and "did you love this?" about a meal that has not
+             happened is a question with no answer. The ask belongs on LAST
+             week's food, which is below. */}
       </td>
     </tr>`).join('');
+
+  // Last week's dinners, which they have actually eaten.
+  //
+  // External ratings have been zero since launch, and the reason was probably
+  // structural rather than apathy: the only rating links Fornello ever sent
+  // were attached to food nobody had cooked yet. This asks about the week just
+  // finished, inside the message they open for the week ahead — the one moment
+  // a household is already thinking about dinner.
+  //
+  // Three answers, not two. "We changed it" is the commonest truth about a
+  // family recipe, and forcing it into loved-or-never loses the useful half.
+  const lastWeekBlock = data.lastWeek?.meals?.length ? `
+      <div style="border-top:1px solid #EDE3D4;margin-top:32px;padding-top:26px">
+        <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.18em;color:#9A8B7B">
+          Last week
+        </p>
+        <p style="margin:0 0 16px;font-size:14px;color:#6B5B4B;line-height:1.6">
+          How did these go? One tap each — it is how next week gets closer to your family.
+        </p>
+        ${data.lastWeek.meals.map(name => `
+          <div style="padding:10px 0;border-bottom:1px solid #F3EDE2">
+            <div style="font-size:15px;color:#3D2714;margin-bottom:6px">${esc(name)}</div>
+            <div>
+              <a href="${data.lastWeek!.rateUrl}&m=${encodeURIComponent(name)}&r=liked"
+                 style="font-size:12px;color:#4A7859;text-decoration:none;margin-right:14px">👍 Loved it</a>
+              <a href="${data.lastWeek!.rateUrl}&m=${encodeURIComponent(name)}&r=liked_adjusted"
+                 style="font-size:12px;color:#8B6A42;text-decoration:none;margin-right:14px">✏️ Good, but I changed it</a>
+              <a href="${data.lastWeek!.rateUrl}&m=${encodeURIComponent(name)}&r=disliked"
+                 style="font-size:12px;color:#B4796A;text-decoration:none">👎 Never again</a>
+            </div>
+          </div>`).join('')}
+      </div>` : '';
 
   const prepBlock = prepNights.length ? `
     <h2 style="font-family:Georgia,serif;font-size:15px;color:#3D2714;margin:32px 0 10px">Prep ahead</h2>
@@ -357,6 +394,7 @@ export async function sendWeeklyMenuEmail(
       ${prepBlock}
       ${groceryBlock}
 
+      ${lastWeekBlock}
       ${checkInBlock}
 
       <div style="text-align:center;margin-top:34px">
