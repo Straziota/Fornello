@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { WeeklyMenu, GroceryItem } from '@/lib/types';
 import PageBackground from '@/components/PageBackground';
 import StaplesPrompt from '@/components/StaplesPrompt';
+import ShareListButton from '@/components/ShareListButton';
 import { T } from '@/components/T';
 import { SITE_URL } from '@/lib/site';
 import { categoryIcon, stapleCategory, BUILTIN_CATEGORIES } from '@/lib/categories';
@@ -360,6 +361,20 @@ export default function GroceriesPage() {
         </div>
         <div className="flex gap-2 relative flex-wrap items-center">
           <StaplesPrompt />
+          {/* Still-to-get only. Things are ticked off because they are already
+              in the cupboard or the trolley, and sending them to the shop again
+              is how a useful list becomes one nobody trusts. */}
+          <ShareListButton
+            rows={visibleSources.flatMap(src =>
+              src.sections.flatMap(sec =>
+                sec.rows.map(r => ({
+                  label: r.label,
+                  amount: editedAmounts[r.key] ?? r.amount,
+                  cat: r.cat,
+                }))))}
+            title={menu?.week_start
+              ? `Shopping list — week of ${new Date(menu.week_start + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`
+              : 'Shopping list'} />
           <button onClick={() => buildGroceryList(true)} disabled={generating}
             title="Rebuild the list from this week's current recipes"
             className="rounded-full px-4 py-2 text-xs uppercase tracking-[0.18em] transition-opacity hover:opacity-80"
