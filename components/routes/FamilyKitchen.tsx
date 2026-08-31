@@ -93,7 +93,22 @@ export default function ProfileDetailPage({ slug }: { slug: string }) {
     }
   };
 
+  // Going public is confirmed; going private is not.
+  //
+  // The two directions are not symmetrical. Making a Kitchen private takes
+  // something away from strangers and can be undone in a tap; making it public
+  // hands a family's photographs and stories to anyone who looks, and cannot be
+  // undone at all for whoever already read them. Only the irreversible
+  // direction gets a door.
+  const [confirmPublic, setConfirmPublic] = useState(false);
+
+  const requestVisibilityChange = () => {
+    if (profile?.visibility === 'public') void toggleVisibility();
+    else setConfirmPublic(true);
+  };
+
   const toggleVisibility = async () => {
+    setConfirmPublic(false);
     setBusyVisibility(true);
     const next = profile.visibility === 'public' ? 'private' : 'public';
     try {
@@ -104,7 +119,15 @@ export default function ProfileDetailPage({ slug }: { slug: string }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setProfile(p => p ? { ...p, visibility: next } : p);
-      setToast({ msg: next === 'public' ? 'Profile is now shared — anyone with the link can view it.' : 'Profile is private again.', type: 'success' });
+      // Says what public actually means now. It is not "anyone with the link":
+      // a public Kitchen is visible to every signed-in household, link or no
+      // link.
+      setToast({
+        msg: next === 'public'
+          ? 'Your Kitchen is public — anyone on Fornello can visit it.'
+          : 'Your Kitchen is private again, and open only to the people you invite.',
+        type: 'success',
+      });
     } catch (e: any) {
       setToast({ msg: e.message || 'Could not update sharing', type: 'error' });
     } finally {
@@ -194,7 +217,7 @@ export default function ProfileDetailPage({ slug }: { slug: string }) {
                 style={{ background: 'var(--green)', color: '#fff' }}>
                 🥄 <T>Add a recipe</T>
               </Link>
-              <button onClick={toggleVisibility} disabled={busyVisibility}
+              <button onClick={requestVisibilityChange} disabled={busyVisibility}
                 className="rounded-full px-5 py-2.5 text-xs uppercase tracking-[0.18em] transition-opacity hover:opacity-80 disabled:opacity-50"
                 style={{ border: '1px solid var(--border)', color: 'var(--text-2)' }}>
                 {profile.visibility === 'public' ? <T>Make private</T> : <T>Share publicly</T>}
@@ -266,6 +289,44 @@ export default function ProfileDetailPage({ slug }: { slug: string }) {
       {/* Owner only. Deciding who else gets into a family's Kitchen is not a
           contribution, so it is not offered to contributors. */}
       {isOwner && <KitchenMembers slug={slug} />}
+
+      {confirmPublic && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-5"
+             style={{ background: 'rgba(0,0,0,0.45)' }}
+             onClick={() => setConfirmPublic(false)}>
+          <div onClick={e => e.stopPropagation()}
+               className="rounded-[22px] p-8 w-full animate-slide-up"
+               style={{ background: 'var(--white)', maxWidth: 400, boxShadow: '0 16px 48px rgba(0,0,0,0.2)' }}>
+            <h2 className="text-2xl mb-4" style={{ fontFamily: 'AbramoSerif, serif' }}>
+              <T>Share your Kitchen publicly?</T>
+            </h2>
+            <p className="text-sm leading-relaxed mb-3" style={{ color: 'var(--text-2)' }}>
+              <T>Your Kitchen is currently private and shared only with the people you choose.</T>
+            </p>
+            <p className="text-sm leading-relaxed mb-6" style={{ color: 'var(--text-2)' }}>
+              <T>Making it public means</T>{' '}
+              <strong style={{ color: 'var(--text)' }}>
+                <T>anyone can visit your Kitchen and see everything you&apos;ve shared there</T>
+              </strong>
+              <T>, including your recipes, photographs, stories, and memories.</T>
+            </p>
+            <div className="flex gap-2 flex-wrap">
+              {/* Cancel first and quieter. The dangerous button should never be
+                  the one a thumb lands on by habit. */}
+              <button onClick={() => setConfirmPublic(false)}
+                className="flex-1 rounded-full px-5 py-3 text-sm"
+                style={{ border: '1px solid var(--border)', color: 'var(--text-2)', minWidth: 120 }}>
+                <T>Cancel</T>
+              </button>
+              <button onClick={toggleVisibility} disabled={busyVisibility}
+                className="flex-1 rounded-full px-5 py-3 text-sm text-white disabled:opacity-50"
+                style={{ background: 'var(--green)', minWidth: 120 }}>
+                <T>Make Kitchen Public</T>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
