@@ -119,11 +119,20 @@ export default function NavBar() {
               🛠 Admin
             </Link>
           )}
+          {/* Sign out sits beside Settings and is built exactly like the other
+              nav items. It was a 12px grey pill among 64px icons — findable if
+              you already knew where it was, invisible if you did not, which is
+              the only test that counts. */}
           {userName && (
             <button onClick={signOut}
-              className="ml-2 px-3 py-2 rounded-lg text-xs transition-opacity hover:opacity-70"
-              style={{ color: 'var(--text-3)', border: '1px solid var(--border)', fontFamily: 'AbramoSerif, serif' }}>
-              {t.signOut}
+              className="px-2 py-2 rounded-xl transition-all flex flex-col items-center"
+              style={{ ...linkStyle('/__signout'), gap: 0, background: 'transparent' }}>
+              <div style={{ height: '64px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', width: '100%' }}>
+                <span style={{ fontSize: '64px', lineHeight: 1 }}>👋</span>
+              </div>
+              <span style={{ fontSize: '16px', letterSpacing: '0.06em', maxWidth: '72px', textAlign: 'center', lineHeight: '1.3', minHeight: '2.6em', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', marginTop: '2px' }}>
+                {t.signOut}
+              </span>
             </button>
           )}
         </nav>
@@ -173,9 +182,10 @@ export default function NavBar() {
           )}
           {userName && (
             <button onClick={signOut}
-              className="w-full text-left px-4 py-3 rounded-xl text-sm mt-2"
-              style={{ color: 'var(--text-3)', borderTop: '1px solid var(--border)', fontFamily: 'AbramoSerif, serif' }}>
-              {t.signOut}
+              className="w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl text-sm mt-2"
+              style={{ color: 'var(--text-2)', borderTop: '1px solid var(--border)', fontFamily: 'AbramoSerif, serif' }}>
+              <span style={{ fontSize: '32px' }}>👋</span>
+              <span>{t.signOut}</span>
             </button>
           )}
         </div>
