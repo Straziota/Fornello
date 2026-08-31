@@ -12,6 +12,15 @@ const PUBLIC_PATHS = [
   // shared token the route handler checks itself, and refuses to serve at all without one.
   '/api/hub-feed',
   '/manifest.webmanifest', '/sw.js',
+  // The Kitchen access page and the endpoints behind it. A guest arrives here
+  // BEFORE having any session — that is the entire point of a stable page they
+  // bookmark — so a login redirect would make the whole invitation flow
+  // unreachable for exactly the people it was built for.
+  //
+  // Neither endpoint leaks anything without a session: /request answers
+  // identically for a member, a stranger and a typo, and /name returns the
+  // Kitchen's name only when its owner opted in.
+  '/k/', '/api/kitchen-access',
   // Precached at install time, before any session exists — and it must render
   // rather than redirect when the network is gone.
   '/offline',
