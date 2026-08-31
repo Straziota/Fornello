@@ -178,6 +178,8 @@ export interface HeritageProfile {
   portrait_url?: string | null;
   bio?: string | null;
   visibility: ProfileVisibility;
+  /** Optional. Adds an in-Kitchen switch for relatives who read it better. */
+  second_language?: string | null;
   created_at?: string;
   updated_at?: string;
   recipe_count?: number; // hydrated for list/gallery views

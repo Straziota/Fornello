@@ -50,17 +50,15 @@ function toUserRecipe(r: TemplateRecipe) {
 }
 
 export default function HeritageKitchenPage() {
-  const [recipes, setRecipes] = useState<TemplateRecipe[]>([]);
-  const [kitchens, setKitchens] = useState<KitchenCard[]>([]);
-  const [loading, setLoading] = useState(true);
   const [viewRecipe, setViewRecipe] = useState<any | null>(null);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
   const [inRotation, setInRotation] = useState<Set<number>>(new Set());
   const [canContribute, setCanContribute] = useState(false);
 
   useEffect(() => {
-    fetch('/api/heritage-kitchen').then(r => r.json()).then(d => { setRecipes(d); setLoading(false); });
-    fetch('/api/heritage-kitchens').then(r => r.json()).then(d => setKitchens(d.kitchens || [])).catch(() => {});
+    // Two fetches used to run here for a recipe grid and a kitchens grid that
+    // this page has not rendered for some time — one of them against a table
+    // that is empty. Removed with the last of that markup.
     fetch('/api/heritage-submit/can-submit').then(r => r.json()).then(d => setCanContribute(!!d.allowed)).catch(() => {});
   }, []);
 
@@ -107,38 +105,12 @@ export default function HeritageKitchenPage() {
       {/* ── Tribute to Nonna ── */}
       <Tribute />
 
-      {/* ── Kitchens of the world ── */}
-      <div className="mt-12">
-        <h2 className="text-xl mb-1" style={{ fontFamily: 'AbramoSerif, serif', color: 'var(--text)' }}>
-          <T>Kitchens of the world</T>
-        </h2>
-        <p className="text-sm italic mb-6" style={{ color: 'var(--text-3)' }}>
-          <T>Step into each kitchen to find the recipes shared by its grandmother.</T>
-        </p>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
-          {kitchens.map(k => (
-            <Link key={k.slug} href={k.href || heritageKitchenHref(k.slug)}
-                  className="block group transition-transform hover:-translate-y-1">
-              <div className="rounded-[22px] overflow-hidden ring-1"
-                   style={{ background: 'var(--white)', boxShadow: '0 6px 24px rgba(47,58,50,0.08)' }}>
-                <img src={k.image_url} alt={k.name}
-                     className="w-full object-cover block"
-                     style={{ aspectRatio: '4 / 3', filter: 'saturate(1.05) sepia(0.05)' }} />
-              </div>
-              <div className="text-center mt-3">
-                <p className="text-[22px] leading-tight"
-                   style={{ fontFamily: 'AbramoSerif, serif', fontStyle: 'italic', color: 'var(--text)' }}>
-                  <T>{k.name}</T>
-                </p>
-                <p className="text-xs uppercase tracking-[0.22em] mt-1" style={{ color: 'var(--text-3)' }}>
-                  <T>{k.country}</T>
-                </p>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </div>
-
+      {/* "Kitchens of the world" and its grid used to sit here. The registry
+          behind it (heritage_kitchens) is empty, so the heading and the line
+          "step into each kitchen to find the recipes shared by its grandmother"
+          were labelling nothing — and the invitation to step into other
+          people's kitchens contradicts a page that now says a Kitchen is
+          private and shared with chosen people. */}
       {/* The green "Your Family Kitchen" card used to sit here. It repeated
           what the tribute above already says, and offered a third route to the
           same place the two buttons in that text already offer — so the page

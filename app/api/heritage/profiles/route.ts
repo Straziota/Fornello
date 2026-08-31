@@ -30,6 +30,7 @@ export async function POST(req: NextRequest) {
       origin_country: body.origin_country,
       portrait_url: body.portrait_url,
       bio: body.bio,
+      second_language: body.second_language ?? null,
     });
     return NextResponse.json({ profile });
   } catch (e: any) {

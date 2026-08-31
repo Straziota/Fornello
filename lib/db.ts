@@ -957,6 +957,7 @@ function mapProfileRow(row: any): HeritageProfile {
     portrait_url: row.portrait_url,
     bio: row.bio,
     visibility: row.visibility,
+    second_language: row.second_language ?? null,
     created_at: row.created_at,
     updated_at: row.updated_at,
     recipe_count: agg ? Number(agg.count) : undefined,
@@ -994,7 +995,7 @@ function mapProfileRecipeRow(row: any): HeritageProfileRecipe {
 }
 
 export async function createHeritageProfile(ownerId: string, input: {
-  person_name: string; relationship?: string; origin_country?: string;
+  person_name: string; relationship?: string; origin_country?: string; second_language?: string | null;
   portrait_url?: string; bio?: string;
 }): Promise<HeritageProfile> {
   const { data, error } = await adminClient.from('heritage_profiles').insert({
@@ -1002,6 +1003,7 @@ export async function createHeritageProfile(ownerId: string, input: {
     slug: slugifyPersonName(input.person_name),
     person_name: input.person_name.trim(),
     relationship: input.relationship?.trim() || null,
+    second_language: input.second_language || null,
     origin_country: input.origin_country?.trim() || null,
     portrait_url: input.portrait_url || null,
     bio: input.bio?.trim() || null,
@@ -1042,6 +1044,7 @@ export async function getHeritageProfileBySlug(slug: string): Promise<HeritagePr
 export async function updateHeritageProfile(ownerId: string, id: string, patch: {
   person_name?: string; relationship?: string | null; origin_country?: string | null;
   portrait_url?: string | null; bio?: string | null; visibility?: ProfileVisibility;
+  second_language?: string | null;
 }): Promise<HeritageProfile> {
   const fields: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (patch.person_name !== undefined) fields.person_name = patch.person_name.trim();
@@ -1050,6 +1053,7 @@ export async function updateHeritageProfile(ownerId: string, id: string, patch: 
   if (patch.portrait_url !== undefined) fields.portrait_url = patch.portrait_url || null;
   if (patch.bio !== undefined) fields.bio = patch.bio?.toString().trim() || null;
   if (patch.visibility !== undefined) fields.visibility = patch.visibility;
+  if (patch.second_language !== undefined) fields.second_language = patch.second_language;
 
   const { data, error } = await adminClient
     .from('heritage_profiles')

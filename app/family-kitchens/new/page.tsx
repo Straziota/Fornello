@@ -6,13 +6,12 @@ import PageBackground from '@/components/PageBackground';
 import Toast from '@/components/Toast';
 import { T } from '@/components/T';
 import { familyKitchenHref } from '@/lib/routes';
-
-const RELATIONSHIPS = ['Myself', 'Mother', 'Grandmother', 'Auntie', 'Father', 'Grandfather', 'Uncle', 'Other'];
+import { LANGUAGES } from '@/lib/languages';
 
 export default function NewProfilePage() {
   const router = useRouter();
   const [personName, setPersonName] = useState('');
-  const [relationship, setRelationship] = useState('');
+  const [secondLanguage, setSecondLanguage] = useState('');
   const [country, setCountry] = useState('');
   const [bio, setBio] = useState('');
   const [portraitUrl, setPortraitUrl] = useState('');
@@ -45,7 +44,8 @@ export default function NewProfilePage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          person_name: personName, relationship, origin_country: country,
+          person_name: personName, origin_country: country,
+          second_language: secondLanguage || null,
           bio, portrait_url: portraitUrl || undefined,
         }),
       });
@@ -103,23 +103,34 @@ export default function NewProfilePage() {
             placeholder="e.g. Nonna Ingrid" className="w-full input" style={inputStyle} />
         </Field>
 
-        <div className="grid sm:grid-cols-2 gap-4">
-          <Field label="Relationship">
-            <select value={relationship} onChange={e => setRelationship(e.target.value)} className="w-full input" style={inputStyle}>
-              <option value=""></option>
-              {RELATIONSHIPS.map(r => <option key={r} value={r}>{r}</option>)}
-            </select>
-          </Field>
-          <Field label="Origin / country (optional)">
-            <input type="text" value={country} onChange={e => setCountry(e.target.value)}
-              placeholder="e.g. Italy" className="w-full input" style={inputStyle} />
-          </Field>
-        </div>
+        {/* Relationship is gone. A Kitchen can hold one person's recipes or
+            four generations of them, and a single field forced the whole
+            collection to be described as somebody's grandmother. */}
+        <Field label="Origin / country (optional)">
+          <input type="text" value={country} onChange={e => setCountry(e.target.value)}
+            placeholder="e.g. Italy" className="w-full input" style={inputStyle} />
+        </Field>
 
-        <Field label="A few words about them (optional)">
+        <Field label="A few words about your kitchen (optional)">
           <textarea rows={4} value={bio} onChange={e => setBio(e.target.value)}
-            placeholder="Who they were, what their cooking meant, a memory of their table…"
+            placeholder="Whose recipes these are, what their cooking meant, a memory of the table…"
             className="w-full input resize-y" style={inputStyle} />
+        </Field>
+
+        {/* One extra language, not a list. The point is a relative who cannot
+            comfortably cook from English, and a family usually has one other
+            language rather than several. */}
+        <Field label="Second language (optional)">
+          <select value={secondLanguage} onChange={e => setSecondLanguage(e.target.value)}
+            className="w-full input" style={inputStyle}>
+            <option value="">None</option>
+            {LANGUAGES.filter(([v]) => v !== 'English').map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+          <p className="text-xs mt-2" style={{ color: 'var(--text-3)' }}>
+            <T>Adds a button inside the Kitchen that switches everything into this language — for the people in your family who would rather read it that way.</T>
+          </p>
         </Field>
 
         <button onClick={save} disabled={saving || !personName.trim()}

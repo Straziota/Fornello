@@ -10,6 +10,7 @@ import { T } from '@/components/T';
 import type { HeritageProfile, HeritageProfileRecipe } from '@/lib/types';
 import { familyKitchenAddHref } from '@/lib/routes';
 import KitchenMembers from '@/components/KitchenMembers';
+import { useLanguage } from '@/components/LanguageProvider';
 
 function toUserRecipe(r: HeritageProfileRecipe, asOriginal = false) {
   // A translated card keeps its own words in `original`. Showing them is the
@@ -40,6 +41,10 @@ export default function ProfileDetailPage({ slug }: { slug: string }) {
   // A guest who may add gets the same button the owner has; one who may only
   // view must never be shown a control the server will refuse.
   const [canAdd, setCanAdd] = useState(false);
+  // Switches the whole app's language, which is the honest behaviour: a
+  // relative who needs Italian needs it for the buttons and the ingredient
+  // list too, not only for the paragraph the owner wrote.
+  const { language, setLanguage } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [notFoundFlag, setNotFoundFlag] = useState(false);
   const [viewRecipe, setViewRecipe] = useState<any | null>(null);
@@ -162,6 +167,25 @@ export default function ProfileDetailPage({ slug }: { slug: string }) {
             {profile.person_name}
           </h1>
           {profile.bio && <p className="mt-3 text-[15px] leading-relaxed max-w-xl" style={{ color: 'var(--text-2)' }}>{profile.bio}</p>}
+
+          {/* Only when the owner chose one. Offered to everyone who can open
+              the Kitchen, not just the owner — the people it exists for are the
+              guests. */}
+          {profile.second_language && (
+            <div className="mt-4 flex items-center gap-2 flex-wrap">
+              {[['English', 'English'], [profile.second_language, profile.second_language]].map(([value, label]) => (
+                <button key={value} onClick={() => setLanguage(value!)}
+                  className="rounded-full px-4 py-2 text-xs transition-opacity hover:opacity-80"
+                  style={{
+                    border: `1px solid ${language === value ? 'var(--green)' : 'var(--border)'}`,
+                    background: language === value ? 'var(--green)' : 'transparent',
+                    color: language === value ? '#fff' : 'var(--text-2)',
+                  }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
 
           {isOwner && (
             <div className="mt-5 flex items-center gap-3 flex-wrap">
