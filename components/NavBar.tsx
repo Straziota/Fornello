@@ -36,7 +36,7 @@ export default function NavBar() {
     { href: '/history',          label: `📅 ${t.archive}`,         icon: '/icons/Archive.png',         sz: 112 },
     { href: '/converter',        label: `⚖️ Converter`,            icon: '/icons/Conversions.png',     sz: 112 },
     { href: '/feedback',         label: `💬 Feedback`,             icon: '/icons/Feedback.png',         sz: 112 },
-    { href: '/settings',         label: `⚙️ ${t.settings}`,          icon: '/icons/Settings.png',        tour: 'tour-nav-settings', sz: 112 },
+    { href: '/settings',         label: `⚙️ ${t.settings}`,          icon: '/icons/Settings.png',        tour: 'tour-nav-settings', sz: 152 },
   ];
 
   useEffect(() => {
@@ -127,8 +127,12 @@ export default function NavBar() {
             <button onClick={signOut}
               className="px-2 py-2 rounded-xl transition-all flex flex-col items-center"
               style={{ ...linkStyle('/__signout'), gap: 0, background: 'transparent' }}>
-              <div style={{ height: '112px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', width: '100%' }}>
-                <NextImage src="/icons/Sign out.png" alt="" width={112} height={112}
+              {/* 152, matching the largest icons in the row. At 112 the door
+                  read as smaller than its neighbours even though it fills the
+                  same share of its file — a tall doorway in a square frame
+                  simply occupies less of it than a bowl or a basket does. */}
+              <div style={{ height: '152px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', width: '100%' }}>
+                <NextImage src="/icons/Sign out.png" alt="" width={152} height={152}
                            style={{ objectFit: 'cover', borderRadius: '10px' }} />
               </div>
               <span style={{ fontSize: '16px', letterSpacing: '0.06em', maxWidth: '72px', textAlign: 'center', lineHeight: '1.3', minHeight: '2.6em', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', marginTop: '2px' }}>
