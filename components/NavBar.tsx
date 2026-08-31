@@ -23,20 +23,20 @@ export default function NavBar() {
   const [isAdmin, setIsAdmin] = useState(false);
 
   const links = [
-    { href: '/this-week',        label: `🍽 ${t.thisWeek}`,        icon: '/icons/this-week.png',       tour: 'tour-nav-thisweek', sz: 152 },
-    { href: '/groceries',        label: `🛒 ${t.groceries}`,       icon: '/icons/groceries.png',       tour: 'tour-nav-groceries', sz: 112 },
-    { href: '/pantry',           label: `🥫 ${t.pantry}`,          icon: '/icons/pantry-v2.png',       sz: 152 },
-    { href: '/recipes',          label: `📖 ${t.recipes}`,         icon: '/icons/my-recipes.png',      sz: 152 },
-    { href: '/heritage-kitchen', label: `👵 ${t.heritageKitchen || 'Heritage Kitchen'}`, icon: '/icons/nonnas-kitchen.png',  tour: 'tour-nav-nonnas', sz: 112 },
-    { href: '/special-occasion', label: `🥂 ${t.specialOccasion}`, icon: '/icons/special-occasion.png', sz: 112 },
-    { href: '/on-the-fly',       label: `🎲 ${t.onTheFly}`,        icon: '/icons/On the fly.png',      tour: 'tour-nav-onthefly', sz: 112 },
-    { href: '/something-sweet',  label: `🍰 ${t.somethingSweet}`,  icon: '/icons/something-sweet.png', sz: 112 },
-    { href: '/traditions',       label: `🌍 ${t.traditions}`,      icon: '/icons/traditions.png',      sz: 112 },
-    { href: '/find-a-recipe',    label: `🔍 ${t.findARecipe}`,     icon: '/icons/find-a-recipe.png',   sz: 112 },
-    { href: '/history',          label: `📅 ${t.archive}`,         icon: '/icons/Archive.png',         sz: 112 },
-    { href: '/converter',        label: `⚖️ Converter`,            icon: '/icons/Conversions.png',     sz: 112 },
-    { href: '/feedback',         label: `💬 Feedback`,             icon: '/icons/Feedback.png',         sz: 112 },
-    { href: '/settings',         label: `⚙️ ${t.settings}`,          icon: '/icons/Settings.png',        tour: 'tour-nav-settings', sz: 152 },
+    { href: '/this-week',        label: `🍽 ${t.thisWeek}`,        icon: '/icons/this-week.png',       tour: 'tour-nav-thisweek', sz: 132 },
+    { href: '/groceries',        label: `🛒 ${t.groceries}`,       icon: '/icons/groceries.png',       tour: 'tour-nav-groceries', sz: 132 },
+    { href: '/pantry',           label: `🥫 ${t.pantry}`,          icon: '/icons/pantry-v2.png',       sz: 132 },
+    { href: '/recipes',          label: `📖 ${t.recipes}`,         icon: '/icons/my-recipes.png',      sz: 132 },
+    { href: '/heritage-kitchen', label: `👵 ${t.heritageKitchen || 'Heritage Kitchen'}`, icon: '/icons/nonnas-kitchen.png',  tour: 'tour-nav-nonnas', sz: 132 },
+    { href: '/special-occasion', label: `🥂 ${t.specialOccasion}`, icon: '/icons/special-occasion.png', sz: 132 },
+    { href: '/on-the-fly',       label: `🎲 ${t.onTheFly}`,        icon: '/icons/On the fly.png',      tour: 'tour-nav-onthefly', sz: 132 },
+    { href: '/something-sweet',  label: `🍰 ${t.somethingSweet}`,  icon: '/icons/something-sweet.png', sz: 132 },
+    { href: '/traditions',       label: `🌍 ${t.traditions}`,      icon: '/icons/traditions.png',      sz: 132 },
+    { href: '/find-a-recipe',    label: `🔍 ${t.findARecipe}`,     icon: '/icons/find-a-recipe.png',   sz: 132 },
+    { href: '/history',          label: `📅 ${t.archive}`,         icon: '/icons/Archive.png',         sz: 132 },
+    { href: '/converter',        label: `⚖️ Converter`,            icon: '/icons/Conversions.png',     sz: 132 },
+    { href: '/feedback',         label: `💬 Feedback`,             icon: '/icons/Feedback.png',         sz: 132 },
+    { href: '/settings',         label: `⚙️ ${t.settings}`,          icon: '/icons/Settings.png',        tour: 'tour-nav-settings', sz: 132 },
   ];
 
   useEffect(() => {
@@ -127,12 +127,13 @@ export default function NavBar() {
             <button onClick={signOut}
               className="px-2 py-2 rounded-xl transition-all flex flex-col items-center"
               style={{ ...linkStyle('/__signout'), gap: 0, background: 'transparent' }}>
-              {/* 152, matching the largest icons in the row. At 112 the door
-                  read as smaller than its neighbours even though it fills the
-                  same share of its file — a tall doorway in a square frame
-                  simply occupies less of it than a bowl or a basket does. */}
-              <div style={{ height: '152px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', width: '100%' }}>
-                <NextImage src="/icons/Sign out.png" alt="" width={152} height={152}
+              {/* One size for every icon in the row. That only works because
+                  the files themselves were normalised: each is now cropped
+                  square around its own artwork, so the same box gives the same
+                  presence. Before that, boxes had to be tuned per icon and the
+                  tuning was never finished. */}
+              <div style={{ height: '132px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', width: '100%' }}>
+                <NextImage src="/icons/Sign out.png" alt="" width={132} height={132}
                            style={{ objectFit: 'cover', borderRadius: '10px' }} />
               </div>
               <span style={{ fontSize: '16px', letterSpacing: '0.06em', maxWidth: '72px', textAlign: 'center', lineHeight: '1.3', minHeight: '2.6em', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', marginTop: '2px' }}>
