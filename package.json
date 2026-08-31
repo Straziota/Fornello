@@ -29,6 +29,7 @@
     "test:lock": "node scripts/lock-gate-test.mjs",
     "test:share-list": "npx --yes tsx scripts/share-list-test.mjs",
     "test:last-week": "node scripts/last-week-test.mjs",
+    "test:kitchen-access": "node scripts/kitchen-access-test.mjs",
     "week-one:who": "npx --yes tsx scripts/week-one-preview.mjs",
     "prebuild": "node scripts/cron-coverage.mjs"
   },

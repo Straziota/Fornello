@@ -1118,6 +1118,8 @@ function recipeInputToRow(input: HeritageProfileRecipeInput): Record<string, unk
   setIf('transcription_status', input.transcription_status ?? undefined);
   setIf('original', input.original ?? undefined);
   setIf('original_language', input.original_language?.trim() || undefined);
+  setIf('contributed_by', (input as any).contributed_by ?? undefined);
+  setIf('contributed_by_email', (input as any).contributed_by_email ?? undefined);
   return row;
 }
 
@@ -1125,7 +1127,11 @@ function recipeInputToRow(input: HeritageProfileRecipeInput): Record<string, unk
 // runs, Postgres rejects the whole insert because of them — which would mean a
 // contributor loses a recipe they just typed, to save a field they did not ask
 // for. Better to drop the extras and keep the recipe.
-const TRANSLATION_COLUMNS = ['original', 'original_language'];
+const TRANSLATION_COLUMNS = ['original', 'original_language', 'contributed_by', 'contributed_by_email'];
+// Named for the translation columns it was written for; it now guards every
+// column added after a recipe row's original shape, on the same principle —
+// losing a recipe someone just typed to save a field they never asked for is
+// the worse failure.
 function isMissingTranslationColumn(message: string): boolean {
   return TRANSLATION_COLUMNS.some(c => message.includes(`'${c}'`) || message.includes(`"${c}"`))
     && /column|schema cache/i.test(message);

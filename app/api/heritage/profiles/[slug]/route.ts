@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUser } from '@/lib/auth';
+import { accessFor, canRead, canAdd, touchLastSeen } from '@/lib/kitchen-members';
 import {
   getHeritageProfileBySlug, getHeritageProfileRecipes,
   updateHeritageProfile, deleteHeritageProfile,
@@ -16,13 +17,25 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
   const profile = await getHeritageProfileBySlug(slug);
   if (!profile) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const isOwner = profile.owner_id === user!.id;
-  if (!isOwner && profile.visibility !== 'public') {
+  // Owner, invited member, or public. Anything else is 404 rather than 403:
+  // a permission error confirms the Kitchen exists, which for a private family
+  // collection is itself the thing being protected.
+  const access = await accessFor(profile, { id: user!.id, email: user!.email });
+  if (!canRead(access)) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
+  const isOwner = access!.role === 'owner';
+  if (!isOwner && user!.email) touchLastSeen(profile.id, user!.email);
+
   const recipes = await getHeritageProfileRecipes(profile.id);
-  return NextResponse.json({ profile, recipes, is_owner: isOwner });
+  return NextResponse.json({
+    profile, recipes, is_owner: isOwner,
+    // The UI needs to know which buttons to draw, and a guest must never be
+    // shown an "Add a recipe" button the server will refuse.
+    role: access!.role,
+    can_add: canAdd(access),
+  });
 }
 
 // PATCH /api/heritage/profiles/[slug] → update profile fields (owner only).

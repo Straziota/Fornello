@@ -9,6 +9,7 @@ import PageBackground from '@/components/PageBackground';
 import { T } from '@/components/T';
 import type { HeritageProfile, HeritageProfileRecipe } from '@/lib/types';
 import { familyKitchenAddHref } from '@/lib/routes';
+import KitchenMembers from '@/components/KitchenMembers';
 
 function toUserRecipe(r: HeritageProfileRecipe, asOriginal = false) {
   // A translated card keeps its own words in `original`. Showing them is the
@@ -36,6 +37,9 @@ export default function ProfileDetailPage({ slug }: { slug: string }) {
   const [profile, setProfile] = useState<HeritageProfile | null>(null);
   const [recipes, setRecipes] = useState<HeritageProfileRecipe[]>([]);
   const [isOwner, setIsOwner] = useState(false);
+  // A guest who may add gets the same button the owner has; one who may only
+  // view must never be shown a control the server will refuse.
+  const [canAdd, setCanAdd] = useState(false);
   const [loading, setLoading] = useState(true);
   const [notFoundFlag, setNotFoundFlag] = useState(false);
   const [viewRecipe, setViewRecipe] = useState<any | null>(null);
@@ -57,7 +61,10 @@ export default function ProfileDetailPage({ slug }: { slug: string }) {
         return r.json();
       })
       .then(d => {
-        if (d) { setProfile(d.profile); setRecipes(d.recipes || []); setIsOwner(!!d.is_owner); }
+        if (d) {
+          setProfile(d.profile); setRecipes(d.recipes || []);
+          setIsOwner(!!d.is_owner); setCanAdd(!!d.can_add);
+        }
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -231,6 +238,10 @@ export default function ProfileDetailPage({ slug }: { slug: string }) {
           })}
         </div>
       )}
+
+      {/* Owner only. Deciding who else gets into a family's Kitchen is not a
+          contribution, so it is not offered to contributors. */}
+      {isOwner && <KitchenMembers slug={slug} />}
     </>
   );
 }

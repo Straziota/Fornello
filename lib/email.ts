@@ -619,3 +619,46 @@ export async function sendSilenceCheckIn(
   });
   if (error) throw new Error(error.message);
 }
+
+/**
+ * The sign-in link a Kitchen guest asked for.
+ *
+ * Deliberately plain and short. The recipient may be a grandmother who has been
+ * sent one link in her life, and every extra element is something that can be
+ * mistaken for the thing to tap.
+ */
+export async function sendKitchenAccessEmail(
+  settings: { resendApiKey: string; fromEmail: string; fromName: string },
+  toEmail: string,
+  data: { link: string; kitchenName?: string | null },
+) {
+  const resend = new Resend(settings.resendApiKey);
+  const escape = (t = '') => t.replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c] || c));
+  const who = data.kitchenName ? `${escape(data.kitchenName)}'s Kitchen` : 'the Kitchen';
+
+  const html = `
+  <div style="font-family:Georgia,'Times New Roman',serif;font-size:16px;color:#2F3A32;line-height:1.65;max-width:520px;margin:0 auto;padding:24px">
+    <p style="margin:0 0 20px">Here's your link to open ${who}.</p>
+    <p style="margin:0 0 24px">
+      <a href="${data.link}" style="display:inline-block;background:#4A7859;color:#fff;text-decoration:none;padding:13px 30px;border-radius:999px;font-size:15px">
+        Open the Kitchen
+      </a>
+    </p>
+    <p style="margin:0 0 20px;font-size:14px;color:#6B5B4B">
+      It works once, and only from this email. If you need another, use the same
+      page you came from and ask for a new one — it stays where it is.
+    </p>
+    <p style="margin:0;font-size:14px;color:#6B5B4B">
+      If you weren't expecting this, nothing has happened and you can ignore it.
+    </p>
+  </div>`;
+
+  const { error } = await resend.emails.send({
+    from: `${settings.fromName || 'Fornello'} <${settings.fromEmail}>`,
+    replyTo: REPLY_TO_EMAIL,
+    to: [toEmail],
+    subject: 'Your link to the Kitchen',
+    html,
+  });
+  if (error) throw new Error(error.message);
+}
