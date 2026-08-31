@@ -36,7 +36,7 @@ export default function NavBar() {
     { href: '/history',          label: `📅 ${t.archive}`,         icon: '/icons/Archive.png',         sz: 112 },
     { href: '/converter',        label: `⚖️ Converter`,            icon: '/icons/Conversions.png',     sz: 112 },
     { href: '/feedback',         label: `💬 Feedback`,             icon: '/icons/Feedback.png',         sz: 112 },
-    { href: '/settings',         label: `⚙️ ${t.settings}`,                                            tour: 'tour-nav-settings' },
+    { href: '/settings',         label: `⚙️ ${t.settings}`,          icon: '/icons/Settings.png',        tour: 'tour-nav-settings', sz: 112 },
   ];
 
   useEffect(() => {
@@ -127,8 +127,9 @@ export default function NavBar() {
             <button onClick={signOut}
               className="px-2 py-2 rounded-xl transition-all flex flex-col items-center"
               style={{ ...linkStyle('/__signout'), gap: 0, background: 'transparent' }}>
-              <div style={{ height: '64px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', width: '100%' }}>
-                <span style={{ fontSize: '64px', lineHeight: 1 }}>👋</span>
+              <div style={{ height: '112px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', width: '100%' }}>
+                <NextImage src="/icons/Sign out.png" alt="" width={112} height={112}
+                           style={{ objectFit: 'cover', borderRadius: '10px' }} />
               </div>
               <span style={{ fontSize: '16px', letterSpacing: '0.06em', maxWidth: '72px', textAlign: 'center', lineHeight: '1.3', minHeight: '2.6em', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', marginTop: '2px' }}>
                 {t.signOut}
@@ -184,7 +185,7 @@ export default function NavBar() {
             <button onClick={signOut}
               className="w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl text-sm mt-2"
               style={{ color: 'var(--text-2)', borderTop: '1px solid var(--border)', fontFamily: 'AbramoSerif, serif' }}>
-              <span style={{ fontSize: '32px' }}>👋</span>
+              <img src="/icons/Sign out.png" alt="" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '8px' }} />
               <span>{t.signOut}</span>
             </button>
           )}
