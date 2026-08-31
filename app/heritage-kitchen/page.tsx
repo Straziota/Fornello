@@ -150,18 +150,13 @@ export default function HeritageKitchenPage() {
           <T>Your Family Kitchen</T>
         </h2>
         <p className="mt-3 text-[15px] italic max-w-xl mx-auto" style={{ color: 'var(--text-2)' }}>
-          <T>Create your own family kitchen — a dedicated space for your mother, grandmother, or auntie. Scan their original handwritten cards, keep them as they were written, and share the ones you choose.</T>
+          <T>A private collection of your family's recipes, traditions and photographs — kept in one place and shared only with the people you choose. Scan the original handwritten cards, keep them as they were written, and invite the people who remember them to add their own.</T>
         </p>
         <div className="mt-6 flex items-center justify-center gap-3 flex-wrap">
           <Link href="/family-kitchens"
             className="inline-block rounded-full px-7 py-3.5 text-sm uppercase tracking-[0.18em] transition-opacity hover:opacity-80"
             style={{ background: 'var(--green)', color: '#fff', fontFamily: 'Georgia, serif' }}>
             ✦ <T>Open your kitchen</T> ✦
-          </Link>
-          <Link href="/family-kitchens/gallery"
-            className="inline-block rounded-full px-7 py-3.5 text-sm uppercase tracking-[0.18em] transition-opacity hover:opacity-80"
-            style={{ background: 'transparent', border: '1px solid var(--green)', color: 'var(--green)', fontFamily: 'Georgia, serif' }}>
-            <T>Visit other kitchens</T>
           </Link>
         </div>
       </div>
@@ -179,27 +174,27 @@ function Tribute() {
       <div className="px-6 md:px-16 py-12" style={{ maxWidth: '720px', margin: '0 auto' }}>
         <div className="space-y-4 text-[15px]" style={para}>
           <p><T>{`Every family has a kitchen. The place where traditions are quietly passed from one generation to the next. That recipe written on a stained index card. That phone call before hosting a holiday meal to ask, "How long did you bake it?" That dish that somehow never tastes quite the same unless the person who taught you is standing beside you.`}</T></p>
-          <p><T>{`These are more than recipes: They are stories, memories, and expressions of love, and Heritage Kitchen is a place to preserve and share them.`}</T></p>
-          <p><T>{`Here, anyone can create a Kitchen: a personal collection of recipes, traditions, photographs, and memories that deserve to be preserved and shared. Some Kitchens celebrate the grandmother whose recipes brought everyone together. Others honor a father who mastered the grill, an aunt whose holiday desserts became legendary, a sibling who carried on the family traditions, or a friend who became family around the table.`}</T></p>
-          <p><T>{`Whether your recipes come from generations past or are traditions you're creating today, every Kitchen tells a story that is uniquely yours. Together, these Kitchens create a living collection of culinary heritage from families around the world, and more than a recipe collection, Heritage Kitchens is a celebration of the people who nourished us, gathered us around the table, and taught us that feeding someone is one of the simplest and most enduring ways to say: I love you.`}</T></p>
-          <p><T>{`I hope exploring these Kitchens inspires you to cook, to remember, and perhaps even to begin preserving your own family's story. Because every story has a beginning, and every kitchen has someone who first taught us what it means to feed the people we love.`}</T></p>
-          <p><T>{`For me, that person was my mother, Ingrid, now lovingly known by my children as Nonna. Click below to visit her Kitchen, browse the Kitchens shared by others, or create your own and preserve your culinary story for generations to come.`}</T></p>
+          <p><T>{`These are more than recipes. They are stories, memories, and expressions of love. Heritage Kitchen is a place to preserve them and pass them on.`}</T></p>
+          <p><T>{`Here, anyone can create a Kitchen: a private collection of recipes, traditions, photographs, and memories, kept together in one place and shared with the people you choose. You can build it yourself or invite family and friends to contribute, creating the collection together.`}</T></p>
+          <p><T>{`Some Kitchens begin with one person whose cooking shaped the family table. Others bring together recipes and traditions from across generations: grandparents and parents, aunts and uncles, siblings, friends, and the children who are creating traditions of their own. Every Kitchen grows differently, shaped by the people whose stories it holds and those who help preserve them.`}</T></p>
+          <p><T>{`Whether your recipes come from generations past or are traditions you're creating today, every Kitchen tells a story that is uniquely yours. A Heritage Kitchen is a celebration of the people who nourished us, gathered us around the table, and taught us that feeding someone is one of the simplest and most enduring ways to say: I love you.`}</T></p>
+          <p><T>{`Because every story has a beginning, and every kitchen has someone who first taught us what it means to feed the people we love.`}</T></p>
+          <p><T>{`For me, that person was my mother, Ingrid, now lovingly known by my children as Nonna. And though most Kitchens stay within a family, she chose to open hers to everyone. I invite you to visit her Kitchen, or to begin creating a Heritage Kitchen of your own.`}</T></p>
 
+          {/* Two buttons, because the closing paragraph names exactly two
+              things. Browsing other people's Kitchens is gone: a Kitchen is
+              private now and shared with chosen people, so a public gallery
+              would contradict the paragraph above it. */}
           <div className="flex items-center justify-center gap-3 flex-wrap pt-6 pb-2">
             <Link href="/nonnas-kitchen"
               className="inline-block rounded-full px-7 py-3.5 text-sm uppercase tracking-[0.18em] transition-opacity hover:opacity-80"
               style={{ background: 'var(--green)', color: '#fff', fontFamily: 'Georgia, serif' }}>
               <T>{`Visit Nonna's Kitchen`}</T>
             </Link>
-            <Link href="/family-kitchens/gallery"
-              className="inline-block rounded-full px-7 py-3.5 text-sm uppercase tracking-[0.18em] transition-opacity hover:opacity-80"
-              style={{ background: 'var(--green)', color: '#fff', fontFamily: 'Georgia, serif' }}>
-              <T>Browse other Kitchens</T>
-            </Link>
             <Link href="/family-kitchens/new"
               className="inline-block rounded-full px-7 py-3.5 text-sm uppercase tracking-[0.18em] transition-opacity hover:opacity-80"
-              style={{ background: 'var(--green)', color: '#fff', fontFamily: 'Georgia, serif' }}>
-              <T>Create your own</T>
+              style={{ background: 'transparent', border: '1px solid var(--green)', color: 'var(--green)', fontFamily: 'Georgia, serif' }}>
+              <T>Start your own</T>
             </Link>
           </div>
         </div>

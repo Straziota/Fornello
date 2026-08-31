@@ -33,15 +33,14 @@ export default function FamilyKitchensPage() {
             <T>Family Kitchens</T>
           </h1>
           <p className="mt-2 text-[15px] italic max-w-xl" style={{ color: 'var(--text-2)' }}>
-            <T>Create a dedicated space for someone whose cooking shaped you — your mother, a grandmother, an auntie, or yourself. Scan their original recipe cards and keep their table alive.</T>
+            <T>A private collection of recipes, traditions and photographs, shared only with the people you choose. Build it yourself, or invite the family and friends who remember to add their own.</T>
           </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
-          <Link href="/family-kitchens/gallery"
-            className="rounded-full px-5 py-2.5 text-xs uppercase tracking-[0.18em] transition-opacity hover:opacity-80 whitespace-nowrap"
-            style={{ border: '1px solid var(--border)', color: 'var(--text-2)' }}>
-            <T>Browse shared</T>
-          </Link>
+          {/* No "browse shared". The Heritage Kitchen copy now says a Kitchen
+              is private and shared with chosen people, and a button inviting
+              strangers to read them contradicts that on the very page where
+              someone decides whether to trust it with their family. */}
           <Link href="/family-kitchens/new"
             className="rounded-full px-5 py-2.5 text-xs uppercase tracking-[0.18em] transition-opacity hover:opacity-80 whitespace-nowrap"
             style={{ background: 'var(--green)', color: '#fff', boxShadow: '0 2px 8px rgba(47,58,50,0.06)' }}>
