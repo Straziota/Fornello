@@ -139,27 +139,10 @@ export default function HeritageKitchenPage() {
         </div>
       </div>
 
-      {/* ── Family Kitchens: user-created dedicated profiles ── */}
-      <div className="mt-16 rounded-[28px] overflow-hidden ring-1 px-6 md:px-14 py-12 text-center"
-           style={{ background: 'var(--green-lt)', border: '1px solid var(--green)' }}>
-        <p className="text-xs uppercase tracking-[0.22em] mb-2" style={{ color: 'var(--green)' }}>
-          <T>Your own family</T>
-        </p>
-        <h2 className="text-[28px] md:text-[38px] leading-[1.1]"
-            style={{ fontFamily: 'AbramoSerif, serif', color: 'var(--text)' }}>
-          <T>Your Family Kitchen</T>
-        </h2>
-        <p className="mt-3 text-[15px] italic max-w-xl mx-auto" style={{ color: 'var(--text-2)' }}>
-          <T>A private collection of your family's recipes, traditions and photographs — kept in one place and shared only with the people you choose. Scan the original handwritten cards, keep them as they were written, and invite the people who remember them to add their own.</T>
-        </p>
-        <div className="mt-6 flex items-center justify-center gap-3 flex-wrap">
-          <Link href="/family-kitchens"
-            className="inline-block rounded-full px-7 py-3.5 text-sm uppercase tracking-[0.18em] transition-opacity hover:opacity-80"
-            style={{ background: 'var(--green)', color: '#fff', fontFamily: 'Georgia, serif' }}>
-            ✦ <T>Open your kitchen</T> ✦
-          </Link>
-        </div>
-      </div>
+      {/* The green "Your Family Kitchen" card used to sit here. It repeated
+          what the tribute above already says, and offered a third route to the
+          same place the two buttons in that text already offer — so the page
+          ended by asking twice. */}
     </>
   );
 }
