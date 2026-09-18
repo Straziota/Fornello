@@ -68,6 +68,10 @@ export async function POST(req: NextRequest) {
     const updatedMeals = (menu.meals || []).map((m: Meal) => m.day === day ? updatedMeal : m);
     await updateMenuData(user!.id, menuId, { ...menu, meals: updatedMeals });
 
+    // Fire-and-forget: nobody should wait on a counter, and a failed counter
+    // must never turn a completed swap into an error.
+    recordSwap(user!.id, menuId);
+
     return NextResponse.json(updatedMeal);
   } catch (e: any) {
     return NextResponse.json({ error: e.message || 'Failed to replace' }, { status: 500 });
