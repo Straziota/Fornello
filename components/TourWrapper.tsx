@@ -30,6 +30,17 @@ export default function TourWrapper({ children }: { children: React.ReactNode })
   });
 
   const [timedOut, setTimedOut] = useState(false);
+  // Nothing about the splash may exist in the server-rendered HTML.
+  //
+  // The server cannot know whether this household has onboarded, so it rendered
+  // the splash into EVERY page — a full-screen cream div with the Fornello logo
+  // centred in it, present in the markup before any JavaScript runs. The content
+  // wrapper in layout.tsx carries zIndex 1, so wherever hydration left that div
+  // behind, the page drew on top of it and the logo showed through the gaps: a
+  // watermark on every screen that no amount of searching the backgrounds would
+  // ever find.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
   useEffect(() => {
     if (verified) return;
     const t = setTimeout(() => setTimedOut(true), 6000);
@@ -90,7 +101,7 @@ export default function TourWrapper({ children }: { children: React.ReactNode })
   // A slow or dead connection must not leave someone staring at a logo. After
   // this the app renders regardless — a brief flash of icons is a smaller
   // failure than an app that never opens.
-  if (!isPublic(pathname) && !verified && !timedOut) {
+  if (mounted && !isPublic(pathname) && !verified && !timedOut) {
     return (
       <div className="fixed inset-0 flex items-center justify-center px-4" style={{ background: 'var(--cream, #F7F4EE)' }}>
         <div className="text-center">
