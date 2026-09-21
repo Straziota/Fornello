@@ -180,10 +180,22 @@ export default function RecipeCardModal({ recipe, onClose, readOnly, onSave, sav
         {/* Inner border */}
         <div style={{ border: '1px solid #C4A265', padding: '32px 36px' }}>
 
-          {/* Close */}
-          <button onClick={onClose}
-            className="no-print absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full transition-opacity hover:opacity-60"
-            style={{ color: '#C4A265', fontSize: '16px', background: 'transparent' }}>
+          {/* Close. Fixed on mobile for the same reason as the meal modal: an
+              absolute button scrolls away, and a long recipe leaves someone
+              with no way out but the browser's back gesture. Solid rather than
+              transparent gold, which was almost invisible against the card at
+              phone size. */}
+          <button onClick={onClose} aria-label="Close"
+            className="no-print fixed md:absolute right-4 md:right-3 z-10 w-11 h-11 md:w-8 md:h-8 flex items-center justify-center rounded-full transition-opacity hover:opacity-60"
+            style={{
+              // On desktop the modal is inset from the viewport, so the safe
+              // area is irrelevant and the button sits inside the card as
+              // before; on mobile it clears the notch.
+              top: 'max(1rem, env(safe-area-inset-top))',
+              color: '#fff', fontSize: '16px',
+              background: 'rgba(61,39,20,0.55)',
+              backdropFilter: 'blur(4px)',
+            }}>
             ✕
           </button>
 

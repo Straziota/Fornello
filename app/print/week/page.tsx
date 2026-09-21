@@ -17,6 +17,28 @@ const PRINT_LANGUAGES = [
 export default function PrintWeekPage() {
   const [meals, setMeals] = useState<LoadedMeal[]>([]);
   const [weekStart, setWeekStart] = useState('');
+
+  /**
+   * Print one section, and let CSS decide which.
+   *
+   * The class goes on <html> so the print stylesheet can act on it, and is
+   * cleared on `afterprint` — the only moment the browser will tell us the
+   * dialog is done. Also cleared on a timer, because Safari does not always
+   * fire afterprint when a print is cancelled, and a page stuck in
+   * "printing-prep" would silently hide the recipes on screen.
+   */
+  const printOnly = (section: 'recipes' | 'prep') => {
+    const root = document.documentElement;
+    const cls = section === 'prep' ? 'printing-prep' : 'printing-recipes';
+    root.classList.add(cls);
+    const clear = () => {
+      root.classList.remove('printing-prep', 'printing-recipes');
+      window.removeEventListener('afterprint', clear);
+    };
+    window.addEventListener('afterprint', clear);
+    setTimeout(clear, 60_000);
+    window.print();
+  };
   const [progress, setProgress] = useState(0);
   const [total, setTotal] = useState(0);
   const [ready, setReady] = useState(false);
@@ -162,6 +184,18 @@ export default function PrintWeekPage() {
           .no-print { display: none !important; margin: 0 !important; }
           .page { padding: 0; max-width: 100%; }
           @page { margin: 2cm; }
+
+          /* What prints is decided here, not by JavaScript hiding elements a
+             moment before calling print().
+             
+             window.print() does not block in Safari — including on iOS — so the
+             code that hid a section and restored it immediately afterwards had
+             already put it back before the page was rendered for printing. The
+             result was "Print Prep" printing every recipe. A class the browser
+             reads while it lays out the printed page cannot lose that race. */
+          .printing-prep #recipes-section { display: none !important; }
+          .printing-prep #prep-section { page-break-before: auto !important; padding-top: 0 !important; }
+          .printing-recipes #prep-section { display: none !important; }
         }
       `}</style>
 

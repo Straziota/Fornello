@@ -512,10 +512,30 @@ export default function MealModal({ meal: initialMeal, menuId, dislikedIngredien
               {meal.name}
             </h2>
           </div>
-          {/* Close button */}
-          <button onClick={onClose}
-            className="absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center text-lg backdrop-blur-sm"
-            style={{ background: 'rgba(255,255,255,0.25)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)' }}>
+          {/* Close button.
+              
+              Two things made this unreachable on a phone. The modal has no
+              outer padding below md, so it starts at the very top of the screen
+              and `top-4` put the ✕ 16px down — underneath the status bar and
+              the notch. And it is absolute inside the hero image, so it scrolled
+              away the moment anyone read past the ingredients; on mobile the
+              modal is full-width, so there is no backdrop left to tap either.
+              
+              Fixed to the viewport on mobile, below the safe area, and it stays
+              put however far down the recipe someone is. Darker than before
+              because it now floats over the recipe text rather than a
+              photograph. */}
+          <button onClick={onClose} aria-label="Close"
+            className="fixed md:absolute right-4 z-10 w-11 h-11 md:w-9 md:h-9 rounded-full flex items-center justify-center text-lg backdrop-blur-sm"
+            style={{
+              // On desktop the modal is inset from the viewport, so the safe
+              // area is irrelevant and the button sits inside the card as
+              // before; on mobile it clears the notch.
+              top: 'max(1rem, env(safe-area-inset-top))',
+              background: 'rgba(30,35,30,0.55)',
+              color: '#fff',
+              border: '1px solid rgba(255,255,255,0.35)',
+            }}>
             ✕
           </button>
         </div>
