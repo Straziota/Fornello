@@ -2,6 +2,8 @@
 // Handles: lb ↔ g, oz (weight) ↔ g, fl oz ↔ mL, °F ↔ °C, cups → mL (volume only).
 // Does NOT attempt weight ↔ volume conversion (ingredient-dependent, lives on /converter page).
 
+import { withPreheatFirst } from './oven';
+
 const round = (n: number, decimals = 0) => {
   const m = Math.pow(10, decimals);
   return Math.round(n * m) / m;
@@ -196,7 +198,13 @@ export function normalizeRecipeUnits<T extends {
   return {
     ...recipe,
     ...(recipe.ingredients ? { ingredients: recipe.ingredients.map(i => normalizeIngredient(i, units)) } : {}),
-    ...(recipe.instructions ? { instructions: recipe.instructions.map(s => normalizeText(s, units)) } : {}),
+    // Units first, THEN the preheat. Converting afterwards would rewrite the
+    // temperature just inserted, and could leave it disagreeing with the step
+    // it came from — "Preheat to 220°C" above "bake at 425°F" is worse than
+    // having neither.
+    ...(recipe.instructions
+      ? { instructions: withPreheatFirst(recipe.instructions.map(s => normalizeText(s, units))) }
+      : {}),
     ...(recipe.prep_ahead ? { prep_ahead: recipe.prep_ahead.map(s => normalizeText(s, units)) } : {}),
     ...(recipe.sides ? { sides: recipe.sides.map(side => ({
       ...side,

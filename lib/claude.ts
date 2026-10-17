@@ -25,6 +25,11 @@ export function unitsInstruction(units?: string): string {
 
 // Without this, models (especially the faster Haiku) emit bare numbers like
 // {"amount":"2","item":"soy sauce"} — which read as "2 soy sauce" with no unit.
+// Asked of the model AND repaired in code afterwards, like the allergen guard.
+// A preheat buried at step four has already cost fifteen minutes by the time
+// anyone reads it: everything is chopped and the cook stands waiting.
+const OVEN_RULE = `- If the recipe uses the oven, the FIRST instruction MUST be "Preheat the oven to X°F (Y°C)." — before any prep, chopping or mixing. Never bury the preheat in a later step. State the temperature explicitly; do not write "preheat the oven" with no number.`;
+
 const UNIT_RULE = `- Every ingredient "amount" MUST include a unit of measure when the item is measured by volume or weight (tsp, tbsp, cup, oz, lb, g, kg, ml, l, clove, can, pinch, etc.). NEVER write a bare number for liquids, oils, sauces, or spices — e.g. "2 tbsp" for soy sauce, not "2". Bare counts are acceptable only for naturally countable whole items (e.g. "2" eggs, "3" garlic cloves, "1" onion). For seasonings added to taste, set amount to "to taste".
 - List each shoppable ingredient as its OWN entry with its OWN amount. NEVER bundle several distinct items into one line such as "mixed seafood (clams, mussels, shrimp, halibut)" or "mixed vegetables (carrots, peas, corn)" — write each item (clams, mussels, shrimp, halibut) as a separate ingredient with its own quantity, so each can be added to a shopping list.`;
 
@@ -277,6 +282,7 @@ ${settings.avoidedSides?.length ? `- NEVER suggest these as sides: ${settings.av
 - total_time must equal prep_time + cook_time (e.g. prep 15 min + cook 30 min = total 45 min)
 - If a classic version of a dish takes longer than the day allows, suggest a quicker variation or a different dish entirely
 ${UNIT_RULE}
+${OVEN_RULE}
 ${leftoverDaysList.length ? `
 Leftover days (${leftoverDaysList.join(', ')}): set "isLeftover": true, set "leftoverFrom" to the source days, total_time should be "15 min or less".
 ` : ''}`;
@@ -768,7 +774,8 @@ Requirements:
 - The ingredient list and steps must be consistent with the stated total_time — do not include steps that would realistically take much longer
 - If the full classic recipe exceeds the total_time, adapt it (e.g. use thinner cuts, higher heat, fewer components) so it genuinely fits${hasSides ? `
 - Side instructions must be genuinely parallel — no extra time added` : ''}
-${UNIT_RULE}`;
+${UNIT_RULE}
+${OVEN_RULE}`;
 
   const message = await client.messages.create({
     model: 'claude-haiku-4-5',
@@ -1122,7 +1129,8 @@ Rules:
 - Every prep_ahead task must state the quantity of each ingredient being prepped, matching the ingredient list (e.g. "Dice 2 onions") — never quantity-less tasks like "Chop the onions"
 - missingIngredients: only essential extras not in the user's list
 - difficulty must remain "${option.difficulty}"
-${UNIT_RULE}`;
+${UNIT_RULE}
+${OVEN_RULE}`;
 
   const message = await client.messages.create({
     model: 'claude-haiku-4-5',
@@ -1203,7 +1211,8 @@ Rules:
 - 6+ clear, detailed instruction steps
 - Every prep_ahead task must state the quantity of each ingredient being prepped, matching the ingredient list (e.g. "Dice 2 onions") — never quantity-less tasks like "Chop the onions"
 - difficulty must be exactly "Easy", "Medium", or "Hard"
-${UNIT_RULE}`;
+${UNIT_RULE}
+${OVEN_RULE}`;
 
   const message = await client.messages.create({
     model: 'claude-haiku-4-5',
