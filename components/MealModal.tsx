@@ -9,6 +9,7 @@ import ShareButton from './ShareButton';
 import LoadingMessage from './LoadingMessage';
 import WhyThisMeal from '@/components/WhyThisMeal';
 import IngredientSafetyLine from '@/components/IngredientSafetyLine';
+import { printWindow } from '@/lib/print-recipe';
 
 interface Props {
   meal: Meal;
@@ -371,26 +372,6 @@ export default function MealModal({ meal: initialMeal, menuId, dislikedIngredien
     setIsOverride(false);
   };
 
-  const printWindow = (title: string, html: string) => {
-    const win = window.open('', '_blank');
-    if (!win) return;
-    win.document.write(`<!DOCTYPE html><html><head><title>${title}</title><style>
-      body{font-family:Georgia,serif;max-width:680px;margin:48px auto;color:#2F3A32;line-height:1.6}
-      h1{font-size:26px;margin-bottom:6px}
-      .meta{font-size:13px;color:#7A847B;margin-bottom:28px}
-      h2{font-size:11px;text-transform:uppercase;letter-spacing:.2em;color:#556257;margin:28px 0 12px;border-bottom:1px solid #E7E0D6;padding-bottom:6px}
-      .ing{display:flex;gap:14px;padding:5px 0;border-bottom:1px dotted #D4B896;font-size:14px}
-      .amt{color:#556257;font-weight:700;min-width:80px;flex-shrink:0}
-      .step{display:flex;gap:12px;margin-bottom:10px;font-size:14px}
-      .num{color:#556257;font-weight:700;min-width:22px;flex-shrink:0}
-      .tip{display:flex;gap:10px;padding:10px 14px;background:#EEF2EE;border-radius:8px;margin-bottom:8px;font-size:14px}
-      .check{color:#556257;font-weight:700;flex-shrink:0}
-      @media print{@page{margin:2cm}}
-    </style></head><body>${html}</body></html>`);
-    win.document.close();
-    win.focus();
-    setTimeout(() => win.print(), 250);
-  };
 
   const printRecipe = () => {
     const ings = (recipeLang === 'tr' && trIngredients) ? trIngredients : (meal.ingredients || []);

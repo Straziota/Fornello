@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, KeyboardEvent } from 'react';
 import LoadingMessage from '@/components/LoadingMessage';
 import PageBackground from '@/components/PageBackground';
 import Toast from '@/components/Toast';
+import { printRecipe } from '@/lib/print-recipe';
 
 interface OnTheFlyOption {
   name: string;
@@ -629,6 +630,17 @@ export default function OnTheFlyPage() {
                   border: saved ? '1px solid var(--green)' : 'none',
                 }}>
                 {saved ? '✓ Saved to recipes' : saving ? 'Saving…' : 'Save to my recipes'}
+              </button>
+              {/* On the Fly recipes are the ones most likely to be cooked right
+                  now and never saved — someone standing in the kitchen with
+                  whatever is already in the fridge. A printout is how that recipe
+                  survives the page being closed. */}
+              <button
+                onClick={() => printRecipe(display)}
+                disabled={editing}
+                className="rounded-full px-5 py-2.5 text-xs uppercase tracking-[0.18em] transition-opacity hover:opacity-80 disabled:opacity-40"
+                style={{ border: '1px solid var(--border)', background: 'rgba(255,255,255,0.7)', color: 'var(--text-2)' }}>
+                🖨 Print
               </button>
               {isAdmin && (
                 <button
