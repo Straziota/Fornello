@@ -40,3 +40,14 @@ ALTER TABLE ai_usage ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS ai_usage_select_own ON ai_usage;
 CREATE POLICY ai_usage_select_own ON ai_usage
   FOR SELECT USING (auth.uid() = user_id);
+
+-- Data API access. From 30 October 2026 Supabase no longer grants this
+-- automatically on new tables, so a migration that creates one and does not say
+-- this produces a table the app cannot read — and these files are the record
+-- the schema would be rebuilt from.
+--
+-- service_role only. Every table read and write in Fornello goes through an API
+-- route holding the service key; the browser uses Supabase for authentication
+-- and never queries a table. Granting anon or authenticated would widen access
+-- to a database of family allergies and private recipes in exchange for nothing.
+grant select, insert, update, delete on public.ai_usage to service_role;

@@ -82,3 +82,15 @@ create policy heritage_profile_recipes_public_read on heritage_profile_recipes
         and p.visibility = 'public'
     )
   );
+
+-- Data API access. From 30 October 2026 Supabase no longer grants this
+-- automatically on new tables, so a migration that creates one and does not say
+-- this produces a table the app cannot read — and these files are the record
+-- the schema would be rebuilt from.
+--
+-- service_role only. Every table read and write in Fornello goes through an API
+-- route holding the service key; the browser uses Supabase for authentication
+-- and never queries a table. Granting anon or authenticated would widen access
+-- to a database of family allergies and private recipes in exchange for nothing.
+grant select, insert, update, delete on public.heritage_profiles to service_role;
+grant select, insert, update, delete on public.heritage_profile_recipes to service_role;

@@ -34,7 +34,8 @@
     "test:own-menu": "npx --yes tsx scripts/own-menu-test.mjs",
     "test:oven": "npx --yes tsx scripts/oven-test.mjs",
     "week-one:who": "npx --yes tsx scripts/week-one-preview.mjs",
-    "prebuild": "node scripts/cron-coverage.mjs"
+    "test:grants": "node scripts/grant-coverage.mjs",
+    "prebuild": "node scripts/cron-coverage.mjs && node scripts/grant-coverage.mjs"
   },
   "build": {
     "appId": "com.fornello.app",
