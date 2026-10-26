@@ -4,6 +4,7 @@ import PageBackground from '@/components/PageBackground';
 import LoadingMessage from '@/components/LoadingMessage';
 import { SpecialOccasionResult, DaySchedule } from '@/lib/claude';
 import { printOccasionHref } from '@/lib/routes';
+import { isNativeApp } from '@/lib/native';
 
 function Divider({ label }: { label?: string }) {
   return (
@@ -1102,7 +1103,13 @@ export default function SpecialOccasionPage() {
               && activeEvent.result.recipesServeGuests !== (activeEvent.guests || 0)}
             onBack={() => { fetchEvents(); setView('list'); }}
             onEdit={editDetails}
-            onPrint={() => window.open(printOccasionHref(activeEvent.id), '_blank')}
+            // Same tab in the app: window.open on a WKWebView opens nothing at
+            // all, so this button silently did nothing there.
+            onPrint={() => {
+              const href = printOccasionHref(activeEvent.id);
+              if (isNativeApp()) window.location.href = href;
+              else window.open(href, '_blank');
+            }}
             onDishClick={handleDishClick}
             onToggleSelect={toggleSelect}
             onSwap={swapDish}

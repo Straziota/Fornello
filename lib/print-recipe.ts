@@ -13,13 +13,37 @@ import type { Ingredient } from './types';
  * language. It shares the window and the stylesheet without being forced
  * through a simpler printRecipe() that would quietly drop both.
  */
+/**
+ * Print arbitrary HTML — used where a page composes its own layout, like the
+ * grocery list with its aisle icons.
+ */
+export function printHtml(title: string, html: string) {
+  printWindow(title, html);
+}
+
 export function printWindow(title: string, html: string) {
-  const win = window.open('', '_blank');
-  // Blocked by a pop-up blocker, or opened from a context that forbids it.
-  // Nothing to recover — but failing silently is better than throwing into a
-  // click handler.
-  if (!win) return;
-  win.document.write(`<!DOCTYPE html><html><head><title>${escapeHtml(title)}</title><style>
+  // A hidden iframe, not a popup window.
+  //
+  // window.open('', '_blank') returns null inside a WKWebView — the app has no
+  // tabs to open one in — and the old code then did `if (!win) return`, so every
+  // Print button in the app landed and silently did nothing. On the web the same
+  // call was also one popup blocker away from the same outcome.
+  //
+  // An iframe needs no popup permission and works in both, so there is one path
+  // rather than two.
+  const frame = document.createElement('iframe');
+  frame.setAttribute('aria-hidden', 'true');
+  Object.assign(frame.style, {
+    position: 'fixed', right: '0', bottom: '0',
+    width: '0', height: '0', border: '0', visibility: 'hidden',
+  });
+  document.body.appendChild(frame);
+
+  const doc = frame.contentDocument;
+  if (!doc) { frame.remove(); return; }
+
+  doc.open();
+  doc.write(`<!DOCTYPE html><html><head><title>${escapeHtml(title)}</title><style>
     body{font-family:Georgia,serif;max-width:680px;margin:48px auto;color:#2F3A32;line-height:1.6}
     h1{font-size:26px;margin-bottom:6px}
     .meta{font-size:13px;color:#7A847B;margin-bottom:28px}
@@ -33,10 +57,18 @@ export function printWindow(title: string, html: string) {
     .safety{font-size:11px;font-style:italic;color:#6B7269;margin:-6px 0 14px;line-height:1.4}
     @media print{@page{margin:2cm}}
   </style></head><body>${html}</body></html>`);
-  win.document.close();
-  win.focus();
-  // The document needs a moment to lay out, or Safari prints a blank page.
-  setTimeout(() => win.print(), 250);
+  doc.close();
+
+  // The document needs a moment to lay out, or it prints blank.
+  setTimeout(() => {
+    try {
+      frame.contentWindow?.focus();
+      frame.contentWindow?.print();
+    } catch { /* nothing to recover; the frame is removed either way */ }
+    // Long enough for the print dialog to have taken its snapshot. Removing the
+    // frame while the sheet is still open would print an empty page.
+    setTimeout(() => frame.remove(), 60_000);
+  }, 250);
 }
 
 const escapeHtml = (s = '') =>

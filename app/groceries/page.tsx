@@ -7,6 +7,7 @@ import ShareListButton from '@/components/ShareListButton';
 import { T } from '@/components/T';
 import { SITE_URL } from '@/lib/site';
 import { categoryIcon, stapleCategory, BUILTIN_CATEGORIES } from '@/lib/categories';
+import { printHtml } from '@/lib/print-recipe';
 
 function CategoryIcon({ src, size = 32 }: { src: string; size?: number }) {
   if (src.startsWith('/')) {
@@ -382,8 +383,6 @@ export default function GroceriesPage() {
             {generating ? '↻ …' : '↻'} <T>Refresh</T>
           </button>
           <button onClick={() => {
-            const win = window.open('', '_blank');
-            if (!win) return;
             const weekLabel = menu.week_start
               ? new Date(menu.week_start + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
               : '';
@@ -419,7 +418,11 @@ export default function GroceriesPage() {
             const filterLabel = includeAll
               ? `Week of ${weekLabel}`
               : `Week of ${weekLabel} · for: ${[...filterDays].join(', ')}`;
-            win.document.write(`<!DOCTYPE html><html><head><title>Grocery List</title><style>
+            // Shared helper, because window.open('', '_blank') returns null
+            // inside the app — there are no tabs — and this button silently did
+            // nothing there. The helper prints through a hidden iframe instead,
+            // which needs no popup and works on both.
+            printHtml('Grocery List', `<style>
               * { margin:0; padding:0; box-sizing:border-box; }
               body { font-family: Georgia, serif; color: #2F3A32; padding: 40px; }
               h1 { font-size: 28px; margin-bottom: 4px; }
@@ -433,14 +436,11 @@ export default function GroceriesPage() {
               .check { color: #aaa; flex-shrink: 0; }
               .amt { color: #556257; font-weight: bold; }
               @media print { @page { margin: 2cm; } }
-            </style></head><body>
+            </style>
               <h1>Grocery List</h1>
               <p class="week">${filterLabel}</p>
               ${sourcesHtml}
-            </body></html>`);
-            win.document.close();
-            win.focus();
-            setTimeout(() => win.print(), 250);
+            `);
           }}
             className="rounded-full px-4 py-2 text-xs uppercase tracking-[0.18em]"
             style={{ border: '1px solid var(--border)', background: 'rgba(255,255,255,0.7)', color: 'var(--text-2)' }}>
