@@ -27,6 +27,15 @@ export default function HomePage() {
           on screen at once and, on a phone, most of the first screen given to
           saying the app's name to someone already inside it. */}
 
+      {/* TEMPORARY BUILD MARKER — remove once the phone is confirmed to be
+          running current code. Five rounds of fixes have produced no visible
+          change on the device, and nothing so far distinguishes "the fix is
+          wrong" from "the build never arrived". This settles that without
+          needing a console. */}
+      <p className="text-center text-xs mb-4" style={{ color: 'var(--text-3)' }}>
+        build 26 Oct 11:33
+      </p>
+
       {/* Tile grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto">
         {tiles.map(tile => (
