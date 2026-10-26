@@ -13,6 +13,7 @@ import { useLanguage } from '@/components/LanguageProvider';
 import { getCachedTranslation } from '@/lib/translation-cache';
 import { T } from '@/components/T';
 import Link from 'next/link';
+import { isNativeApp } from '@/lib/native';
 
 function localizedMealName(meal: Meal, language: string): string {
   if (language === 'English') return meal.name;
@@ -88,6 +89,10 @@ export default function HomePage() {
   const [offer, setOffer] = useState<DayOffer | null>(null);
   const [needsMore, setNeedsMore] = useState(false);
   const [showVacationPicker, setShowVacationPicker] = useState(false);
+  // Regenerating throws away the week that exists — including every swap and
+  // replacement made by hand — and the button sits in a row people tap through.
+  // Only asked when there is something to lose.
+  const [confirmRegenerate, setConfirmRegenerate] = useState(false);
 
   useEffect(() => {
     fetch('/api/menu').then(r => r.json()).then(d => {
@@ -216,6 +221,37 @@ export default function HomePage() {
     <>
       <PageBackground src="/backgrounds/this-week-page.png" />
       {toast && <Toast message={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
+
+      {confirmRegenerate && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-5"
+             style={{ background: 'rgba(0,0,0,0.45)' }}
+             onClick={() => setConfirmRegenerate(false)}>
+          <div onClick={e => e.stopPropagation()}
+               className="rounded-[22px] p-8 w-full animate-slide-up"
+               style={{ background: 'var(--white)', maxWidth: 380, boxShadow: '0 16px 48px rgba(0,0,0,0.2)' }}>
+            <h2 className="text-2xl mb-3" style={{ fontFamily: 'AbramoSerif, serif' }}>
+              <T>Build a new week?</T>
+            </h2>
+            <p className="text-sm leading-relaxed mb-6" style={{ color: 'var(--text-2)' }}>
+              <T>This replaces the menu you have now — including any meals you swapped or changed. Your shopping list is rebuilt to match.</T>
+            </p>
+            <div className="flex gap-2 flex-wrap">
+              {/* Cancel first and quieter: the destructive button should never be
+                  the one a thumb lands on by habit. */}
+              <button onClick={() => setConfirmRegenerate(false)}
+                className="flex-1 rounded-full px-5 py-3 text-sm"
+                style={{ border: '1px solid var(--border)', color: 'var(--text-2)', minWidth: 110 }}>
+                <T>Keep this week</T>
+              </button>
+              <button onClick={() => { setConfirmRegenerate(false); generate(); }}
+                className="flex-1 rounded-full px-5 py-3 text-sm text-white"
+                style={{ background: 'var(--green)', minWidth: 110 }}>
+                <T>New week</T>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {replacingMeal && menu && (
         <ReplaceMealModal
           day={replacingMeal.day}
@@ -278,8 +314,12 @@ export default function HomePage() {
             unwrapped buttons stretch to the tallest child — leaving them visibly
             taller than it. */}
         <div className="flex gap-2 flex-wrap items-center">
+          {/* target="_blank" does nothing inside the app: a WKWebView has no
+              tabs to open one in, so the tap lands and is silently dropped.
+              Same tab in the app, new tab on the web, where a print sheet
+              replacing the week would be worse. */}
           {menu && (
-            <a href="/print/week" target="_blank"
+            <a href="/print/week" target={isNativeApp() ? undefined : '_blank'}
               className="rounded-full px-5 py-2.5 text-xs uppercase tracking-[0.18em] backdrop-blur-sm transition-opacity hover:opacity-80"
               style={{ border: '1px solid var(--border)', background: 'rgba(255,255,255,0.7)', color: 'var(--text-2)', boxShadow: '0 2px 8px rgba(47,58,50,0.06)' }}>
               🖨 <T>Print week</T>
