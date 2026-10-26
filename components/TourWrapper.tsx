@@ -91,30 +91,34 @@ export default function TourWrapper({ children }: { children: React.ReactNode })
     markSeen();
   };
 
-  // Nothing behind a private path renders until this account is confirmed
-  // onboarded. Signing in used to paint the full home screen — nav icons, this
-  // week, the lot — and then yank it away as the redirect landed, which reads
-  // as the app breaking rather than as a questionnaire starting.
+  // The splash is an OVERLAY, never a replacement for the app.
   //
-  // Public paths are exempt, and `verified` stays true once set, so this costs
-  // one held frame per session rather than one per navigation.
-  // A slow or dead connection must not leave someone staring at a logo. After
-  // this the app renders regardless — a brief flash of icons is a smaller
-  // failure than an app that never opens.
-  if (mounted && !isPublic(pathname) && !verified && !timedOut) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center px-4" style={{ background: 'var(--cream, #F7F4EE)' }}>
-        <div className="text-center">
-          <img src="/Fornello Logo.png" alt="Fornello" style={{ width: '160px', margin: '0 auto 16px' }} />
-          <p className="text-sm italic" style={{ color: 'var(--text-3)' }}>Your family meal planner</p>
-        </div>
-      </div>
-    );
-  }
+  // Two bugs came from getting this wrong in opposite directions. Rendering it
+  // instead of the children put a full-screen logo into every page's static
+  // HTML, which showed through as a watermark. Making it client-only then meant
+  // the app rendered, was replaced by the splash a frame later, and rendered
+  // again — the home screen appearing twice on every cold start, and the whole
+  // component tree unmounting and remounting underneath whatever someone was
+  // trying to tap.
+  //
+  // As an overlay it does neither: the children mount once and stay mounted,
+  // and nothing about the splash exists until the browser has decided it is
+  // needed.
+  const showSplash = mounted && !isPublic(pathname) && !verified && !timedOut;
 
   return (
     <TourContext.Provider value={{ startTour }}>
       {children}
+
+      {showSplash && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center px-4"
+             style={{ background: 'var(--cream, #F7F4EE)' }}>
+          <div className="text-center">
+            <img src="/Fornello Logo.png" alt="Fornello" style={{ width: '160px', margin: '0 auto 16px' }} />
+            <p className="text-sm italic" style={{ color: 'var(--text-3)' }}>Your family meal planner</p>
+          </div>
+        </div>
+      )}
 
       {/* Welcome prompt */}
       {showWelcome && !showTour && (
