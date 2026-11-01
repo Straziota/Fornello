@@ -470,6 +470,27 @@ export default function MealModal({ meal: initialMeal, menuId, dislikedIngredien
     <div className="fixed inset-0 z-50 flex items-start justify-center md:p-4 overflow-y-auto"
          style={{ background: 'rgba(0,0,0,0.55)' }}
          onClick={e => e.target === e.currentTarget && onClose()}>
+
+        {/* On a phone, closing lives at the BOTTOM.
+
+            The top of the screen is contested — the status bar, the notch, and a
+            sticky navbar at z-50 — and two attempts to float a button up there
+            were lost behind one or another of them. The bottom is uncontested,
+            it is where a thumb already rests, and a full-width bar cannot be
+            missed the way a 36px circle can. Fixed, so it stays put however far
+            down the recipe someone has read. */}
+        <button onClick={onClose} aria-label="Close recipe"
+          className="md:hidden fixed left-0 right-0 z-[70] flex items-center justify-center gap-2 text-sm"
+          style={{
+            bottom: 0,
+            paddingTop: 14,
+            paddingBottom: 'max(14px, env(safe-area-inset-bottom))',
+            background: 'rgba(30,35,30,0.92)',
+            backdropFilter: 'blur(8px)',
+            color: '#fff',
+          }}>
+          ✕ Close
+        </button>
       <div className="w-full max-w-3xl md:rounded-[22px] overflow-hidden relative md:mt-4 md:mb-8"
            style={{ background: 'var(--white)', boxShadow: '0 16px 48px rgba(0,0,0,0.22)', minHeight: '100dvh' }}>
 
@@ -493,35 +514,11 @@ export default function MealModal({ meal: initialMeal, menuId, dislikedIngredien
               {meal.name}
             </h2>
           </div>
-          {/* Close button.
-              
-              Two things made this unreachable on a phone. The modal has no
-              outer padding below md, so it starts at the very top of the screen
-              and `top-4` put the ✕ 16px down — underneath the status bar and
-              the notch. And it is absolute inside the hero image, so it scrolled
-              away the moment anyone read past the ingredients; on mobile the
-              modal is full-width, so there is no backdrop left to tap either.
-              
-              Fixed to the viewport on mobile, below the safe area, and it stays
-              put however far down the recipe someone is. Darker than before
-              because it now floats over the recipe text rather than a
-              photograph. */}
+          {/* Close, on the hero where it has always worked on desktop.
+              Absolute inside the modal, so no page-level stacking to lose. */}
           <button onClick={onClose} aria-label="Close"
-            className="fixed md:absolute right-4 z-[60] w-11 h-11 md:w-9 md:h-9 rounded-full flex items-center justify-center text-lg backdrop-blur-sm"
-            style={{
-              // On desktop the modal is inset from the viewport, so the safe
-              // area is irrelevant and the button sits inside the card as
-              // before; on mobile it clears the notch.
-              // z-[60], above the modal's own z-50 and the sticky navbar's
-              // z-50. Making this `fixed` in September moved it out of the
-              // modal's stacking context and left it at z-10 — page level,
-              // underneath the navbar, which is why the X vanished on a phone
-              // and tapping where it should be hit the nav instead.
-              top: 'max(1rem, env(safe-area-inset-top))',
-              background: 'rgba(30,35,30,0.55)',
-              color: '#fff',
-              border: '1px solid rgba(255,255,255,0.35)',
-            }}>
+            className="hidden md:flex absolute top-3 right-3 z-10 w-9 h-9 rounded-full items-center justify-center text-lg backdrop-blur-sm"
+            style={{ background: 'rgba(30,35,30,0.55)', color: '#fff', border: '1px solid rgba(255,255,255,0.35)' }}>
             ✕
           </button>
         </div>

@@ -150,6 +150,18 @@ export default function RecipeCardModal({ recipe, onClose, readOnly, onSave, sav
          style={{ background: 'rgba(30,24,16,0.65)' }}
          onClick={e => e.target === e.currentTarget && onClose()}>
 
+        {/* Bottom, for the same reason as the meal modal: the top of a phone
+            screen is contested and the bottom is not. */}
+        <button onClick={onClose} aria-label="Close recipe"
+          className="no-print md:hidden fixed left-0 right-0 z-[70] flex items-center justify-center text-sm"
+          style={{
+            bottom: 0, paddingTop: 14,
+            paddingBottom: 'max(14px, env(safe-area-inset-bottom))',
+            background: 'rgba(61,39,20,0.92)', backdropFilter: 'blur(8px)', color: '#fff',
+          }}>
+          ✕ Close
+        </button>
+
       <style>{`
         @media print {
           body * { visibility: hidden; }
@@ -180,27 +192,11 @@ export default function RecipeCardModal({ recipe, onClose, readOnly, onSave, sav
         {/* Inner border */}
         <div style={{ border: '1px solid #C4A265', padding: '32px 36px' }}>
 
-          {/* Close. Fixed on mobile for the same reason as the meal modal: an
-              absolute button scrolls away, and a long recipe leaves someone
-              with no way out but the browser's back gesture. Solid rather than
-              transparent gold, which was almost invisible against the card at
-              phone size. */}
+          {/* Desktop close, absolute inside the card where it has always
+              worked. The phone gets the bottom bar below instead. */}
           <button onClick={onClose} aria-label="Close"
-            className="no-print fixed md:absolute right-4 md:right-3 z-[60] w-11 h-11 md:w-8 md:h-8 flex items-center justify-center rounded-full transition-opacity hover:opacity-60"
-            style={{
-              // On desktop the modal is inset from the viewport, so the safe
-              // area is irrelevant and the button sits inside the card as
-              // before; on mobile it clears the notch.
-              // z-[60], above the modal's own z-50 and the sticky navbar's
-              // z-50. Making this `fixed` in September moved it out of the
-              // modal's stacking context and left it at z-10 — page level,
-              // underneath the navbar, which is why the X vanished on a phone
-              // and tapping where it should be hit the nav instead.
-              top: 'max(1rem, env(safe-area-inset-top))',
-              color: '#fff', fontSize: '16px',
-              background: 'rgba(61,39,20,0.55)',
-              backdropFilter: 'blur(4px)',
-            }}>
+            className="no-print hidden md:flex absolute top-3 right-3 z-10 w-8 h-8 items-center justify-center rounded-full transition-opacity hover:opacity-60"
+            style={{ color: '#fff', fontSize: '16px', background: 'rgba(61,39,20,0.55)' }}>
             ✕
           </button>
 
