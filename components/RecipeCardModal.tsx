@@ -150,17 +150,7 @@ export default function RecipeCardModal({ recipe, onClose, readOnly, onSave, sav
          style={{ background: 'rgba(30,24,16,0.65)' }}
          onClick={e => e.target === e.currentTarget && onClose()}>
 
-        {/* Bottom, for the same reason as the meal modal: the top of a phone
-            screen is contested and the bottom is not. */}
-        <button onClick={onClose} aria-label="Close recipe"
-          className="no-print md:hidden fixed left-0 right-0 z-[70] flex items-center justify-center text-sm"
-          style={{
-            bottom: 0, paddingTop: 14,
-            paddingBottom: 'max(14px, env(safe-area-inset-bottom))',
-            background: 'rgba(61,39,20,0.92)', backdropFilter: 'blur(8px)', color: '#fff',
-          }}>
-          ✕ Close
-        </button>
+
 
       <style>{`
         @media print {
@@ -192,11 +182,16 @@ export default function RecipeCardModal({ recipe, onClose, readOnly, onSave, sav
         {/* Inner border */}
         <div style={{ border: '1px solid #C4A265', padding: '32px 36px' }}>
 
-          {/* Desktop close, absolute inside the card where it has always
-              worked. The phone gets the bottom bar below instead. */}
+          {/* Over the card at the top right, absolute inside the modal so it
+              cannot be taken out of the modal's stacking context and lost behind
+              the navbar the way a fixed one was. */}
           <button onClick={onClose} aria-label="Close"
-            className="no-print hidden md:flex absolute top-3 right-3 z-10 w-8 h-8 items-center justify-center rounded-full transition-opacity hover:opacity-60"
-            style={{ color: '#fff', fontSize: '16px', background: 'rgba(61,39,20,0.55)' }}>
+            className="no-print absolute right-3 z-20 w-10 h-10 md:w-8 md:h-8 flex items-center justify-center rounded-full transition-opacity hover:opacity-60"
+            style={{
+              top: 'max(0.75rem, env(safe-area-inset-top))',
+              color: '#fff', fontSize: '16px',
+              background: 'rgba(61,39,20,0.65)', backdropFilter: 'blur(4px)',
+            }}>
             ✕
           </button>
 

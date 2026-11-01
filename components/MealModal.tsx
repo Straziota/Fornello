@@ -471,26 +471,7 @@ export default function MealModal({ meal: initialMeal, menuId, dislikedIngredien
          style={{ background: 'rgba(0,0,0,0.55)' }}
          onClick={e => e.target === e.currentTarget && onClose()}>
 
-        {/* On a phone, closing lives at the BOTTOM.
 
-            The top of the screen is contested — the status bar, the notch, and a
-            sticky navbar at z-50 — and two attempts to float a button up there
-            were lost behind one or another of them. The bottom is uncontested,
-            it is where a thumb already rests, and a full-width bar cannot be
-            missed the way a 36px circle can. Fixed, so it stays put however far
-            down the recipe someone has read. */}
-        <button onClick={onClose} aria-label="Close recipe"
-          className="md:hidden fixed left-0 right-0 z-[70] flex items-center justify-center gap-2 text-sm"
-          style={{
-            bottom: 0,
-            paddingTop: 14,
-            paddingBottom: 'max(14px, env(safe-area-inset-bottom))',
-            background: 'rgba(30,35,30,0.92)',
-            backdropFilter: 'blur(8px)',
-            color: '#fff',
-          }}>
-          ✕ Close
-        </button>
       <div className="w-full max-w-3xl md:rounded-[22px] overflow-hidden relative md:mt-4 md:mb-8"
            style={{ background: 'var(--white)', boxShadow: '0 16px 48px rgba(0,0,0,0.22)', minHeight: '100dvh' }}>
 
@@ -514,11 +495,24 @@ export default function MealModal({ meal: initialMeal, menuId, dislikedIngredien
               {meal.name}
             </h2>
           </div>
-          {/* Close, on the hero where it has always worked on desktop.
-              Absolute inside the modal, so no page-level stacking to lose. */}
+          {/* Over the card, not beside it — absolute inside the modal, so the
+              card keeps the full width of the screen and the button floats on
+              the photo.
+              
+              Absolute rather than fixed, deliberately. Fixed took it out of the
+              modal's stacking context and left it at page level, where the
+              sticky navbar covered it. Inside the modal it is above everything
+              the modal is above, which includes the navbar.
+              
+              Clear of the status bar and notch on a phone; the small inset is
+              enough on a desktop window. */}
           <button onClick={onClose} aria-label="Close"
-            className="hidden md:flex absolute top-3 right-3 z-10 w-9 h-9 rounded-full items-center justify-center text-lg backdrop-blur-sm"
-            style={{ background: 'rgba(30,35,30,0.55)', color: '#fff', border: '1px solid rgba(255,255,255,0.35)' }}>
+            className="absolute right-3 z-20 w-10 h-10 md:w-9 md:h-9 rounded-full flex items-center justify-center text-lg backdrop-blur-sm"
+            style={{
+              top: 'max(0.75rem, env(safe-area-inset-top))',
+              background: 'rgba(30,35,30,0.55)', color: '#fff',
+              border: '1px solid rgba(255,255,255,0.35)',
+            }}>
             ✕
           </button>
         </div>
