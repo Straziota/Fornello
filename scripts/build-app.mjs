@@ -109,6 +109,21 @@ function* walk(dir) {
   }
 }
 
+// The service worker has no business in the native bundle.
+//
+// It is never registered there — the registrar bails out on isNativeApp() — but
+// shipping the file means a worker registered by an EARLIER build can keep
+// updating itself from it and go on serving its cache. The app then loads
+// yesterday's JavaScript out of Library/Caches/WebKit while Xcode reports a
+// successful install, which is indistinguishable from "the fix did not work".
+//
+// Nothing is lost: every asset is already on disk inside the app, readable with
+// the radio off, which is the only thing the worker was providing.
+for (const dead of ['sw.js', 'manifest.webmanifest']) {
+  const f = join(OUT, dead);
+  if (existsSync(f)) { rmSync(f, { force: true }); console.log(`  removed ${dead} from the app bundle`); }
+}
+
 if (existsSync(OUT)) {
   const mb = n => (n / 1024 / 1024).toFixed(1);
   let before = 0, after = 0;
