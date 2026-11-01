@@ -186,9 +186,8 @@ export default function RecipeCardModal({ recipe, onClose, readOnly, onSave, sav
               cannot be taken out of the modal's stacking context and lost behind
               the navbar the way a fixed one was. */}
           <button onClick={onClose} aria-label="Close"
-            className="no-print absolute right-3 z-20 w-10 h-10 md:w-8 md:h-8 flex items-center justify-center rounded-full transition-opacity hover:opacity-60"
+            className="no-print absolute top-14 md:top-3 right-3 z-20 w-10 h-10 md:w-8 md:h-8 flex items-center justify-center rounded-full transition-opacity hover:opacity-60"
             style={{
-              top: 'max(0.75rem, env(safe-area-inset-top))',
               color: '#fff', fontSize: '16px',
               background: 'rgba(61,39,20,0.65)', backdropFilter: 'blur(4px)',
             }}>

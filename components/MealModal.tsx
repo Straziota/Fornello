@@ -507,9 +507,8 @@ export default function MealModal({ meal: initialMeal, menuId, dislikedIngredien
               Clear of the status bar and notch on a phone; the small inset is
               enough on a desktop window. */}
           <button onClick={onClose} aria-label="Close"
-            className="absolute right-3 z-20 w-10 h-10 md:w-9 md:h-9 rounded-full flex items-center justify-center text-lg backdrop-blur-sm"
+            className="absolute top-14 md:top-3 right-3 z-20 w-10 h-10 md:w-9 md:h-9 rounded-full flex items-center justify-center text-lg backdrop-blur-sm"
             style={{
-              top: 'max(0.75rem, env(safe-area-inset-top))',
               background: 'rgba(30,35,30,0.55)', color: '#fff',
               border: '1px solid rgba(255,255,255,0.35)',
             }}>
