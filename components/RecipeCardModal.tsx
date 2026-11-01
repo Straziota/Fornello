@@ -186,11 +186,16 @@ export default function RecipeCardModal({ recipe, onClose, readOnly, onSave, sav
               transparent gold, which was almost invisible against the card at
               phone size. */}
           <button onClick={onClose} aria-label="Close"
-            className="no-print fixed md:absolute right-4 md:right-3 z-10 w-11 h-11 md:w-8 md:h-8 flex items-center justify-center rounded-full transition-opacity hover:opacity-60"
+            className="no-print fixed md:absolute right-4 md:right-3 z-[60] w-11 h-11 md:w-8 md:h-8 flex items-center justify-center rounded-full transition-opacity hover:opacity-60"
             style={{
               // On desktop the modal is inset from the viewport, so the safe
               // area is irrelevant and the button sits inside the card as
               // before; on mobile it clears the notch.
+              // z-[60], above the modal's own z-50 and the sticky navbar's
+              // z-50. Making this `fixed` in September moved it out of the
+              // modal's stacking context and left it at z-10 — page level,
+              // underneath the navbar, which is why the X vanished on a phone
+              // and tapping where it should be hit the nav instead.
               top: 'max(1rem, env(safe-area-inset-top))',
               color: '#fff', fontSize: '16px',
               background: 'rgba(61,39,20,0.55)',

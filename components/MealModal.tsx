@@ -507,11 +507,16 @@ export default function MealModal({ meal: initialMeal, menuId, dislikedIngredien
               because it now floats over the recipe text rather than a
               photograph. */}
           <button onClick={onClose} aria-label="Close"
-            className="fixed md:absolute right-4 z-10 w-11 h-11 md:w-9 md:h-9 rounded-full flex items-center justify-center text-lg backdrop-blur-sm"
+            className="fixed md:absolute right-4 z-[60] w-11 h-11 md:w-9 md:h-9 rounded-full flex items-center justify-center text-lg backdrop-blur-sm"
             style={{
               // On desktop the modal is inset from the viewport, so the safe
               // area is irrelevant and the button sits inside the card as
               // before; on mobile it clears the notch.
+              // z-[60], above the modal's own z-50 and the sticky navbar's
+              // z-50. Making this `fixed` in September moved it out of the
+              // modal's stacking context and left it at z-10 — page level,
+              // underneath the navbar, which is why the X vanished on a phone
+              // and tapping where it should be hit the nav instead.
               top: 'max(1rem, env(safe-area-inset-top))',
               background: 'rgba(30,35,30,0.55)',
               color: '#fff',
