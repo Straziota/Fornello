@@ -19,6 +19,8 @@ export default function BiometricGate({ children }: { children: React.ReactNode 
   const [checking, setChecking] = useState(true);
   const [failed, setFailed] = useState(false);
   const [name, setName] = useState('Face ID');
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => { biometryAvailable().then(b => { if (b.name) setName(b.name); }); }, []);
 
@@ -45,12 +47,24 @@ export default function BiometricGate({ children }: { children: React.ReactNode 
     return () => { document.removeEventListener('pagehide', away); };
   }, [unlock]);
 
-  // Nothing renders until we know, so the week never flashes behind the lock.
-  if (checking && isNativeApp() && lockEnabled()) return null;
+  // Hidden, never unmounted — and only after mount, so the first client render
+  // matches the server's.
+  //
+  // This used to `return null` while checking, which in the app meant the static
+  // HTML held the whole of Fornello and React's first render held nothing.
+  // React abandoned hydration, rendered the tree again, and left the original
+  // markup behind: two complete copies stacked down the page, one of them dead
+  // HTML with no handlers. Whether a tap did anything depended on which copy it
+  // landed on.
+  const hide = mounted && (locked || (checking && isNativeApp() && lockEnabled()));
 
-  if (locked) {
-    return (
-      <div className="fixed inset-0 z-[10000] flex items-center justify-center px-6"
+  return (
+    <>
+      <div style={hide ? { visibility: 'hidden' } : undefined}>{children}</div>
+      <BiometricOffer />
+
+      {locked && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center px-6"
            style={{ background: 'var(--cream, #F7F4EE)' }}>
         <div className="text-center" style={{ maxWidth: 320 }}>
           <img src="/Fornello Logo.png" alt="Fornello" style={{ width: 140, margin: '0 auto 24px' }} />
@@ -92,8 +106,8 @@ export default function BiometricGate({ children }: { children: React.ReactNode 
             </p>
           )}
         </div>
-      </div>
-    );
-  }
-  return <>{children}<BiometricOffer /></>;
+        </div>
+      )}
+    </>
+  );
 }
