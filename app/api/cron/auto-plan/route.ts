@@ -5,11 +5,12 @@ import {
   getSettings, getRecentMealNames, getDislikedMealNames, getPantryNames,
   getUserRecipeSummaries, getFeedbackAdjustments, getLovedMealNames,
   getNextWeekPicks, getGlobalRecipeSummaries, saveMenu, getGlobalRecipe,
-  updateMealRecipe, updateMenuData, saveGlobalRecipeIfNew,
+  updateMealRecipe, updateMenuData, updateMealPhoto, saveGlobalRecipeIfNew,
 } from '@/lib/db';
 import { generateMenu, generateMealRecipe, generateGroceryList } from '@/lib/claude';
 import { analyseWeekOne, topQuestion } from '@/lib/week-one';
 import { targetWeekStart } from '@/lib/week-start';
+import { resolveIllustration } from '@/lib/illustrate';
 
 export const maxDuration = 300;
 
@@ -266,7 +267,12 @@ export async function GET(req: NextRequest) {
             const existing = await getGlobalRecipe(m.name);
             if (existing) {
               await updateMealRecipe(s.user_id, menuId, m.day, existing);
-              return { ...m, ...existing, recipeLoaded: true };
+              // Carry the library's illustration onto the meal. The menu stores
+              // its own copy of photo_url, so a recipe that already has art
+              // still arrived without any.
+              const art = (existing as any).photo_url;
+              if (art) await updateMealPhoto(s.user_id, menuId, m.day, art);
+              return { ...m, ...existing, photo_url: art || m.photo_url, recipeLoaded: true };
             }
             const recipe = await generateMealRecipe(
               apiKey, m, settings.familySize, (settings as any).prepSchedule,
@@ -274,11 +280,21 @@ export async function GET(req: NextRequest) {
               settings.restrictions || [], (settings as any).skipIngredients || [],
             );
             await updateMealRecipe(s.user_id, menuId, m.day, recipe);
+            // Illustrate, exactly as the app does when someone presses
+            // Generate. This was missing entirely: the Sunday cron has planned
+            // every week since September and never drew a single picture, so
+            // 222 of the 237 meals with no image came from here. Reuses an
+            // existing illustration before drawing a new one, and a failure
+            // costs a picture rather than the week.
+            const art = await resolveIllustration(apiKey, { ...m, ...recipe } as any)
+              .catch(() => ({ url: '', source: 'skipped' as const }));
+            if (art.url) await updateMealPhoto(s.user_id, menuId, m.day, art.url);
+
             await saveGlobalRecipeIfNew({
               ...m, ...recipe, mealType: m.tags?.[0] || '',
               source_site: '', inspired_by: m.source_site || '',
             });
-            return { ...m, ...recipe, recipeLoaded: true };
+            return { ...m, ...recipe, photo_url: art.url || undefined, recipeLoaded: true };
           } catch {
             return m;   // one failed recipe must not lose the week
           }

@@ -445,26 +445,18 @@ export default function MealModal({ meal: initialMeal, menuId, dislikedIngredien
     }
   };
 
-  const FOOD_PHOTOS: Record<string, string[]> = {
-    Italian:    ['photo-1555396273-367ea4eb4db5','photo-1621996346565-e3dbc646d9a9','photo-1473093295043-cdd812d0e601'],
-    Asian:      ['photo-1569050467447-ce54b3bbc37d','photo-1563245372-f21724e3856d'],
-    Mexican:    ['photo-1565299585323-38d6b0865b47','photo-1551504734-5ee1c4a1479b'],
-    Seafood:    ['photo-1519708227418-c8fd9a32b7a2','photo-1534482421-64566f976cfa'],
-    meat:       ['photo-1544025162-d76694265947','photo-1558030006-450675393462'],
-    chicken:    ['photo-1598103442097-8b74394b95c2','photo-1432139555190-58524dae6a55'],
-    vegetarian: ['photo-1512621776951-a57141f2eefd','photo-1498837167922-ddd27525d352'],
-    pasta:      ['photo-1540189549336-e6e99c3679fe','photo-1611270629569-8b357cb88da9'],
-    soup:       ['photo-1547592166-23ac45744acd','photo-1448043552756-e747b7a2b2b8'],
-    default:    ['photo-1504674900247-0877df9cc836','photo-1546069901-ba9599a7e63c','photo-1567620905732-2d1ec7ab7445'],
-  };
-  const photoKey = Object.keys(FOOD_PHOTOS).find(k =>
-    meal.cuisine?.toLowerCase().includes(k.toLowerCase()) ||
-    meal.tags?.some(t => t.toLowerCase().includes(k.toLowerCase()))
-  ) || 'default';
-  const photos = FOOD_PHOTOS[photoKey];
-  const photoIdx = (meal.cuisine || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0) % photos.length;
-  const fallbackSrc = `https://images.unsplash.com/${photos[photoIdx]}?auto=format&fit=crop&w=1200&h=600&q=80`;
-  const imgSrc = meal.photo_url || fallbackSrc;
+  // No stock-photo fallback.
+  //
+  // A table of Unsplash photographs keyed off cuisine used to fill in whenever a
+  // meal had no illustration — so Spaghetti alle Vongole opened on a stock photo
+  // of penne in meat sauce: wrong pasta, no clams, somebody else's dinner. That
+  // is exactly the argument for illustrating recipes at all, still sitting in
+  // the recipe card months after the tiles were fixed.
+  //
+  // A quiet parchment panel instead. An absence that looks like an absence is a
+  // missing illustration someone can see and report; a convincing photograph of
+  // the wrong dish is a lie nobody reports.
+  const imgSrc = meal.photo_url || '';
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center md:p-4 overflow-y-auto"
@@ -475,14 +467,15 @@ export default function MealModal({ meal: initialMeal, menuId, dislikedIngredien
       <div className="w-full max-w-3xl md:rounded-[22px] overflow-hidden relative md:mt-4 md:mb-8"
            style={{ background: 'var(--white)', boxShadow: '0 16px 48px rgba(0,0,0,0.22)', minHeight: '100dvh' }}>
 
-        {/* Hero photo */}
-        <div className="relative w-full h-64 overflow-hidden">
-          <img src={imgSrc} alt={meal.name}
-               className="w-full h-full object-cover"
-               onError={e => {
-                 const img = e.target as HTMLImageElement;
-                 if (img.src !== fallbackSrc) { img.src = fallbackSrc; } else { img.style.display = 'none'; }
-               }} />
+          {/* Hero. Parchment when there is no illustration — the day and
+              title sit on this panel and stay readable either way. */}
+          <div className="relative w-full h-64 overflow-hidden"
+               style={{ background: 'linear-gradient(135deg, #F3EEE4 0%, #E6DCC9 100%)' }}>
+            {imgSrc && (
+              <img src={imgSrc} alt={meal.name}
+                   className="w-full h-full object-cover"
+                   onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+            )}
           {/* gradient so text is readable over photo */}
           <div className="absolute inset-0"
                style={{ background: 'linear-gradient(to top, rgba(30,35,30,0.72) 0%, rgba(30,35,30,0.1) 55%, transparent 100%)' }} />
