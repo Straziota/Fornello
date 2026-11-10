@@ -15,7 +15,15 @@ import { adminClient } from './supabase-admin';
  * See docs/illustrations.md for the full reasoning.
  */
 
-const MODEL = 'gpt-image-1';
+// gpt-image-1 was shut down by OpenAI on 23 October 2026. Every illustration
+// request has failed with "the model does not exist" since — silently, because
+// resolveIllustration catches and returns an empty url so a drawing failure
+// never costs anyone their week. Correct behaviour, and it meant nobody noticed
+// for a fortnight.
+//
+// The size and quality parameters are unchanged between the two models, so the
+// prompt and framing work carries over untouched.
+const MODEL = 'gpt-image-2';
 
 /**
  * The invariant half of the prompt. Everything here is identical for every
